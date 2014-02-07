@@ -9,7 +9,6 @@ import (
 	"log"
 	"math"
 	"math/cmplx"
-	"math/util"
 	"net"
 	"os"
 	"os/signal"
@@ -46,7 +45,7 @@ const (
 	TimeFormat = "2006-01-02T15:04:05.000"
 )
 
-var SymLen = util.IntRound(SymbolLength)
+var SymLen = IntRound(SymbolLength)
 var config Config
 
 type Config struct {
@@ -233,11 +232,11 @@ func (rcvr *Receiver) Run() {
 				// evaluated to zero.
 				if scm.ID != 0 {
 					// Calculate message bounds.
-					lower := align - util.IntRound(8*SymbolLength)
+					lower := align - IntRound(8*SymbolLength)
 					if lower < 0 {
 						lower = 0
 					}
-					upper := align + util.IntRound(PacketLength+8*SymbolLength)
+					upper := align + IntRound(PacketLength+8*SymbolLength)
 
 					// Dump message to file.
 					err = binary.Write(config.SampleFile, binary.LittleEndian, amBuf[lower:upper])
@@ -293,8 +292,8 @@ func NewPreambleDetector() (pd PreambleDetector) {
 	for idx, bit := range PreambleBits {
 		// Must account for rounding error.
 		sIdx := idx << 1
-		lower := util.IntRound(float64(sIdx) * SymbolLength)
-		upper := util.IntRound(float64(sIdx+1) * SymbolLength)
+		lower := IntRound(float64(sIdx) * SymbolLength)
+		upper := IntRound(float64(sIdx+1) * SymbolLength)
 		for i := 0; i < upper-lower; i++ {
 			if bit == '1' {
 				pd.r[lower+i] = 1.0
@@ -351,11 +350,11 @@ func (pd *PreambleDetector) ArgMax() (idx int) {
 // Matched filter implemented as integrate and dump. Output array is equal to
 // the number of manchester coded symbols per packet.
 func MatchedFilter(input []float64) (output []float64) {
-	output = make([]float64, util.IntRound(PacketSymbols/2))
+	output = make([]float64, IntRound(PacketSymbols/2))
 	fidx := 0
 	for idx := 0.0; fidx < 96; idx += SymbolLength * 2 {
-		lower := util.IntRound(idx)
-		upper := util.IntRound(idx + SymbolLength)
+		lower := IntRound(idx)
+		upper := IntRound(idx + SymbolLength)
 		for i := 0; i < upper-lower; i++ {
 			output[fidx] += input[lower+i] - input[upper+i]
 		}
@@ -518,6 +517,10 @@ func (bch BCH) Correct(data []byte) (checksum uint, corrected bool) {
 	}
 
 	return
+}
+
+func IntRound(i float64) int {
+	return int(math.Floor(i + 0.5))
 }
 
 func init() {
