@@ -32,7 +32,6 @@ const (
 	PreambleDFTSize = 20480
 
 	CenterFreq    = 920299072
-	Local         = 17581447
 	RestrictLocal = false
 
 	Preamble     = 0x1F2A60
