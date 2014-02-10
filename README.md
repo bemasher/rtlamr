@@ -71,6 +71,8 @@ Output is as follows, note that the meter ID's and checksums have been obscured 
 	{ID:17581### Type: 7 Tamper:{Phy:3 Enc:0} Consumption: 1001648 Checksum:0x0E##}
 	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  882701 Checksum:0x28##}
 
+Using the provided antenna in most DVB-T dongle kits, I can reliably receive consumption messages from ~15 different meters from my apartment alone. This will likely improve once adaptive preamble quality thresholding is implemented.
+
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
 
@@ -83,3 +85,4 @@ If you have any general questions or feedback leave a comment below. For bugs, f
  * Move away from dependence on FFTW. While FFTW is a great library integration with Go is messy and it's absence would greatly simplify the build process.
  * Implement direct error correction rather than brute-force method.
  * Finish tools for discovery and usage of hopping pattern for a particular meter. There's enough material in this alone for another writeup.
+ * Implement adaptive preamble quality thresholding to improve false positive rejection.
