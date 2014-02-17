@@ -5,6 +5,8 @@ This project is a proof of concept software defined radio receiver for these mes
 
 Currently the only known supported and tested meter is the Itron C1SR. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
 
+For more info check out the project page: [http://bemasher.github.io/rtlamr/](http://bemasher.github.io/rtlamr/)
+
 ### Requirements
  * GoLang >=1.2
  * GCC (on windows TDM-GCCx64 works nicely)
