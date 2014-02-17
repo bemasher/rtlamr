@@ -5,8 +5,6 @@ This project is a proof of concept software defined radio receiver for these mes
 
 Currently the only known supported and tested meter is the Itron C1SR. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
 
-For more info check out the project page: [http://bemasher.github.io/rtlamr/](http://bemasher.github.io/rtlamr/)
-
 ### Requirements
  * GoLang >=1.2
  * GCC (on windows TDM-GCCx64 works nicely)
@@ -31,10 +29,16 @@ The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/githu
 	dlltool -d libfftw3-3.def -D libfftw3-3.dll -l $GOPATH/src/github.com/bemasher/fftw/libfftw3.a
 	go install github.com/bemasher/fftw
 
+Once all the prerequisites are met building the executable is as follows:
+
+	go build github.com/bemasher/rtlamr
+
+This will produce an rtlamr binary in the current working directory.
+
 ### Usage
 Available command-line flags are as follows:
 
-	$ rtlamr.exe -h
+	$ rtlamr -h
 	Usage of rtlamr:
 	  -centerfreq=920299072: center frequency to receive on
 	  -duration=0: time to run for, 0 for infinite
@@ -45,7 +49,7 @@ Available command-line flags are as follows:
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
 	$ rtl_tcp -a 0.0.0.0 &
-	$ recv
+	$ rtlamr
 
 Output is as follows, note that the meter ID's and checksums have been obscured to avoid releasing potentially sensitive information:
 
@@ -71,7 +75,7 @@ Output is as follows, note that the meter ID's and checksums have been obscured 
 	{ID:17581### Type: 7 Tamper:{Phy:3 Enc:0} Consumption: 1001648 Checksum:0x0E##}
 	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  882701 Checksum:0x28##}
 
-Using the provided antenna in most DVB-T dongle kits, I can reliably receive consumption messages from ~15 different meters from my apartment alone. This will likely improve once adaptive preamble quality thresholding is implemented.
+Using the provided antenna in most DVB-T dongle kits, I can reliably receive consumption messages from ~15 different meters from my apartment alone, with error correction for up to two errors this jumps to ~19 meters. This will likely improve once adaptive preamble quality thresholding is implemented.
 
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
