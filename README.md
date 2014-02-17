@@ -33,7 +33,7 @@ Once all the prerequisites are met building the executable is as follows:
 
 	go build github.com/bemasher/rtlamr
 
-This will produce an rtlamr binary in the current working directory.
+This will produce an `rtlamr` binary in the current working directory.
 
 ### Usage
 Available command-line flags are as follows:
