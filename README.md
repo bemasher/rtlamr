@@ -82,6 +82,27 @@ Using the provided antenna in most DVB-T dongle kits, I can reliably receive con
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
 
+### License
+The source of this project is licensed under Affero GPL. According to [http://choosealicense.com/licenses/agpl/](http://choosealicense.com/licenses/agpl/) you may:
+
+Required:
+
+ * Source code must be made available when distributing the software. In the case of LGPL, the source for the library (and not the entire program) must be made available.
+ * Include a copy of the license and copyright notice with the code.
+ * Indicate significant changes made to the code.
+
+Permitted:
+
+ * This software and derivatives may be used for commercial purposes.
+ * You may distribute this software.
+ * This software may be modified.
+ * You may use and modify the software without distributing it.
+
+Forbidden:
+
+ * Software is provided without warranty and the software author/license owner cannot be held liable for damages.
+ * You may not grant a sublicense to modify and distribute this software to third parties not included in the license.
+
 ### Feedback
 If you have any general questions or feedback leave a comment below. For bugs, feature suggestions and anything directly relating to the program itself, submit an issue in github.
 
