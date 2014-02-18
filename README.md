@@ -85,20 +85,20 @@ _Do not use this for nefarious purposes._ If you do, I don't want to know about 
 ### License
 The source of this project is licensed under Affero GPL. According to [http://choosealicense.com/licenses/agpl/](http://choosealicense.com/licenses/agpl/) you may:
 
-Required:
+#### Required:
 
  * Source code must be made available when distributing the software. In the case of LGPL, the source for the library (and not the entire program) must be made available.
  * Include a copy of the license and copyright notice with the code.
  * Indicate significant changes made to the code.
 
-Permitted:
+#### Permitted:
 
  * This software and derivatives may be used for commercial purposes.
  * You may distribute this software.
  * This software may be modified.
  * You may use and modify the software without distributing it.
 
-Forbidden:
+#### Forbidden:
 
  * Software is provided without warranty and the software author/license owner cannot be held liable for damages.
  * You may not grant a sublicense to modify and distribute this software to third parties not included in the license.
