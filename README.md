@@ -33,7 +33,7 @@ The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/githu
 	sudo apt-get install libfftw3-dev
 	go get github.com/bemasher/rtlamr
 
-This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add $GOPATH/bin to PATH.
+This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add `$GOPATH/bin` to the path.
 
 ### Usage
 Available command-line flags are as follows:
