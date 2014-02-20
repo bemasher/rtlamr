@@ -13,29 +13,29 @@ For more info check out the project page: [http://bemasher.github.io/rtlamr/](ht
  * libfftw >=3.3
    * Windows: [http://www.fftw.org/install/windows.html](http://www.fftw.org/install/windows.html)
    * Linux (debian): libfftw3-dev
+ * rtl-sdr
+   * Windows: [pre-built binaries](http://sdr.osmocom.org/trac/attachment/wiki/rtl-sdr/RelWithDebInfo.zip)
+   * Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 
 ### Building
 This project requires two other packages I've written for SDR related things in Go. The package [`github.com/bemasher/rtltcp`](http://godoc.org/github.com/bemasher/rtltcp) provides a means of controlling and sampling from rtl-sdr dongles. Installing this package should be as simple as:
 
 	go get github.com/bemasher/rtltcp
 
-The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/github.com/bemasher/fftw), which may require more effort to build. Assuming for linux you already have the necessary library, no extra work should need to be done. For windows a library file will need to be generated from the dll and def files for gcc.
-
-#### On Linux
-	
-	go get github.com/bemasher/fftw
+The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/github.com/bemasher/fftw), which may require more effort to build. Assuming for linux you already have the necessary library, no extra work should need to be done. For windows a library file will need to be generated from the dll and def files for gcc. The FFTW defs and dlls can be found here: (http://www.fftw.org/install/windows.html)
 
 #### On Windows
 
 	go get -d github.com/bemasher/fftw
 	dlltool -d libfftw3-3.def -D libfftw3-3.dll -l $GOPATH/src/github.com/bemasher/fftw/libfftw3.a
-	go install github.com/bemasher/fftw
+	go get github.com/bemasher/rtlamr
 
-Once all the prerequisites are met building the executable is as follows:
+#### On Linux (Debian/Ubuntu)
+	
+	sudo apt-get install libfftw3-dev
+	go get github.com/bemasher/rtlamr
 
-	go build github.com/bemasher/rtlamr
-
-This will produce an `rtlamr` binary in the current working directory.
+This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add $GOPATH/bin to PATH.
 
 ### Usage
 Available command-line flags are as follows:
