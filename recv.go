@@ -17,7 +17,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
@@ -55,7 +54,7 @@ const (
 
 	GenPoly    = 0x16F63
 	MsgLen     = 10
-	ErrorCount = 2
+	ErrorCount = 1
 
 	TimeFormat = "2006-01-02T15:04:05.000"
 )
@@ -135,12 +134,12 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 		log.Fatal(err)
 	}
 
+	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+
 	rcvr.SetSampleRate(SampleRate)
 	rcvr.SetCenterFreq(uint32(config.CenterFreq))
 	rcvr.SetOffsetTuning(true)
-	rcvr.SetAGCMode(true)
-	rcvr.SetGainByIndex(23)
-	rcvr.SetFreqCorrection(31)
+	rcvr.SetGainMode(true)
 
 	return
 }
@@ -157,6 +156,7 @@ func (rcvr *Receiver) Run() {
 
 	// Allocate sample and demodulated signal buffers.
 	block := make([]byte, BlockSize<<1)
+	raw := make([]byte, BlockSize<<2)
 	amBuf := make([]float64, BlockSize<<1)
 
 	// Setup time limit channel
@@ -175,7 +175,8 @@ func (rcvr *Receiver) Run() {
 			fmt.Println("Time Limit Reached:", time.Since(start))
 			return
 		default:
-			// Rotate sample buffer.
+			// Rotate sample and raw buffer.
+			copy(raw[:BlockSize<<1], raw[BlockSize<<1:])
 			copy(amBuf[:BlockSize], amBuf[BlockSize:])
 
 			// Read new sample block.
@@ -183,6 +184,9 @@ func (rcvr *Receiver) Run() {
 			if err != nil {
 				log.Fatal("Error reading samples:", err)
 			}
+
+			// Store the block to dump the message if necessary
+			copy(raw[BlockSize<<1:], block)
 
 			// AM Demodulate
 			for i := 0; i < BlockSize; i++ {
@@ -243,30 +247,26 @@ func (rcvr *Receiver) Run() {
 					log.Fatal("Error parsing SCM:", err)
 				}
 
-				// Make sure checksum isn't 0 just because the received signal
-				// evaluated to zero.
-				if scm.ID != 0 {
-					// Calculate message bounds.
-					lower := align - IntRound(8*SymbolLength)
-					if lower < 0 {
-						lower = 0
-					}
-					upper := align + IntRound(PacketLength+8*SymbolLength)
+				// Calculate message bounds.
+				lower := (align - IntRound(8*SymbolLength)) << 1
+				if lower < 0 {
+					lower = 0
+				}
+				upper := (align + IntRound(PacketLength+8*SymbolLength)) << 1
 
-					// Dump message to file.
-					err = binary.Write(config.SampleFile, binary.LittleEndian, amBuf[lower:upper])
-					if err != nil {
-						log.Fatal("Error dumping samples:", err)
-					}
+				// Dump message to file.
+				_, err = config.SampleFile.Write(raw[lower:upper])
+				if err != nil {
+					log.Fatal("Error dumping samples:", err)
+				}
 
-					fmt.Fprintf(config.LogFile, "%+v ", scm)
+				fmt.Fprintf(config.LogFile, "%+v ", scm)
 
-					// If we corrected any errors, print their positions.
-					if corrected {
-						fmt.Fprintf(config.LogFile, "%d\n", rcvr.bch.Syndromes[syn])
-					} else {
-						fmt.Fprintln(config.LogFile)
-					}
+				// If we corrected any errors, print their positions.
+				if corrected {
+					fmt.Fprintf(config.LogFile, "%d\n", rcvr.bch.Syndromes[syn])
+				} else {
+					fmt.Fprintln(config.LogFile)
 				}
 			}
 		}
