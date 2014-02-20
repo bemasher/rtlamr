@@ -11,8 +11,8 @@ For more info check out the project page: [http://bemasher.github.io/rtlamr/](ht
  * GoLang >=1.2
  * GCC (on windows TDM-GCCx64 works nicely)
  * libfftw >=3.3
-   * Windows: [http://www.fftw.org/install/windows.html](http://www.fftw.org/install/windows.html)
-   * Linux (debian): libfftw3-dev
+   * Windows: [pre-built binaries](http://www.fftw.org/install/windows.html)
+   * Linux (debian): [package](https://packages.debian.org/stable/libfftw3-dev)
  * rtl-sdr
    * Windows: [pre-built binaries](http://sdr.osmocom.org/trac/attachment/wiki/rtl-sdr/RelWithDebInfo.zip)
    * Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
