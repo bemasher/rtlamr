@@ -77,6 +77,34 @@ Output is as follows, note that the meter ID's and checksums have been obscured 
 
 Using the provided antenna in most DVB-T dongle kits, I can reliably receive consumption messages from ~15 different meters from my apartment alone, with error correction for up to two errors this jumps to ~19 meters. This will likely improve once adaptive preamble quality thresholding is implemented.
 
+### Example
+
+Below is a photo of the face of the meter I've been testing with along with sample output received from the meter. The messages below are all from the same meter. You can see on the face of the meter the commodity type, in this case electricity is `07` and the meter ID is `17581###` with the last 3 digits censored. The meter displays the current consumption value in kWh's and transmits hundredths of a kWh.
+
+![Smart Meter](https://raw2.github.com/bemasher/rtlamr/master/misc/example.jpg)
+
+	$ rtlamr -samplefile=data/signal.bin
+	recv.go:557: Config: {ServerAddr:127.0.0.1:1234 Freq:920299072 TimeLimit:0 LogFile:/dev/stdout SampleFile:data/sign
+	al.bin}
+	recv.go:558: BlockSize: 16384
+	recv.go:559: SampleRate: 2.4e+06
+	recv.go:560: DataRate: 32768
+	recv.go:561: SymbolLength: 73.2421875
+	recv.go:562: PacketSymbols: 192
+	recv.go:563: PacketLength: 14062.5
+	recv.go:564: CenterFreq: 920299072
+	recv.go:131: BCH: {GenPoly:16F63 PolyLen:16 Syndromes:0}
+	recv.go:137: GainCount: 29
+	recv.go:570: Running...
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899729 Checksum:0x70##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899729 Checksum:0x70##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899734 Checksum:0x02##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899734 Checksum:0x02##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+	{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
 
