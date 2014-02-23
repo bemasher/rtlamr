@@ -1,0 +1,21 @@
+$ rtlamr -samplefile=data/signal.bin
+recv.go:557: Config: {ServerAddr:127.0.0.1:1234 Freq:920299072 TimeLimit:0 LogFile:/dev/stdout SampleFile:data/sign
+al.bin}
+recv.go:558: BlockSize: 16384
+recv.go:559: SampleRate: 2.4e+06
+recv.go:560: DataRate: 32768
+recv.go:561: SymbolLength: 73.2421875
+recv.go:562: PacketSymbols: 192
+recv.go:563: PacketLength: 14062.5
+recv.go:564: CenterFreq: 920299072
+recv.go:131: BCH: {GenPoly:16F63 PolyLen:16 Syndromes:0}
+recv.go:137: GainCount: 29
+recv.go:570: Running...
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899729 Checksum:0x70##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899729 Checksum:0x70##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899734 Checksum:0x02##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899734 Checksum:0x02##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
+{ID:17581### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  899737 Checksum:0x04##}
