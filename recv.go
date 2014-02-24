@@ -87,7 +87,7 @@ func (c Config) String() string {
 func (c *Config) Parse() (err error) {
 	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
 	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
-	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "received message signal dump file")
+	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "received message signal dump file, offset and message length are displayed to log when enabled")
 	flag.UintVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 
