@@ -85,6 +85,12 @@ func (c Config) String() string {
 }
 
 func (c *Config) Parse() (err error) {
+	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
+	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
+	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "received message signal dump file")
+	flag.UintVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
+	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
+
 	flag.Parse()
 
 	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
@@ -260,7 +266,16 @@ func (rcvr *Receiver) Run() {
 					log.Fatal("Error dumping samples:", err)
 				}
 
-				fmt.Fprintf(config.LogFile, "%+v ", scm)
+				fmt.Fprintf(config.LogFile, "%s %+v ", time.Now().Format(TimeFormat), scm)
+
+				if config.sampleFilename != os.DevNull {
+					offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
+					if err != nil {
+						log.Fatal("Error getting sample file offset:", err)
+					}
+
+					fmt.Printf("%d %d ", offset, upper-lower)
+				}
 
 				// If we corrected any errors, print their positions.
 				if corrected {
@@ -275,8 +290,8 @@ func (rcvr *Receiver) Run() {
 
 // Shift sample from unsigned and normalize.
 func Mag(i, q byte) float64 {
-	j := (127 - float64(i)) / 127
-	k := (127 - float64(q)) / 127
+	j := (127.5 - float64(i)) / 127
+	k := (127.5 - float64(q)) / 127
 	return math.Hypot(j, k)
 }
 
@@ -539,12 +554,6 @@ func IntRound(i float64) int {
 }
 
 func init() {
-	flag.StringVar(&config.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
-	flag.StringVar(&config.logFilename, "logfile", "/dev/stdout", "log statement dump file")
-	flag.StringVar(&config.sampleFilename, "samplefile", os.DevNull, "received message signal dump file")
-	flag.UintVar(&config.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
-	flag.DurationVar(&config.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
-
 	err := config.Parse()
 	if err != nil {
 		log.Fatal("Error parsing flags:", err)
