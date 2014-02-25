@@ -8,7 +8,7 @@ Currently the only known supported and tested meter is the Itron C1SR. However, 
 For more info check out the project page: [http://bemasher.github.io/rtlamr/](http://bemasher.github.io/rtlamr/)
 
 ### Requirements
- * GoLang >=1.2
+ * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
  * GCC (on windows TDM-GCCx64 works nicely)
  * libfftw >=3.3
    * Windows: [pre-built binaries](http://www.fftw.org/install/windows.html)
@@ -48,8 +48,17 @@ Available command-line flags are as follows:
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
-	$ rtl_tcp -a 0.0.0.0 &
-	$ rtlamr
+In one terminal:
+```
+$ rtl_tcp
+```
+
+In another terminal:
+```
+$ rtlamr
+```
+
+If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp`.
 
 Output is as follows, note that the meter ID's and checksums have been obscured to avoid releasing potentially sensitive information:
 
