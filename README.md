@@ -48,17 +48,21 @@ Available command-line flags are as follows:
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
-In one terminal:
+#### In one terminal:
 ```
 $ rtl_tcp
 ```
 
-In another terminal:
+#### In another terminal:
 ```
 $ rtlamr
 ```
 
 If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp`.
+
+Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~250 different meters and intermittently from another 400 meters. These figures are calcaulted from messages received during a 25 minute window where the preamble had no bit errors and no errors were detected or corrected using the checksum. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
+
+### Example
 
 Example output is as follows, note that the meter ID's and checksums have been obscured to avoid releasing potentially sensitive information:
 ```
@@ -96,10 +100,6 @@ recv.go:577: Running...
 2014-02-25T02:35:06.304 {ID:17580### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 2437972 Checksum:0x56##} 609174 30468
 2014-02-25T02:35:06.349 {ID:17580### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1777195 Checksum:0x51##} 639642 30468
 ```
-
-Using the provided antenna in most DVB-T dongle kits, I can reliably receive consumption messages from ~15 different meters from my apartment alone, with error correction for up to two errors this jumps to ~19 meters. This will likely improve once adaptive preamble quality thresholding is implemented.
-
-### Example
 
 Below is a photo of the face of the meter I've been testing with along with sample output received from the meter. The messages below are all from the same meter. You can see on the face of the meter the commodity type, in this case electricity is `07` and the meter ID is `17581###` with the last 3 digits censored. The meter displays the current consumption value in kWh's and transmits hundredths of a kWh.
 
