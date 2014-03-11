@@ -69,8 +69,7 @@ func (pd *PreambleDetector) Close() {
 	pd.backward.Close()
 }
 
-// Convolves signal with frequency-domain preamble basis function. Returns the
-// most likely position of preamble.
+// Convolves signal with frequency-domain preamble basis function.
 func (pd *PreambleDetector) Execute(input []float64) {
 	copy(pd.Real, input)
 
