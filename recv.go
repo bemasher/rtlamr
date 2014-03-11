@@ -201,8 +201,8 @@ func (rcvr *Receiver) Run() {
 			}
 
 			// Detect preamble in first half of demod buffer.
-			copy(rcvr.pd.Real, amBuf)
-			align := rcvr.pd.Execute()
+			rcvr.pd.Execute(amBuf)
+			align := rcvr.pd.ArgMax()
 
 			// Bad framing, catch message on next block.
 			if align > BlockSize {

@@ -1,13 +1,15 @@
+// Preamble detection for real-valued data.
 package preamble
 
 import (
-	"github.com/bemasher/fftw"
 	"math"
 	"math/cmplx"
+
+	"github.com/bemasher/fftw"
 )
 
-// Preamble detection uses half-complex dft to convolve signal with preamble
-// basis function, argmax of result represents most likely preamble position.
+// Preamble detection uses half-complex DFT to convolve signal with preamble
+// basis function, ArgMax of result represents most likely preamble position.
 type PreambleDetector struct {
 	forward  fftw.HCDFT1DPlan
 	backward fftw.HCDFT1DPlan
@@ -17,6 +19,8 @@ type PreambleDetector struct {
 	template []complex128
 }
 
+// Given a buffer length, symbol length and a binary bitstring, compute the
+// frequency domain of the preamble for later use.
 func NewPreambleDetector(n uint, symbolLength float64, bits string) (pd PreambleDetector) {
 	// Plan forward and reverse transforms.
 	pd.forward = fftw.NewHCDFT1D(n, nil, nil, fftw.Forward, fftw.InPlace, fftw.Measure)
@@ -33,8 +37,8 @@ func NewPreambleDetector(n uint, symbolLength float64, bits string) (pd Preamble
 	for idx, bit := range bits {
 		// Must account for rounding error.
 		sIdx := idx << 1
-		lower := IntRound(float64(sIdx) * symbolLength)
-		upper := IntRound(float64(sIdx+1) * symbolLength)
+		lower := intRound(float64(sIdx) * symbolLength)
+		upper := intRound(float64(sIdx+1) * symbolLength)
 		for i := 0; i < upper-lower; i++ {
 			if bit == '1' {
 				pd.Real[lower+i] = 1.0
@@ -49,7 +53,7 @@ func NewPreambleDetector(n uint, symbolLength float64, bits string) (pd Preamble
 	// Transform the preamble basis function.
 	pd.forward.Execute()
 
-	// Create the preamble template and store conjugated dft result.
+	// Create the preamble template and store conjugated DFT result.
 	pd.template = make([]complex128, len(pd.Complex))
 	copy(pd.template, pd.Complex)
 	for i := range pd.template {
@@ -59,25 +63,27 @@ func NewPreambleDetector(n uint, symbolLength float64, bits string) (pd Preamble
 	return
 }
 
-// FFTW plans must be cleaned up.
+// Clean up FFTW plans.
 func (pd *PreambleDetector) Close() {
 	pd.forward.Close()
 	pd.backward.Close()
 }
 
-// Convolves signal with preamble basis function. Returns the most likely
-// position of preamble. Assumes data has been copied into real array.
-func (pd *PreambleDetector) Execute() int {
+// Convolves signal with frequency-domain preamble basis function. Returns the
+// most likely position of preamble.
+func (pd *PreambleDetector) Execute(input []float64) {
+	copy(pd.Real, input)
+
 	pd.forward.Execute()
+
 	for i := range pd.template {
 		pd.backward.Complex[i] = pd.forward.Complex[i] * pd.template[i]
 	}
-	pd.backward.Execute()
 
-	return pd.ArgMax()
+	pd.backward.Execute()
 }
 
-// Calculate index of largest element in the real array.
+// Determine index of largest element in pd.Real.
 func (pd *PreambleDetector) ArgMax() (idx int) {
 	max := 0.0
 	for i, v := range pd.backward.Real {
@@ -88,6 +94,6 @@ func (pd *PreambleDetector) ArgMax() (idx int) {
 	return idx
 }
 
-func IntRound(i float64) int {
+func intRound(i float64) int {
 	return int(math.Floor(i + 0.5))
 }
