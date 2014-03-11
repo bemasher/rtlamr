@@ -23,15 +23,16 @@ import (
 	"io"
 	"log"
 	"math"
-	"math/cmplx"
 	"net"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
 
-	"github.com/bemasher/fftw"
 	"github.com/bemasher/rtltcp"
+
+	"github.com/bemasher/rtlamr/bch"
+	"github.com/bemasher/rtlamr/preamble"
 )
 
 const (
@@ -126,14 +127,14 @@ func (c Config) Close() {
 type Receiver struct {
 	rtltcp.SDR
 
-	pd  PreambleDetector
-	bch BCH
+	pd  preamble.PreambleDetector
+	bch bch.BCH
 }
 
 func NewReceiver(blockSize int) (rcvr Receiver) {
-	rcvr.pd = NewPreambleDetector()
+	rcvr.pd = preamble.NewPreambleDetector(PreambleDFTSize, SymbolLength, PreambleBits)
 
-	rcvr.bch = NewBCH(GenPoly)
+	rcvr.bch = bch.NewBCH(GenPoly, MsgLen, ErrorCount)
 	log.Printf("BCH: %+v\n", rcvr.bch)
 
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
@@ -200,7 +201,7 @@ func (rcvr *Receiver) Run() {
 			}
 
 			// Detect preamble in first half of demod buffer.
-			copy(rcvr.pd.r, amBuf)
+			copy(rcvr.pd.Real, amBuf)
 			align := rcvr.pd.Execute()
 
 			// Bad framing, catch message on next block.
@@ -295,88 +296,6 @@ func Mag(i, q byte) float64 {
 	return math.Hypot(j, k)
 }
 
-// Preamble detection uses half-complex dft to convolve signal with preamble
-// basis function, argmax of result represents most likely preamble position.
-type PreambleDetector struct {
-	forward  fftw.HCDFT1DPlan
-	backward fftw.HCDFT1DPlan
-
-	r        []float64
-	c        []complex128
-	template []complex128
-}
-
-func NewPreambleDetector() (pd PreambleDetector) {
-	// Plan forward and reverse transforms.
-	pd.forward = fftw.NewHCDFT1D(PreambleDFTSize, nil, nil, fftw.Forward, fftw.InPlace, fftw.Measure)
-	pd.r = pd.forward.Real
-	pd.c = pd.forward.Complex
-	pd.backward = fftw.NewHCDFT1D(PreambleDFTSize, pd.r, pd.c, fftw.Backward, fftw.PreAlloc, fftw.Measure)
-
-	// Zero out input array.
-	for i := range pd.r {
-		pd.r[i] = 0
-	}
-
-	// Generate the preamble basis function.
-	for idx, bit := range PreambleBits {
-		// Must account for rounding error.
-		sIdx := idx << 1
-		lower := IntRound(float64(sIdx) * SymbolLength)
-		upper := IntRound(float64(sIdx+1) * SymbolLength)
-		for i := 0; i < upper-lower; i++ {
-			if bit == '1' {
-				pd.r[lower+i] = 1.0
-				pd.r[upper+i] = -1.0
-			} else {
-				pd.r[lower+i] = -1.0
-				pd.r[upper+i] = 1.0
-			}
-		}
-	}
-
-	// Transform the preamble basis function.
-	pd.forward.Execute()
-
-	// Create the preamble template and store conjugated dft result.
-	pd.template = make([]complex128, len(pd.c))
-	copy(pd.template, pd.c)
-	for i := range pd.template {
-		pd.template[i] = cmplx.Conj(pd.template[i])
-	}
-
-	return
-}
-
-// FFTW plans must be cleaned up.
-func (pd *PreambleDetector) Close() {
-	pd.forward.Close()
-	pd.backward.Close()
-}
-
-// Convolves signal with preamble basis function. Returns the most likely
-// position of preamble. Assumes data has been copied into real array.
-func (pd *PreambleDetector) Execute() int {
-	pd.forward.Execute()
-	for i := range pd.template {
-		pd.backward.Complex[i] = pd.forward.Complex[i] * pd.template[i]
-	}
-	pd.backward.Execute()
-
-	return pd.ArgMax()
-}
-
-// Calculate index of largest element in the real array.
-func (pd *PreambleDetector) ArgMax() (idx int) {
-	max := 0.0
-	for i, v := range pd.backward.Real {
-		if max < v {
-			max, idx = v, i
-		}
-	}
-	return idx
-}
-
 // Matched filter implemented as integrate and dump. Output array is equal to
 // the number of manchester coded symbols per packet.
 func MatchedFilter(input []float64) (output []float64) {
@@ -436,117 +355,6 @@ func ParseSCM(data string) (scm SCM, err error) {
 	scm.Checksum = uint16(ParseUint(data[80:96]))
 
 	return scm, nil
-}
-
-// BCH Error Correction
-type BCH struct {
-	GenPoly   uint
-	PolyLen   byte
-	Syndromes map[uint][]uint
-}
-
-// Given a generator polynomial, calculate the polynomial length and pre-
-// compute syndromes for number of errors to be corrected.
-func NewBCH(poly uint) (bch BCH) {
-	bch.GenPoly = poly
-
-	p := bch.GenPoly
-	for ; bch.PolyLen < 32 && p > 0; bch.PolyLen, p = bch.PolyLen+1, p>>1 {
-	}
-	bch.PolyLen--
-
-	bch.ComputeSyndromes(MsgLen, ErrorCount)
-
-	return
-}
-
-func (bch BCH) String() string {
-	return fmt.Sprintf("{GenPoly:%X PolyLen:%d Syndromes:%d}", bch.GenPoly, bch.PolyLen, len(bch.Syndromes))
-}
-
-// Recursively computes syndromes for number of desired errors.
-func (bch *BCH) ComputeSyndromes(msgLen, errCount uint) {
-	bch.Syndromes = make(map[uint][]uint)
-
-	data := make([]byte, msgLen)
-	bch.computeHelper(msgLen, errCount, nil, data)
-}
-
-func (bch *BCH) computeHelper(msgLen, depth uint, prefix []uint, data []byte) {
-	if depth == 0 {
-		return
-	}
-
-	// For all possible bit positions.
-	for i := uint(0); i < msgLen<<3; i++ {
-		inPrefix := false
-		for p := uint(0); p < uint(len(prefix)) && !inPrefix; p++ {
-			inPrefix = i == prefix[p]
-		}
-		if inPrefix {
-			continue
-		}
-
-		// Toggle the bit
-		data[i>>3] ^= 1 << uint(i%8)
-
-		// Calculate the syndrome and store with position if new.
-		syn := bch.Encode(data)
-		if _, exists := bch.Syndromes[syn]; !exists {
-			bch.Syndromes[syn] = append(prefix, i)
-		}
-
-		// Recurse.
-		bch.computeHelper(msgLen, depth-1, append(prefix, i), data)
-
-		data[i>>3] ^= 1 << uint(i%8)
-	}
-}
-
-// Syndrome calculation implemented using LSFR (linear feedback shift register).
-func (bch BCH) Encode(data []byte) (checksum uint) {
-	// For each byte of data.
-	for _, b := range data {
-		// For each bit of byte.
-		for i := byte(0); i < 8; i++ {
-			// Rotate register and shift in bit.
-			checksum = (checksum << 1) | uint((b>>(7-i))&1)
-			// If MSB of register is non-zero XOR with generator polynomial.
-			if checksum>>bch.PolyLen != 0 {
-				checksum ^= bch.GenPoly
-			}
-		}
-	}
-
-	// Mask to valid length
-	checksum &= (1 << bch.PolyLen) - 1
-	return
-}
-
-// Given data, calculate the syndrome and correct errors if syndrome exists in
-// pre-computed syndromes.
-func (bch BCH) Correct(data []byte) (checksum uint, corrected bool) {
-	// Calculate syndrome.
-	syn := bch.Encode(data)
-	if syn == 0 {
-		return syn, false
-	}
-
-	// If the syndrome exists then toggle bits the syndrome was
-	// calculated from.
-	if pos, exists := bch.Syndromes[syn]; exists {
-		for _, b := range pos {
-			data[b>>3] ^= 1 << uint(b%8)
-		}
-	}
-
-	// Calculate syndrome of corrected version. If we corrected anything, indicate so.
-	checksum = bch.Encode(data)
-	if syn != checksum && checksum == 0 {
-		corrected = true
-	}
-
-	return
 }
 
 func IntRound(i float64) int {
