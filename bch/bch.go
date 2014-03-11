@@ -1,3 +1,4 @@
+// Implements BCH error correction and detection.
 package bch
 
 import (
@@ -11,8 +12,9 @@ type BCH struct {
 	Syndromes map[uint][]uint
 }
 
-// Given a generator polynomial, calculate the polynomial length and pre-
-// compute syndromes for number of errors to be corrected.
+// Given a generator polynomial, message length and number of errors to
+// attempt to correct, calculate the polynomial length and pre-compute
+// syndromes for number of errors to be corrected.
 func NewBCH(poly uint, msgLen, errorCount uint) (bch BCH) {
 	bch.GenPoly = poly
 
