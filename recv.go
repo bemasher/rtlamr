@@ -71,7 +71,10 @@ type Config struct {
 	ServerAddr *net.TCPAddr
 	CenterFreq uint
 	TimeLimit  time.Duration
-	LogFile    *os.File
+
+	Log     *log.Logger
+	LogFile *os.File
+
 	SampleFile *os.File
 }
 
@@ -104,12 +107,11 @@ func (c *Config) Parse() (err error) {
 	} else {
 		c.LogFile, err = os.Create(c.logFilename)
 	}
+	c.Log = log.New(c.LogFile, "", log.Lshortfile)
+
 	if err != nil {
 		return
 	}
-
-	log.SetOutput(c.LogFile)
-	log.SetFlags(log.Lshortfile)
 
 	c.SampleFile, err = os.Create(c.sampleFilename)
 	if err != nil {
@@ -134,14 +136,14 @@ type Receiver struct {
 func NewReceiver(blockSize int) (rcvr Receiver) {
 	rcvr.pd = preamble.NewPreambleDetector(PreambleDFTSize, SymbolLength, PreambleBits)
 
-	rcvr.bch = bch.NewBCH(GenPoly, MsgLen, ErrorCount)
-	log.Printf("BCH: %+v\n", rcvr.bch)
+	rcvr.bch = bch.NewBCH(GenPoly)
+	config.Log.Printf("BCH: %+v\n", rcvr.bch)
 
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
-		log.Fatal(err)
+		config.Log.Fatal(err)
 	}
 
-	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+	config.Log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 
 	rcvr.SetSampleRate(SampleRate)
 	rcvr.SetCenterFreq(uint32(config.CenterFreq))
@@ -189,7 +191,7 @@ func (rcvr *Receiver) Run() {
 			// Read new sample block.
 			_, err := io.ReadFull(rcvr, block)
 			if err != nil {
-				log.Fatal("Error reading samples:", err)
+				config.Log.Fatal("Error reading samples:", err)
 			}
 
 			// Store the block to dump the message if necessary
@@ -220,38 +222,17 @@ func (rcvr *Receiver) Run() {
 				}
 			}
 
-			// Convert bitstring to bytes for BCH.
-			data := make([]byte, 10)
-			for i := range data {
-				idx := i<<3 + 16
-				b, err := strconv.ParseUint(bits[idx:idx+8], 2, 8)
-				if err != nil {
-					log.Fatal("Error parsing byte:", err)
-				}
-				data[i] = byte(b)
-			}
-
 			// Calculate the syndrome to track which bits were corrected later
 			// for logging.
-			syn := rcvr.bch.Encode(data)
-
-			// Correct errors
-			checksum, corrected := rcvr.bch.Correct(data)
+			checksum := rcvr.bch.Encode(bits[16:])
 
 			// If the preamble matches and the corrected checksum is 0 we
 			// probably have a message.
 			if bits[:21] == PreambleBits && checksum == 0 {
-				// Convert back to bitstring for parsing (should probably
-				// write a method for parsing from bytes)
-				bits = bits[:16]
-				for i := range data {
-					bits += fmt.Sprintf("%08b", data[i])
-				}
-
 				// Parse SCM
 				scm, err := ParseSCM(bits)
 				if err != nil {
-					log.Fatal("Error parsing SCM:", err)
+					config.Log.Fatal("Error parsing SCM:", err)
 				}
 
 				// Calculate message bounds.
@@ -264,7 +245,7 @@ func (rcvr *Receiver) Run() {
 				// Dump message to file.
 				_, err = config.SampleFile.Write(raw[lower:upper])
 				if err != nil {
-					log.Fatal("Error dumping samples:", err)
+					config.Log.Fatal("Error dumping samples:", err)
 				}
 
 				fmt.Fprintf(config.LogFile, "%s %+v ", time.Now().Format(TimeFormat), scm)
@@ -272,18 +253,13 @@ func (rcvr *Receiver) Run() {
 				if config.sampleFilename != os.DevNull {
 					offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
 					if err != nil {
-						log.Fatal("Error getting sample file offset:", err)
+						config.Log.Fatal("Error getting sample file offset:", err)
 					}
 
-					fmt.Printf("%d %d ", offset, upper-lower)
+					fmt.Printf("%d %d", offset, upper-lower)
 				}
 
-				// If we corrected any errors, print their positions.
-				if corrected {
-					fmt.Fprintf(config.LogFile, "%d\n", rcvr.bch.Syndromes[syn])
-				} else {
-					fmt.Fprintln(config.LogFile)
-				}
+				fmt.Fprintln(config.LogFile)
 			}
 		}
 	}
@@ -364,24 +340,24 @@ func IntRound(i float64) int {
 func init() {
 	err := config.Parse()
 	if err != nil {
-		log.Fatal("Error parsing flags:", err)
+		config.Log.Fatal("Error parsing flags:", err)
 	}
 }
 
 func main() {
-	log.Println("Config:", config)
-	log.Println("BlockSize:", BlockSize)
-	log.Println("SampleRate:", SampleRate)
-	log.Println("DataRate:", DataRate)
-	log.Println("SymbolLength:", SymbolLength)
-	log.Println("PacketSymbols:", PacketSymbols)
-	log.Println("PacketLength:", PacketLength)
-	log.Println("CenterFreq:", CenterFreq)
+	config.Log.Println("Config:", config)
+	config.Log.Println("BlockSize:", BlockSize)
+	config.Log.Println("SampleRate:", SampleRate)
+	config.Log.Println("DataRate:", DataRate)
+	config.Log.Println("SymbolLength:", SymbolLength)
+	config.Log.Println("PacketSymbols:", PacketSymbols)
+	config.Log.Println("PacketLength:", PacketLength)
+	config.Log.Println("CenterFreq:", CenterFreq)
 
 	rcvr := NewReceiver(BlockSize)
 	defer rcvr.Close()
 	defer config.Close()
 
-	log.Println("Running...")
+	config.Log.Println("Running...")
 	rcvr.Run()
 }
