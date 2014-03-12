@@ -17,10 +17,10 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"net"
@@ -36,16 +36,19 @@ import (
 )
 
 const (
-	BlockSize = 1 << 14
+	BlockSize = 1 << 12
 
 	SampleRate   = 2.4e6
 	DataRate     = 32.768e3
 	SymbolLength = SampleRate / DataRate
 
+	PreambleSymbols = 42
+	PreambleLength  = PreambleSymbols * SymbolLength
+
 	PacketSymbols = 192
 	PacketLength  = PacketSymbols * SymbolLength
 
-	PreambleDFTSize = 20480
+	PreambleDFTSize = 8192
 
 	CenterFreq    = 920299072
 	RestrictLocal = false
@@ -53,9 +56,7 @@ const (
 	Preamble     = 0x1F2A60
 	PreambleBits = "111110010101001100000"
 
-	GenPoly    = 0x16F63
-	MsgLen     = 10
-	ErrorCount = 1
+	GenPoly = 0x16F63
 
 	TimeFormat = "2006-01-02T15:04:05.000"
 )
@@ -128,6 +129,7 @@ func (c Config) Close() {
 
 type Receiver struct {
 	rtltcp.SDR
+	sdrBuf *bufio.Reader
 
 	pd  preamble.PreambleDetector
 	bch bch.BCH
@@ -142,6 +144,8 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
 		config.Log.Fatal(err)
 	}
+
+	rcvr.sdrBuf = bufio.NewReaderSize(rcvr.SDR, IntRound(PacketLength+BlockSize)<<1)
 
 	config.Log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 
@@ -165,8 +169,7 @@ func (rcvr *Receiver) Run() {
 
 	// Allocate sample and demodulated signal buffers.
 	block := make([]byte, BlockSize<<1)
-	raw := make([]byte, BlockSize<<2)
-	amBuf := make([]float64, BlockSize<<1)
+	amBuf := make([]float64, IntRound(PacketLength+BlockSize))
 
 	// Setup time limit channel
 	tLimit := make(<-chan time.Time, 1)
@@ -184,22 +187,21 @@ func (rcvr *Receiver) Run() {
 			fmt.Println("Time Limit Reached:", time.Since(start))
 			return
 		default:
-			// Rotate sample and raw buffer.
-			copy(raw[:BlockSize<<1], raw[BlockSize<<1:])
-			copy(amBuf[:BlockSize], amBuf[BlockSize:])
-
 			// Read new sample block.
-			_, err := io.ReadFull(rcvr, block)
+			_, err := rcvr.sdrBuf.Read(block)
 			if err != nil {
 				config.Log.Fatal("Error reading samples:", err)
 			}
 
-			// Store the block to dump the message if necessary
-			copy(raw[BlockSize<<1:], block)
+			// Peek at a packet's worth of data plus the blocksize.
+			raw, err := rcvr.sdrBuf.Peek(IntRound((PacketLength + BlockSize)) << 1)
+			if err != nil {
+				log.Fatal("Error peeking at buffer:", err)
+			}
 
 			// AM Demodulate
-			for i := 0; i < BlockSize; i++ {
-				amBuf[BlockSize+i] = Mag(block[i<<1], block[(i<<1)+1])
+			for i := 0; i < BlockSize<<1; i++ {
+				amBuf[i] = Mag(raw[i<<1], raw[(i<<1)+1])
 			}
 
 			// Detect preamble in first half of demod buffer.
@@ -211,52 +213,48 @@ func (rcvr *Receiver) Run() {
 				continue
 			}
 
-			// Filter signal and bit slice.
-			filtered := MatchedFilter(amBuf[align:])
-			bits := ""
-			for i := range filtered {
-				if filtered[i] > 0 {
-					bits += "1"
-				} else {
-					bits += "0"
+			// Filter signal and bit slice enough data to catch the preamble.
+			filtered := MatchedFilter(amBuf[align:], PreambleSymbols>>1)
+			bits := BitSlice(filtered)
+
+			// If the preamble matches.
+			if bits == PreambleBits {
+				for i := BlockSize << 1; i < len(amBuf); i++ {
+					amBuf[i] = Mag(raw[i<<1], raw[(i<<1)+1])
 				}
-			}
 
-			// Calculate the syndrome to track which bits were corrected later
-			// for logging.
-			checksum := rcvr.bch.Encode(bits[16:])
+				// Filter, slice and parse the rest of the buffered samples.
+				filtered := MatchedFilter(amBuf[align:], PacketSymbols>>1)
+				bits := BitSlice(filtered)
 
-			// If the preamble matches and the corrected checksum is 0 we
-			// probably have a message.
-			if bits[:21] == PreambleBits && checksum == 0 {
+				// If the checksum fails, bail.
+				if rcvr.bch.Encode(bits[16:]) != 0 {
+					continue
+				}
+
 				// Parse SCM
 				scm, err := ParseSCM(bits)
 				if err != nil {
 					config.Log.Fatal("Error parsing SCM:", err)
 				}
 
-				// Calculate message bounds.
-				lower := (align - IntRound(8*SymbolLength)) << 1
-				if lower < 0 {
-					lower = 0
-				}
-				upper := (align + IntRound(PacketLength+8*SymbolLength)) << 1
-
 				// Dump message to file.
-				_, err = config.SampleFile.Write(raw[lower:upper])
+				_, err = config.SampleFile.Write(raw)
 				if err != nil {
 					config.Log.Fatal("Error dumping samples:", err)
 				}
 
+				// Write message to log file.
 				fmt.Fprintf(config.LogFile, "%s %+v ", time.Now().Format(TimeFormat), scm)
 
+				// Write offset and message length if sample file is set.
 				if config.sampleFilename != os.DevNull {
 					offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
 					if err != nil {
 						config.Log.Fatal("Error getting sample file offset:", err)
 					}
 
-					fmt.Printf("%d %d", offset, upper-lower)
+					fmt.Printf("%d %d", offset, len(raw))
 				}
 
 				fmt.Fprintln(config.LogFile)
@@ -274,16 +272,29 @@ func Mag(i, q byte) float64 {
 
 // Matched filter implemented as integrate and dump. Output array is equal to
 // the number of manchester coded symbols per packet.
-func MatchedFilter(input []float64) (output []float64) {
-	output = make([]float64, IntRound(PacketSymbols/2))
-	fidx := 0
-	for idx := 0.0; fidx < 96; idx += SymbolLength * 2 {
+func MatchedFilter(input []float64, bits int) (output []float64) {
+	output = make([]float64, bits)
+
+	fIdx := 0
+	for idx := 0.0; fIdx < bits; idx += SymbolLength * 2 {
 		lower := IntRound(idx)
 		upper := IntRound(idx + SymbolLength)
+
 		for i := 0; i < upper-lower; i++ {
-			output[fidx] += input[lower+i] - input[upper+i]
+			output[fIdx] += input[lower+i] - input[upper+i]
 		}
-		fidx++
+		fIdx++
+	}
+	return
+}
+
+func BitSlice(input []float64) (output string) {
+	for _, v := range input {
+		if v > 0.0 {
+			output += "1"
+		} else {
+			output += "0"
+		}
 	}
 	return
 }
