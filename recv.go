@@ -28,6 +28,7 @@ import (
 	"os/signal"
 	"strconv"
 	"time"
+	"encoding/json"
 
 	"github.com/bemasher/rtltcp"
 
@@ -68,6 +69,7 @@ type Config struct {
 	serverAddr     string
 	logFilename    string
 	sampleFilename string
+	dataLogFilename	string
 
 	ServerAddr *net.TCPAddr
 	CenterFreq uint
@@ -76,16 +78,20 @@ type Config struct {
 	Log     *log.Logger
 	LogFile *os.File
 
+	DataLog		*log.Logger
+	DataLogFile	*os.File
+
 	SampleFile *os.File
 }
 
 func (c Config) String() string {
-	return fmt.Sprintf("{ServerAddr:%s Freq:%d TimeLimit:%s LogFile:%s SampleFile:%s}",
+	return fmt.Sprintf("{ServerAddr:%s Freq:%d TimeLimit:%s LogFile:%s SampleFile:%s DataLogFile:%s}",
 		c.ServerAddr,
 		c.CenterFreq,
 		c.TimeLimit,
 		c.LogFile.Name(),
 		c.SampleFile.Name(),
+		c.DataLogFile.Name(),
 	)
 }
 
@@ -93,6 +99,7 @@ func (c *Config) Parse() (err error) {
 	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
 	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
 	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "received message signal dump file, offset and message length are displayed to log when enabled")
+	flag.StringVar(&c.dataLogFilename, "datalogfile", os.DevNull, "log to send only the data in JSON format to, one entry per line")
 	flag.UintVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 
@@ -119,12 +126,21 @@ func (c *Config) Parse() (err error) {
 		return
 	}
 
+	c.DataLogFile, err = os.Create(c.dataLogFilename)
+	if c.dataLogFilename != os.DevNull {		
+		if err != nil {
+			return
+		}
+		c.DataLog = log.New(c.DataLogFile, "", log.Lshortfile)
+	}
+
 	return
 }
 
 func (c Config) Close() {
 	c.LogFile.Close()
 	c.SampleFile.Close()
+	c.DataLogFile.Close()
 }
 
 type Receiver struct {
@@ -245,7 +261,20 @@ func (rcvr *Receiver) Run() {
 				}
 
 				// Write message to log file.
-				fmt.Fprintf(config.LogFile, "%s %+v ", time.Now().Format(TimeFormat), scm)
+				fmt.Fprintf(config.LogFile, "%s %+v ", scm.Time, scm)
+
+				// Write the data to the data log if it is enabled
+				if config.dataLogFilename != os.DevNull {
+					//convert to json format
+					jsonBytes, err := json.Marshal(scm)
+					if err != nil {
+						config.Log.Fatal("Error getting the data into JSON format:", err)
+					}
+
+					// Write message to the data log file.
+					fmt.Fprintf(config.DataLogFile, "%s", jsonBytes)
+					fmt.Fprintln(config.DataLogFile)
+				}
 
 				// Write offset and message length if sample file is set.
 				if config.sampleFilename != os.DevNull {
@@ -311,11 +340,12 @@ type SCM struct {
 	Tamper      Tamper
 	Consumption uint32
 	Checksum    uint16
+	Time        string
 }
 
 func (scm SCM) String() string {
-	return fmt.Sprintf("{ID:%8d Type:%2d Tamper:%+v Consumption:%8d Checksum:0x%04X}",
-		scm.ID, scm.Type, scm.Tamper, scm.Consumption, scm.Checksum,
+	return fmt.Sprintf("{ID:%8d Type:%2d Tamper:%+v Consumption:%8d Checksum:0x%04X Time:%s}",
+		scm.ID, scm.Type, scm.Tamper, scm.Consumption, scm.Checksum, scm.Time,
 	)
 }
 
@@ -340,6 +370,7 @@ func ParseSCM(data string) (scm SCM, err error) {
 	scm.Tamper.Enc = uint8(ParseUint(data[30:32]))
 	scm.Consumption = uint32(ParseUint(data[32:56]))
 	scm.Checksum = uint16(ParseUint(data[80:96]))
+	scm.Time = time.Now().Format(TimeFormat)
 
 	return scm, nil
 }
