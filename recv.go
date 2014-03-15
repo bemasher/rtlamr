@@ -72,6 +72,7 @@ type Config struct {
 	ServerAddr *net.TCPAddr
 	CenterFreq uint
 	TimeLimit  time.Duration
+	MeterID    uint
 
 	Log     *log.Logger
 	LogFile *os.File
@@ -95,6 +96,7 @@ func (c *Config) Parse() (err error) {
 	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "received message signal dump file, offset and message length are displayed to log when enabled")
 	flag.UintVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
+	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
 
 	flag.Parse()
 
@@ -236,6 +238,11 @@ func (rcvr *Receiver) Run() {
 				scm, err := ParseSCM(bits)
 				if err != nil {
 					config.Log.Fatal("Error parsing SCM:", err)
+				}
+
+				// If filtering by ID and ID doesn't match, bail.
+				if config.MeterID != 0 && uint(scm.ID) != config.MeterID {
+					continue
 				}
 
 				// Dump message to file.
