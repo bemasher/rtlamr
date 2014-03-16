@@ -42,6 +42,7 @@ Available command-line flags are as follows:
 	Usage of rtlamr:
 		-centerfreq=920299072: center frequency to receive on
 		-duration=0: time to run for, 0 for infinite
+		-filterid=0: display only messages matching given id
 		-logfile="/dev/stdout": log statement dump file
 		-samplefile="NUL": received message signal dump file, offset and message length are displayed to log when enabled
 		-server="127.0.0.1:1234": address or hostname of rtl_tcp instance
