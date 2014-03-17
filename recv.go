@@ -18,6 +18,9 @@ package main
 
 import (
 	"bufio"
+	"encoding/gob"
+	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"flag"
 	"fmt"
@@ -27,6 +30,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bemasher/rtltcp"
@@ -68,6 +72,7 @@ type Config struct {
 	serverAddr     string
 	logFilename    string
 	sampleFilename string
+	format         string
 
 	ServerAddr *net.TCPAddr
 	CenterFreq uint
@@ -77,17 +82,10 @@ type Config struct {
 	Log     *log.Logger
 	LogFile *os.File
 
-	SampleFile *os.File
-}
+	GobUnsafe bool
+	Encoder   Encoder
 
-func (c Config) String() string {
-	return fmt.Sprintf("{ServerAddr:%s Freq:%d TimeLimit:%s LogFile:%s SampleFile:%s}",
-		c.ServerAddr,
-		c.CenterFreq,
-		c.TimeLimit,
-		c.LogFile.Name(),
-		c.SampleFile.Name(),
-	)
+	SampleFile *os.File
 }
 
 func (c *Config) Parse() (err error) {
@@ -97,28 +95,55 @@ func (c *Config) Parse() (err error) {
 	flag.UintVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
+	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, json, xml or gob")
+	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
 
 	flag.Parse()
 
+	// Parse and resolve rtl_tcp server address.
 	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
 	if err != nil {
 		return
 	}
 
+	// Open or create the log file.
 	if c.logFilename == "/dev/stdout" {
 		c.LogFile = os.Stdout
 	} else {
 		c.LogFile, err = os.Create(c.logFilename)
 	}
-	c.Log = log.New(c.LogFile, "", log.Lshortfile)
 
+	// Create a new logger with the log file as output.
+	c.Log = log.New(c.LogFile, "", log.Lshortfile)
 	if err != nil {
 		return
 	}
 
+	// Create the sample file.
 	c.SampleFile, err = os.Create(c.sampleFilename)
 	if err != nil {
 		return
+	}
+
+	// Create encoder for specified logging format.
+	switch strings.ToLower(c.format) {
+	case "plain":
+		break
+	case "json":
+		c.Encoder = json.NewEncoder(c.LogFile)
+	case "xml":
+		c.Encoder = xml.NewEncoder(c.LogFile)
+	case "gob":
+		c.Encoder = gob.NewEncoder(c.LogFile)
+
+		// Don't let the user output gob to stdout unless they really want to.
+		if !c.GobUnsafe && c.logFilename == "/dev/stdout" {
+			fmt.Println("Gob encoded messages are not stdout safe, specify logfile or use gobunsafe flag.")
+			os.Exit(1)
+		}
+	default:
+		// We didn't get a valid encoder, exit and say so.
+		log.Fatal("Invalid log format:", c.format)
 	}
 
 	return
@@ -127,6 +152,12 @@ func (c *Config) Parse() (err error) {
 func (c Config) Close() {
 	c.LogFile.Close()
 	c.SampleFile.Close()
+}
+
+// JSON, XML and GOB all implement this interface so we can simplify log
+// output formatting.
+type Encoder interface {
+	Encode(interface{}) error
 }
 
 type Receiver struct {
@@ -138,27 +169,34 @@ type Receiver struct {
 }
 
 func NewReceiver(blockSize int) (rcvr Receiver) {
+	// Plan the preamble detector.
 	rcvr.pd = preamble.NewPreambleDetector(PreambleDFTSize, SymbolLength, PreambleBits)
 
+	// Create a new BCH for error detection.
 	rcvr.bch = bch.NewBCH(GenPoly)
 	config.Log.Printf("BCH: %+v\n", rcvr.bch)
 
+	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
 		config.Log.Fatal(err)
 	}
 
+	// Buffer the connection to rtl_tcp. This simplifies reading blocks and
+	// decoding data but will likely go away in a future release.
 	rcvr.sdrBuf = bufio.NewReaderSize(rcvr.SDR, IntRound(PacketLength+BlockSize)<<1)
 
+	// Tell the user how many gain settings were reported by rtl_tcp.
 	config.Log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 
+	// Set some parameters for listening.
 	rcvr.SetSampleRate(SampleRate)
 	rcvr.SetCenterFreq(uint32(config.CenterFreq))
-	rcvr.SetOffsetTuning(true)
 	rcvr.SetGainMode(true)
 
 	return
 }
 
+// Clean up rtl_tcp connection and destroy preamble detection plan.
 func (rcvr *Receiver) Close() {
 	rcvr.SDR.Close()
 	rcvr.pd.Close()
@@ -245,26 +283,36 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 
+				// Get current file offset.
+				offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
+				if err != nil {
+					config.Log.Fatal("Error getting sample file offset:", err)
+				}
+
 				// Dump message to file.
 				_, err = config.SampleFile.Write(raw)
 				if err != nil {
 					config.Log.Fatal("Error dumping samples:", err)
 				}
 
-				// Write message to log file.
-				fmt.Fprintf(config.LogFile, "%s %+v ", time.Now().Format(TimeFormat), scm)
+				msg := Message{time.Now(), offset, len(raw), scm}
 
-				// Write offset and message length if sample file is set.
-				if config.sampleFilename != os.DevNull {
-					offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
+				// Write or encode message to log file.
+				if config.Encoder == nil {
+					// A nil encoder is just plain-text output.
+					fmt.Fprintf(config.LogFile, "%+v", msg)
+				} else {
+					err = config.Encoder.Encode(msg)
 					if err != nil {
-						config.Log.Fatal("Error getting sample file offset:", err)
+						log.Fatal("Error encoding message:", err)
 					}
 
-					fmt.Printf("%d %d", offset, len(raw))
+					// The XML encoder doesn't write new lines after each
+					// element, add them.
+					if strings.ToLower(config.format) == "xml" {
+						fmt.Fprintln(config.LogFile)
+					}
 				}
-
-				fmt.Fprintln(config.LogFile)
 			}
 		}
 	}
@@ -309,6 +357,27 @@ func BitSlice(input []float64) (output string) {
 func ParseUint(raw string) uint64 {
 	tmp, _ := strconv.ParseUint(raw, 2, 64)
 	return tmp
+}
+
+// Message for logging.
+type Message struct {
+	Time   time.Time
+	Offset int64
+	Length int
+	SCM    SCM
+}
+
+func (msg Message) String() string {
+	// If we aren't dumping samples, omit offset and packet length.
+	if config.sampleFilename == os.DevNull {
+		return fmt.Sprintf("{Time:%s SCM:%+v}\n",
+			msg.Time.Format(TimeFormat), msg.SCM,
+		)
+	}
+
+	return fmt.Sprintf("{Time:%s Offset:%d Length:%d SCM:%+v}\n",
+		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.SCM,
+	)
 }
 
 // Standard Consumption Message
@@ -363,14 +432,15 @@ func init() {
 }
 
 func main() {
-	config.Log.Println("Config:", config)
-	config.Log.Println("BlockSize:", BlockSize)
-	config.Log.Println("SampleRate:", SampleRate)
-	config.Log.Println("DataRate:", DataRate)
-	config.Log.Println("SymbolLength:", SymbolLength)
-	config.Log.Println("PacketSymbols:", PacketSymbols)
-	config.Log.Println("PacketLength:", PacketLength)
-	config.Log.Println("CenterFreq:", CenterFreq)
+	log.Println("Config:", config)
+	log.Println("BlockSize:", BlockSize)
+	log.Println("SampleRate:", SampleRate)
+	log.Println("DataRate:", DataRate)
+	log.Println("SymbolLength:", SymbolLength)
+	log.Println("PacketSymbols:", PacketSymbols)
+	log.Println("PacketLength:", PacketLength)
+	log.Println("CenterFreq:", CenterFreq)
+	log.Println("Format:", config.format)
 
 	rcvr := NewReceiver(BlockSize)
 	defer rcvr.Close()
