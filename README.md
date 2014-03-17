@@ -38,16 +38,18 @@ This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common t
 ### Usage
 Available command-line flags are as follows:
 
-	$ rtlamr -h
-	Usage of rtlamr:
-		-centerfreq=920299072: center frequency to receive on
-		-duration=0: time to run for, 0 for infinite
-		-filterid=0: display only messages matching given id
-		-format="plain": format to write log messages in: plain, json, xml or gob
-		-gobunsafe=false: allow gob output to stdout
-		-logfile="/dev/stdout": log statement dump file
-		-samplefile="NUL": received message signal dump file, offset and message length are displayed to log when enabled
-		-server="127.0.0.1:1234": address or hostname of rtl_tcp instance
+```bash
+$ rtlamr -h
+Usage of rtlamr:
+	-centerfreq=920299072: center frequency to receive on
+	-duration=0: time to run for, 0 for infinite
+	-filterid=0: display only messages matching given id
+	-format="plain": format to write log messages in: plain, json, xml or gob
+	-gobunsafe=false: allow gob output to stdout
+	-logfile="/dev/stdout": log statement dump file
+	-samplefile="NUL": received message signal dump file, offset and message length are displayed to log when enabled
+	-server="127.0.0.1:1234": address or hostname of rtl_tcp instance
+```
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
