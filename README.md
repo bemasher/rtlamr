@@ -101,27 +101,11 @@ recv.go:457: Running...
 {Time:2014-03-17T06:33:01.096 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption: 2321610 Checksum:0xF1##}}
 {Time:2014-03-17T06:33:01.197 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1153099 Checksum:0x0C##}}
 {Time:2014-03-17T06:33:01.248 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:2} Consumption: 6434152 Checksum:0x93##}}
-{Time:2014-03-17T06:33:01.637 SCM:{ID:1757#### Type: 7 Tamper:{Phy:1 Enc:1} Consumption: 1719280 Checksum:0x4D##}}
-{Time:2014-03-17T06:33:01.746 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 2657489 Checksum:0x95##}}
-{Time:2014-03-17T06:33:01.753 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  539757 Checksum:0x1B##}}
-{Time:2014-03-17T06:33:01.958 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  926968 Checksum:0xF9##}}
-{Time:2014-03-17T06:33:02.291 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  610562 Checksum:0x7F##}}
-{Time:2014-03-17T06:33:02.404 SCM:{ID:1850#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  582112 Checksum:0xCA##}}
-{Time:2014-03-17T06:33:02.469 SCM:{ID:3015#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 2416513 Checksum:0x8F##}}
-{Time:2014-03-17T06:33:02.557 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:2} Consumption: 2317999 Checksum:0xC0##}}
-{Time:2014-03-17T06:33:02.566 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption: 2299093 Checksum:0xCB##}}
-{Time:2014-03-17T06:33:02.575 SCM:{ID:1758#### Type: 8 Tamper:{Phy:1 Enc:1} Consumption:   31414 Checksum:0xCA##}}
-{Time:2014-03-17T06:33:02.890 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 3152340 Checksum:0xB0##}}
-{Time:2014-03-17T06:33:02.941 SCM:{ID:1756#### Type: 8 Tamper:{Phy:1 Enc:1} Consumption: 9719652 Checksum:0x56##}}
-{Time:2014-03-17T06:33:02.953 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  609216 Checksum:0x64##}}
-{Time:2014-03-17T06:33:03.058 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption:  983773 Checksum:0xD5##}}
-{Time:2014-03-17T06:33:03.063 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  835678 Checksum:0x96##}}
-{Time:2014-03-17T06:33:03.106 SCM:{ID:1758#### Type: 7 Tamper:{Phy:3 Enc:0} Consumption: 3309171 Checksum:0xE0##}}
 ```
 
 Below is a photo of the face of the meter I've been testing with along with sample output received from the meter. The messages below are all from the same meter. You can see on the face of the meter the commodity type, in this case electricity is `07` and the meter ID is `17581###` with the last 3 digits censored. The meter displays the current consumption value in kWh's and transmits hundredths of a kWh.
 
-![Smart Meter](https://raw2.github.com/bemasher/rtlamr/master/misc/example.jpg)
+<img class="thumbnail img-responsive" style="margin: 0 auto; padding: 20px" src="https://raw2.github.com/bemasher/rtlamr/master/misc/example.jpg">
 
 ```
 $ rtlamr -samplefile=data/signal.bin
