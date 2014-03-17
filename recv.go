@@ -432,15 +432,23 @@ func init() {
 }
 
 func main() {
-	log.Println("Config:", config)
+	log.Println("Server:", config.ServerAddr)
 	log.Println("BlockSize:", BlockSize)
 	log.Println("SampleRate:", SampleRate)
 	log.Println("DataRate:", DataRate)
 	log.Println("SymbolLength:", SymbolLength)
 	log.Println("PacketSymbols:", PacketSymbols)
 	log.Println("PacketLength:", PacketLength)
-	log.Println("CenterFreq:", CenterFreq)
+	log.Println("CenterFreq:", config.CenterFreq)
+	log.Println("TimeLimit:", config.TimeLimit)
+
 	log.Println("Format:", config.format)
+	log.Println("LogFile:", config.logFilename)
+	log.Println("SampleFile:", config.sampleFilename)
+
+	if config.MeterID != 0 {
+		log.Println("FilterID:", config.MeterID)
+	}
 
 	rcvr := NewReceiver(BlockSize)
 	defer rcvr.Close()
