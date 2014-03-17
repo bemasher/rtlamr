@@ -51,13 +51,11 @@ Available command-line flags are as follows:
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
-#### In one terminal:
-```
+```bash
+# Terminal A
 $ rtl_tcp
-```
 
-#### In another terminal:
-```
+# Terminal B
 $ rtlamr
 ```
 
@@ -69,39 +67,52 @@ Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably recei
 
 Example output is as follows, note that the meter ID's and checksums have been obscured to avoid releasing potentially sensitive information:
 ```
-$ rtlamr -samplefile=data/signal.bin
-recv.go:564: Config: {ServerAddr:127.0.0.1:1234 Freq:920299072 TimeLimit:0 LogFile:/dev/stdout SampleFile:data/signal.bin}
-recv.go:565: BlockSize: 16384
-recv.go:566: SampleRate: 2.4e+06
-recv.go:567: DataRate: 32768
-recv.go:568: SymbolLength: 73.2421875
-recv.go:569: PacketSymbols: 192
-recv.go:570: PacketLength: 14062.5
-recv.go:571: CenterFreq: 920299072
-recv.go:137: BCH: {GenPoly:16F63 PolyLen:16 Syndromes:80}
-recv.go:143: GainCount: 29
-recv.go:577: Running...
-2014-02-25T02:35:01.765 {ID:17580### Type: 7 Tamper:{Phy:2 Enc:1} Consumption:  792326 Checksum:0x2C##} 30468 30468
-2014-02-25T02:35:01.821 {ID:17581### Type: 7 Tamper:{Phy:1 Enc:1} Consumption: 1584176 Checksum:0xED##} 60936 30468
-2014-02-25T02:35:01.879 {ID:17589### Type: 7 Tamper:{Phy:1 Enc:3} Consumption: 2078016 Checksum:0xC2##} 91404 30468
-2014-02-25T02:35:02.096 {ID:17573### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1646068 Checksum:0xE0##} 121872 30468
-2014-02-25T02:35:02.151 {ID:17573### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 2127422 Checksum:0x0E##} 152340 30468
-2014-02-25T02:35:02.319 {ID:17570### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 2269830 Checksum:0x45##} 182808 30468
-2014-02-25T02:35:02.475 {ID:17588### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 2230045 Checksum:0x91##} 213276 30468
-2014-02-25T02:35:02.582 {ID:17582### Type: 7 Tamper:{Phy:1 Enc:2} Consumption:  887718 Checksum:0xC4##} 243744 30468
-2014-02-25T02:35:02.636 {ID:17552### Type: 7 Tamper:{Phy:1 Enc:1} Consumption: 3239898 Checksum:0xB9##} 274212 30468
-2014-02-25T02:35:02.910 {ID:17581### Type: 7 Tamper:{Phy:2 Enc:1} Consumption:  430325 Checksum:0x1C##} 304680 30468
-2014-02-25T02:35:03.019 {ID:17577### Type: 7 Tamper:{Phy:2 Enc:1} Consumption:  333863 Checksum:0xD0##} 335148 30468
-2014-02-25T02:35:03.186 {ID:17582### Type: 7 Tamper:{Phy:2 Enc:0} Consumption: 1220141 Checksum:0xE9##} 365616 30468
-2014-02-25T02:35:03.510 {ID:17575### Type: 7 Tamper:{Phy:3 Enc:1} Consumption: 1885620 Checksum:0x00##} 396084 30468
-2014-02-25T02:35:03.678 {ID:17580### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  288706 Checksum:0x0F##} 426552 30468
-2014-02-25T02:35:03.894 {ID:17581### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1028846 Checksum:0xD6##} 457020 30468
-2014-02-25T02:35:04.164 {ID:17582### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1514010 Checksum:0xC3##} 487488 30468
-2014-02-25T02:35:05.211 {ID:17561### Type: 8 Tamper:{Phy:1 Enc:0} Consumption:   21814 Checksum:0xDE##} 517770 30282
-2014-02-25T02:35:05.698 {ID:17575### Type: 7 Tamper:{Phy:2 Enc:0} Consumption: 1439018 Checksum:0x52##} 548238 30468
-2014-02-25T02:35:05.749 {ID:17552### Type: 7 Tamper:{Phy:1 Enc:1} Consumption:  763774 Checksum:0x11##} 578706 30468
-2014-02-25T02:35:06.304 {ID:17580### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 2437972 Checksum:0x56##} 609174 30468
-2014-02-25T02:35:06.349 {ID:17580### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1777195 Checksum:0x51##} 639642 30468
+$ rtlamr
+recv.go:435: Server: 127.0.0.1:1234
+recv.go:436: BlockSize: 4096
+recv.go:437: SampleRate: 2.4e+06
+recv.go:438: DataRate: 32768
+recv.go:439: SymbolLength: 73.2421875
+recv.go:440: PacketSymbols: 192
+recv.go:441: PacketLength: 14062.5
+recv.go:442: CenterFreq: 920299072
+recv.go:443: TimeLimit: 0
+recv.go:445: Format: plain
+recv.go:446: LogFile: /dev/stdout
+recv.go:447: SampleFile: NUL
+recv.go:177: BCH: {GenPoly:16F63 PolyLen:16}
+recv.go:189: GainCount: 29
+recv.go:457: Running...
+{Time:2014-03-17T06:32:58.750 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 2107876 Checksum:0x21##}}
+{Time:2014-03-17T06:32:58.909 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:1} Consumption:  299869 Checksum:0x9E##}}
+{Time:2014-03-17T06:32:59.010 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption:  924402 Checksum:0xA9##}}
+{Time:2014-03-17T06:32:59.080 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:2} Consumption:  990028 Checksum:0x1F##}}
+{Time:2014-03-17T06:32:59.514 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 6659540 Checksum:0xAC##}}
+{Time:2014-03-17T06:32:59.663 SCM:{ID:1758#### Type: 7 Tamper:{Phy:3 Enc:0} Consumption: 1897496 Checksum:0x28##}}
+{Time:2014-03-17T06:32:59.881 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 3710076 Checksum:0x57##}}
+{Time:2014-03-17T06:33:00.064 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 2647704 Checksum:0xCD##}}
+{Time:2014-03-17T06:33:00.158 SCM:{ID:1757#### Type: 8 Tamper:{Phy:1 Enc:1} Consumption:   31214 Checksum:0x9C##}}
+{Time:2014-03-17T06:33:00.429 SCM:{ID:1757#### Type: 8 Tamper:{Phy:1 Enc:1} Consumption:   31214 Checksum:0x87##}}
+{Time:2014-03-17T06:33:00.985 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  923336 Checksum:0xF7##}}
+{Time:2014-03-17T06:33:01.096 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption: 2321610 Checksum:0xF1##}}
+{Time:2014-03-17T06:33:01.197 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption: 1153099 Checksum:0x0C##}}
+{Time:2014-03-17T06:33:01.248 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:2} Consumption: 6434152 Checksum:0x93##}}
+{Time:2014-03-17T06:33:01.637 SCM:{ID:1757#### Type: 7 Tamper:{Phy:1 Enc:1} Consumption: 1719280 Checksum:0x4D##}}
+{Time:2014-03-17T06:33:01.746 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 2657489 Checksum:0x95##}}
+{Time:2014-03-17T06:33:01.753 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  539757 Checksum:0x1B##}}
+{Time:2014-03-17T06:33:01.958 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  926968 Checksum:0xF9##}}
+{Time:2014-03-17T06:33:02.291 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  610562 Checksum:0x7F##}}
+{Time:2014-03-17T06:33:02.404 SCM:{ID:1850#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  582112 Checksum:0xCA##}}
+{Time:2014-03-17T06:33:02.469 SCM:{ID:3015#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 2416513 Checksum:0x8F##}}
+{Time:2014-03-17T06:33:02.557 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:2} Consumption: 2317999 Checksum:0xC0##}}
+{Time:2014-03-17T06:33:02.566 SCM:{ID:1758#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption: 2299093 Checksum:0xCB##}}
+{Time:2014-03-17T06:33:02.575 SCM:{ID:1758#### Type: 8 Tamper:{Phy:1 Enc:1} Consumption:   31414 Checksum:0xCA##}}
+{Time:2014-03-17T06:33:02.890 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption: 3152340 Checksum:0xB0##}}
+{Time:2014-03-17T06:33:02.941 SCM:{ID:1756#### Type: 8 Tamper:{Phy:1 Enc:1} Consumption: 9719652 Checksum:0x56##}}
+{Time:2014-03-17T06:33:02.953 SCM:{ID:1758#### Type: 7 Tamper:{Phy:1 Enc:0} Consumption:  609216 Checksum:0x64##}}
+{Time:2014-03-17T06:33:03.058 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:1} Consumption:  983773 Checksum:0xD5##}}
+{Time:2014-03-17T06:33:03.063 SCM:{ID:1757#### Type: 7 Tamper:{Phy:2 Enc:0} Consumption:  835678 Checksum:0x96##}}
+{Time:2014-03-17T06:33:03.106 SCM:{ID:1758#### Type: 7 Tamper:{Phy:3 Enc:0} Consumption: 3309171 Checksum:0xE0##}}
 ```
 
 Below is a photo of the face of the meter I've been testing with along with sample output received from the meter. The messages below are all from the same meter. You can see on the face of the meter the commodity type, in this case electricity is `07` and the meter ID is `17581###` with the last 3 digits censored. The meter displays the current consumption value in kWh's and transmits hundredths of a kWh.
