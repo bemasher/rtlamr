@@ -70,7 +70,8 @@ Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably recei
 ### Example
 
 Example output is as follows, note that the meter ID's and checksums have been obscured to avoid releasing potentially sensitive information:
-```
+
+```bash
 $ rtlamr
 recv.go:435: Server: 127.0.0.1:1234
 recv.go:436: BlockSize: 4096
@@ -107,7 +108,7 @@ Below is a photo of the face of the meter I've been testing with along with samp
 
 <img class="thumbnail img-responsive" style="margin: 0 auto; padding: 20px" src="https://raw2.github.com/bemasher/rtlamr/master/misc/example.jpg">
 
-```
+```bash
 $ rtlamr -samplefile=data/signal.bin
 recv.go:557: Config: {ServerAddr:127.0.0.1:1234 Freq:920299072 TimeLimit:0 LogFile:/dev/stdout SampleFile:data/sign
 al.bin}
