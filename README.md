@@ -51,6 +51,8 @@ Usage of rtlamr:
 	-server="127.0.0.1:1234": address or hostname of rtl_tcp instance
 ```
 
+Note that for both json and xml output, there is no root element. Instead each line is one element.
+
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
 ```bash
