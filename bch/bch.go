@@ -7,9 +7,8 @@ import (
 
 // BCH Error Correction
 type BCH struct {
-	GenPoly   uint
-	PolyLen   byte
-	Syndromes map[uint][]uint
+	GenPoly uint
+	PolyLen byte
 }
 
 // Given a generator polynomial, message length and number of errors to
@@ -27,7 +26,7 @@ func NewBCH(poly uint) (bch BCH) {
 }
 
 func (bch BCH) String() string {
-	return fmt.Sprintf("{GenPoly:%X PolyLen:%d Syndromes:%d}", bch.GenPoly, bch.PolyLen, len(bch.Syndromes))
+	return fmt.Sprintf("{GenPoly:%X PolyLen:%d}", bch.GenPoly, bch.PolyLen)
 }
 
 // Syndrome calculation implemented using LSFR (linear feedback shift register).
