@@ -157,8 +157,12 @@ func (c *Config) Parse() (err error) {
 		// We didn't get a valid encoder, exit and say so.
 		log.Fatal("Invalid log format:", c.format)
 	}
+	
 	if c.Wattvision {
 		// Ensure everything needed for Wattvision is set
+		if c.MeterID == 0 {
+			log.Fatal("You've enabled Wattvision reporting but haven't set filterid to ensure only your power is reported")
+		}		
 		if len(c.WattvisionSensorId) == 0 {
 			log.Fatal("You've enabled Wattvision reporting but haven't set WattvisionSensorId")
 		}
