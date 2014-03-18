@@ -86,6 +86,8 @@ type Config struct {
 	Encoder   Encoder
 
 	SampleFile *os.File
+
+	Quiet bool
 }
 
 func (c *Config) Parse() (err error) {
@@ -97,6 +99,7 @@ func (c *Config) Parse() (err error) {
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
 	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, json, xml or gob")
 	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
+	flag.BoolVar(&c.Quiet, "quiet", false, "suppress state information printed at startup")
 
 	flag.Parse()
 
@@ -174,7 +177,9 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 
 	// Create a new BCH for error detection.
 	rcvr.bch = bch.NewBCH(GenPoly)
-	config.Log.Printf("BCH: %+v\n", rcvr.bch)
+	if !config.Quiet {
+		config.Log.Printf("BCH: %+v\n", rcvr.bch)
+	}
 
 	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
@@ -186,7 +191,9 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 	rcvr.sdrBuf = bufio.NewReaderSize(rcvr.SDR, IntRound(PacketLength+BlockSize)<<1)
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
-	config.Log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+	if !config.Quiet {
+		config.Log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+	}
 
 	// Set some parameters for listening.
 	rcvr.SetSampleRate(SampleRate)
@@ -432,28 +439,33 @@ func init() {
 }
 
 func main() {
-	log.Println("Server:", config.ServerAddr)
-	log.Println("BlockSize:", BlockSize)
-	log.Println("SampleRate:", SampleRate)
-	log.Println("DataRate:", DataRate)
-	log.Println("SymbolLength:", SymbolLength)
-	log.Println("PacketSymbols:", PacketSymbols)
-	log.Println("PacketLength:", PacketLength)
-	log.Println("CenterFreq:", config.CenterFreq)
-	log.Println("TimeLimit:", config.TimeLimit)
+	if !config.Quiet {
+		log.Println("Server:", config.ServerAddr)
+		log.Println("BlockSize:", BlockSize)
+		log.Println("SampleRate:", SampleRate)
+		log.Println("DataRate:", DataRate)
+		log.Println("SymbolLength:", SymbolLength)
+		log.Println("PacketSymbols:", PacketSymbols)
+		log.Println("PacketLength:", PacketLength)
+		log.Println("CenterFreq:", config.CenterFreq)
+		log.Println("TimeLimit:", config.TimeLimit)
 
-	log.Println("Format:", config.format)
-	log.Println("LogFile:", config.logFilename)
-	log.Println("SampleFile:", config.sampleFilename)
+		log.Println("Format:", config.format)
+		log.Println("LogFile:", config.logFilename)
+		log.Println("SampleFile:", config.sampleFilename)
 
-	if config.MeterID != 0 {
-		log.Println("FilterID:", config.MeterID)
+		if config.MeterID != 0 {
+			log.Println("FilterID:", config.MeterID)
+		}
 	}
 
 	rcvr := NewReceiver(BlockSize)
 	defer rcvr.Close()
 	defer config.Close()
 
-	config.Log.Println("Running...")
+	if !config.Quiet {
+		config.Log.Println("Running...")
+	}
+
 	rcvr.Run()
 }
