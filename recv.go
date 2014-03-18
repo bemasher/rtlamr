@@ -27,6 +27,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -73,6 +74,9 @@ type Config struct {
 	logFilename    string
 	sampleFilename string
 	format         string
+	WattvisionSensorId string
+	WattvisionApiId    string
+	WattvisionApiKey   string
 
 	ServerAddr *net.TCPAddr
 	CenterFreq uint
@@ -88,6 +92,7 @@ type Config struct {
 	SampleFile *os.File
 
 	Quiet bool
+	Wattvision bool
 }
 
 func (c *Config) Parse() (err error) {
@@ -100,6 +105,10 @@ func (c *Config) Parse() (err error) {
 	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, json, xml or gob")
 	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
 	flag.BoolVar(&c.Quiet, "quiet", false, "suppress state information printed at startup")
+	flag.BoolVar(&c.Wattvision, "wattvision", false, "enable sending data to wattvision")
+	flag.StringVar(&c.WattvisionSensorId, "wattvisionsensorid", "", "wattvision sensor id")
+	flag.StringVar(&c.WattvisionApiId, "wattvisionapiid", "","wattvision api id")
+	flag.StringVar(&c.WattvisionApiKey, "wattvisionapikey", "","wattvision api key")
 
 	flag.Parse()
 
@@ -147,6 +156,18 @@ func (c *Config) Parse() (err error) {
 	default:
 		// We didn't get a valid encoder, exit and say so.
 		log.Fatal("Invalid log format:", c.format)
+	}
+	if c.Wattvision {
+		// Ensure everything needed for Wattvision is set
+		if len(c.WattvisionSensorId) == 0 {
+			log.Fatal("You've enabled Wattvision reporting but haven't set WattvisionSensorId")
+		}
+		if len(c.WattvisionApiId) == 0 {
+			log.Fatal("You've enabled Wattvision reporting but haven't set WattvisionApiId")
+		}
+		if len(c.WattvisionApiKey) == 0 {
+			log.Fatal("You've enabled Wattvision reporting but haven't set WattvisionApiKey")
+		}
 	}
 
 	return
@@ -223,6 +244,9 @@ func (rcvr *Receiver) Run() {
 	if config.TimeLimit != 0 {
 		tLimit = time.After(config.TimeLimit)
 	}
+
+	// Setup tracking for the consumed amount so we can send diffs to wattvision if user has enabled
+	LastConsumable := uint32(0)
 
 	start := time.Now()
 	for {
@@ -319,6 +343,21 @@ func (rcvr *Receiver) Run() {
 					if strings.ToLower(config.format) == "xml" {
 						fmt.Fprintln(config.LogFile)
 					}
+				}
+				// Send to Wattvision if enabled
+				if config.Wattvision {
+					if LastConsumable == 0 {
+						LastConsumable = scm.Consumption
+					}
+					wattData := fmt.Sprintf("{\"sensor_id\":\"%s\",\"api_id\":\"%s\",\"api_key\":\"%s\",\"watts\":%d,\"watthours\":%d}",
+						config.WattvisionSensorId, config.WattvisionApiId, config.WattvisionApiId, scm.Consumption-LastConsumable, scm.Consumption)
+					LastConsumable = scm.Consumption
+					resp, err := http.Post("http://www.wattvision.com/api/v0.2/elec", "application/json", strings.NewReader(wattData))
+					if err != nil {
+						config.Log.Fatal("Error posting data to Wattvision:", err)
+					}
+					// Ensure we close the body IO or else we'll leak open sockets
+					defer resp.Body.Close()
 				}
 			}
 		}
@@ -456,6 +495,13 @@ func main() {
 
 		if config.MeterID != 0 {
 			log.Println("FilterID:", config.MeterID)
+		}
+
+		if config.Wattvision {
+			log.Println("Wattvision reporting is enabled")
+			log.Println("WattvisionSensorId:", config.WattvisionSensorId)
+			log.Println("WattvisionApiId:", config.WattvisionApiId)
+			log.Println("WattvisionApiKey:", config.WattvisionApiKey)
 		}
 	}
 
