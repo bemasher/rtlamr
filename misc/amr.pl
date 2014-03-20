@@ -59,8 +59,8 @@ sub config
 {
     print "graph_title Power consumption\n";
     print "graph_args --base 1000 -l 0\n";
-    print "graph_vlabel kWh / s\n";
-    #print "graph_scale  no\n";
+    print "graph_vlabel kWh\n";
+    print "graph_scale  no\n";
     print "graph_total  Total\n";
     print "graph_category sensors\n";
 
@@ -68,7 +68,7 @@ sub config
     foreach my $station (sort keys %stations) {
 	my $name = clean_fieldname('station ' . $station);
 	printf "%s.label station %d\n", $name, $station;
-	printf "%s.type COUNTER\n", $name;
+	printf "%s.type GAUGE\n", $name;
         if ($first) {
             printf "%s.draw AREA\n", $name;
         }
