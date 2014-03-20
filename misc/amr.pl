@@ -101,12 +101,12 @@ autoconf if $#ARGV > -1 && $ARGV[0] eq "autoconf";
 my @state_vector = restore_state;
 my $pos = shift @state_vector || 0;
 
+$pos = parse $logfile, $pos;
 if ($#ARGV > -1 && $ARGV[0] eq "config") {
-    config $logfile, $pos;
+    config;
     # don't save position on config so next run will reparse it
 }
 else {
-    $pos = parse $logfile, $pos;
     save_state $pos;
 }
 
