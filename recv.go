@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
@@ -165,7 +164,6 @@ type Encoder interface {
 
 type Receiver struct {
 	rtltcp.SDR
-	sdrBuf *bufio.Reader
 
 	pd  preamble.PreambleDetector
 	bch bch.BCH
@@ -185,10 +183,6 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
 		config.Log.Fatal(err)
 	}
-
-	// Buffer the connection to rtl_tcp. This simplifies reading blocks and
-	// decoding data but will likely go away in a future release.
-	rcvr.sdrBuf = bufio.NewReaderSize(rcvr.SDR, IntRound(PacketLength+BlockSize)<<1)
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
 	if !config.Quiet {
@@ -215,7 +209,7 @@ func (rcvr *Receiver) Run() {
 	signal.Notify(sigint)
 
 	// Allocate sample and demodulated signal buffers.
-	block := make([]byte, BlockSize<<1)
+	raw := make([]byte, IntRound(PacketLength+BlockSize)<<1)
 	amBuf := make([]float64, IntRound(PacketLength+BlockSize))
 
 	// Setup time limit channel
@@ -234,21 +228,19 @@ func (rcvr *Receiver) Run() {
 			fmt.Println("Time Limit Reached:", time.Since(start))
 			return
 		default:
+			copy(raw, raw[BlockSize<<1:])
+			copy(amBuf, amBuf[BlockSize:])
+
 			// Read new sample block.
-			_, err := rcvr.sdrBuf.Read(block)
+			_, err := rcvr.Read(raw[IntRound(PacketLength)<<1:])
 			if err != nil {
 				config.Log.Fatal("Error reading samples:", err)
 			}
 
-			// Peek at a packet's worth of data plus the blocksize.
-			raw, err := rcvr.sdrBuf.Peek(IntRound((PacketLength + BlockSize)) << 1)
-			if err != nil {
-				log.Fatal("Error peeking at buffer:", err)
-			}
-
 			// AM Demodulate
-			for i := 0; i < BlockSize<<1; i++ {
-				amBuf[i] = Mag(raw[i<<1], raw[(i<<1)+1])
+			lower := IntRound(PacketLength)
+			for i := 0; i < BlockSize; i++ {
+				amBuf[lower+i] = Mag(raw[(lower+i)<<1], raw[((lower+i)<<1)+1])
 			}
 
 			// Detect preamble in first half of demod buffer.
