@@ -62,6 +62,27 @@ sub config
     print "multigraph amr_power\n";
     print "graph_title Power consumption\n";
     print "graph_args --base 1000 -l 0\n";
+    print "graph_vlabel Watt\n";
+    print "graph_total  Total\n";
+    print "graph_category AMR\n";
+
+    my $first = 0;
+    foreach my $station (sort keys %stations) {
+	my $name = clean_fieldname('station power ' . $station);
+	printf "%s.label station %d\n", $name, $station;
+	printf "%s.type COUNTER\n", $name;
+        if ($first) {
+            printf "%s.draw AREA\n", $name;
+        }
+        else {
+            printf "%s.draw STACK\n", $name;
+        }
+	printf "%s.min 0\n", $name;
+    }
+
+    print "multigraph amr_meter\n";
+    print "graph_title Meter reading\n";
+    print "graph_args --base 1000 -l 0\n";
     print "graph_vlabel kWh\n";
     print "graph_scale  no\n";
     print "graph_total  Total\n";
@@ -69,15 +90,9 @@ sub config
 
     my $first = 0;
     foreach my $station (sort keys %stations) {
-	my $name = clean_fieldname('station ' . $station);
+	my $name = clean_fieldname('station meter ' . $station);
 	printf "%s.label station %d\n", $name, $station;
 	printf "%s.type GAUGE\n", $name;
-        if ($first) {
-            printf "%s.draw AREA\n", $name;
-        }
-        else {
-            printf "%s.draw STACK\n", $name;
-        }
 	printf "%s.min 0\n", $name;
     }
 
@@ -94,16 +109,9 @@ sub config
     print "graph_vlabel signals / second\n";
     print "graph_category AMR\n";
     foreach my $station (sort keys %stations) {
-	my $name = clean_fieldname('station ' . $station);
+	my $name = clean_fieldname('station signals ' . $station);
 	printf "%s.label station %d\n", $name, $station;
-	printf "%s.type COUNTER\n", $name;
-        if ($first) {
-            printf "%s.draw AREA\n", $name;
-        }
-        else {
-            printf "%s.draw STACK\n", $name;
-        }
-	printf "%s.min 0\n", $name;
+	printf "%s.type ABSOLUTE\n", $name;
     }
 
     exit 0;
@@ -148,7 +156,18 @@ else {
 
 print "multigraph amr_power\n";
 foreach my $station (sort keys %stations) {
-    printf "%s.value %d\n", clean_fieldname('station ' . $station), $stations{$station};
+    # the number from the counter is "Wh over 5 minutes", we want to
+    # give munin joules so he can generate watts by dividing by the period
+    # 1 Wh = W * 3600 s
+    #      = 3600 s * J / s
+    #      = 3.6 kJ
+    my $power = $stations{$station} * 3600;
+    printf "%s.value %d\n", clean_fieldname('station power ' . $station), $power;
+}
+
+print "multigraph amr_meter\n";
+foreach my $station (sort keys %stations) {
+    printf "%s.value %d\n", clean_fieldname('station meter ' . $station), $stations{$station};
 }
 
 print "multigraph amr_stations\n";
@@ -156,5 +175,5 @@ printf "stations.value %d\n", scalar keys %stations;
 
 print "multigraph amr_signals\n";
 foreach my $station (sort keys %signals) {
-    printf "%s.value %d\n", clean_fieldname('station ' . $station), $signals{$station};
+    printf "%s.value %d\n", clean_fieldname('station signals ' . $station), $signals{$station};
 }
