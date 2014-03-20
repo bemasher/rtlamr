@@ -106,7 +106,8 @@ sub config
     print "multigraph amr_signals\n";
     print "graph_title Number of signals received\n";
     print "graph_args --base 1000 -l 0\n";
-    print "graph_vlabel signals / second\n";
+    print "graph_vlabel signals / \${graph_period}\n";
+    print "graph_period minute\n";
     print "graph_category AMR\n";
     foreach my $station (sort keys %stations) {
 	my $name = clean_fieldname('station signals ' . $station);
