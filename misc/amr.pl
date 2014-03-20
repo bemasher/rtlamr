@@ -35,6 +35,12 @@ use Munin::Plugin;
 
 my $LOGDIR  = $ENV{'logdir'}  || '/var/log';
 my $LOGFILE = $ENV{'logfile'} || 'rtlamr.log';
+my $unit    = $ENV{'unit'}    || 'J';
+if ($unit ne 'J' and $unit ne 'Wh')
+{
+    print "invalid unit, reverting to Joule";
+    $unit = 'J';
+}
 my $logfile = $LOGDIR .'/'. $LOGFILE;
 
 # station id => power consumption (in kWh)
@@ -163,6 +169,10 @@ foreach my $station (sort keys %stations) {
     #      = 3600 s * J / s
     #      = 3.6 kJ
     my $power = $stations{$station} * 3600;
+    if ($unit eq 'Wh') {
+        # since we want absolute, we'll multiply our result by 300, the assumed time period
+        $power = $stations{$station} * 300;
+    }
     printf "%s.value %d\n", clean_fieldname('station power ' . $station), $power;
 }
 
