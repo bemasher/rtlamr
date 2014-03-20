@@ -39,6 +39,8 @@ my $logfile = $LOGDIR .'/'. $LOGFILE;
 
 # station id => power consumption (in kWh)
 my %stations;
+# number of signals sent per station
+my %signals;
 
 sub autoconf
 {
@@ -57,12 +59,13 @@ sub autoconf
 
 sub config
 {
+    print "multigraph amr_power\n";
     print "graph_title Power consumption\n";
     print "graph_args --base 1000 -l 0\n";
     print "graph_vlabel kWh\n";
     print "graph_scale  no\n";
     print "graph_total  Total\n";
-    print "graph_category sensors\n";
+    print "graph_category AMR\n";
 
     my $first = 0;
     foreach my $station (sort keys %stations) {
@@ -77,6 +80,32 @@ sub config
         }
 	printf "%s.min 0\n", $name;
     }
+
+    print "multigraph amr_stations\n";
+    print "graph_title Known AMR stations\n";
+    print "graph_args --base 1000 -l 0\n";
+    print "graph_vlabel stations\n";
+    print "graph_category AMR\n";
+    print "stations.label number of stations\n";
+
+    print "multigraph amr_signals\n";
+    print "graph_title Number of signals received\n";
+    print "graph_args --base 1000 -l 0\n";
+    print "graph_vlabel signals / second\n";
+    print "graph_category AMR\n";
+    foreach my $station (sort keys %stations) {
+	my $name = clean_fieldname('station ' . $station);
+	printf "%s.label station %d\n", $name, $station;
+	printf "%s.type COUNTER\n", $name;
+        if ($first) {
+            printf "%s.draw AREA\n", $name;
+        }
+        else {
+            printf "%s.draw STACK\n", $name;
+        }
+	printf "%s.min 0\n", $name;
+    }
+
     exit 0;
 }
 
@@ -91,11 +120,13 @@ sub parse
         # \d protects us against HTML injection here, be careful when changing
 	if (m,SCM:{ID:(\d+) +.* +Consumption: +(\d+) +,) {
 	    $stations{$1} = $2;
+            $signals{$1}++;
 	}
     }
     return tail_close $log;
 }
 
+need_multigraph();
 autoconf if $#ARGV > -1 && $ARGV[0] eq "autoconf";
 
 my @state_vector = restore_state;
@@ -115,6 +146,15 @@ else {
     save_state $pos, %stations;
 }
 
+print "multigraph amr_power\n";
 foreach my $station (sort keys %stations) {
     printf "%s.value %d\n", clean_fieldname('station ' . $station), $stations{$station};
+}
+
+print "multigraph amr_stations\n";
+printf "stations.value %d\n", scalar keys %stations;
+
+print "multigraph amr_signals\n";
+foreach my $station (sort keys %signals) {
+    printf "%s.value %d\n", clean_fieldname('station ' . $station), $signals{$station};
 }
