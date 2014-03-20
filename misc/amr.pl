@@ -86,7 +86,6 @@ sub config
     print "graph_args --base 1000 -l 0\n";
     print "graph_vlabel kWh\n";
     print "graph_scale  no\n";
-    print "graph_total  Total\n";
     print "graph_category AMR\n";
 
     my $first = 0;
