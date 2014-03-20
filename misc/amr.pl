@@ -66,13 +66,14 @@ sub config
     print "graph_total  Total\n";
     print "graph_category AMR\n";
 
-    my $first = 0;
+    my $first = 1;
     foreach my $station (sort keys %stations) {
 	my $name = clean_fieldname('station power ' . $station);
 	printf "%s.label station %d\n", $name, $station;
 	printf "%s.type COUNTER\n", $name;
         if ($first) {
             printf "%s.draw AREA\n", $name;
+            $first = 0;
         }
         else {
             printf "%s.draw STACK\n", $name;
