@@ -100,6 +100,7 @@ autoconf if $#ARGV > -1 && $ARGV[0] eq "autoconf";
 
 my @state_vector = restore_state;
 my $pos = shift @state_vector || 0;
+%stations = @state_vector;
 
 $pos = parse $logfile, $pos;
 if ($#ARGV > -1 && $ARGV[0] eq "config") {
@@ -107,7 +108,11 @@ if ($#ARGV > -1 && $ARGV[0] eq "config") {
     # don't save position on config so next run will reparse it
 }
 else {
-    save_state $pos;
+    # this may not scale so well with large graphs, and is useful only
+    # for debugging, when you want to run this repeatedly without
+    # loosing data
+    # this will also mean that stations that disappear will remain forever
+    save_state $pos, %stations;
 }
 
 foreach my $station (sort keys %stations) {
