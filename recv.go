@@ -86,7 +86,8 @@ type Config struct {
 
 	SampleFile *os.File
 
-	Quiet bool
+	Quiet  bool
+	Single bool
 }
 
 func (c *Config) Parse() (err error) {
@@ -99,6 +100,7 @@ func (c *Config) Parse() (err error) {
 	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, json, xml or gob")
 	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
 	flag.BoolVar(&c.Quiet, "quiet", false, "suppress state information printed at startup")
+	flag.BoolVar(&c.Single, "single", false, "provides one shot execution, listens until exactly one message is recieved")
 
 	flag.Parse()
 
@@ -311,6 +313,10 @@ func (rcvr *Receiver) Run() {
 					if strings.ToLower(config.format) == "xml" {
 						fmt.Fprintln(config.LogFile)
 					}
+				}
+
+				if config.Single {
+					return
 				}
 			}
 		}

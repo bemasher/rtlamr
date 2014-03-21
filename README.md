@@ -50,6 +50,7 @@ Usage of rtlamr:
 	-quiet=false: suppress state information printed at startup
 	-samplefile="NUL": received message signal dump file, offset and message length are displayed to log when enabled
 	-server="127.0.0.1:1234": address or hostname of rtl_tcp instance
+	-single=false: provides one shot execution, listens until exactly one message is recieved
 ```
 
 Note that for both json and xml output, there is no root element. Instead each line is one element.
