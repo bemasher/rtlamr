@@ -206,7 +206,7 @@ func (rcvr *Receiver) Close() {
 func (rcvr *Receiver) Run() {
 	// Setup signal channel for interruption.
 	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint)
+	signal.Notify(sigint, os.Kill, os.Interrupt)
 
 	// Allocate sample and demodulated signal buffers.
 	raw := make([]byte, IntRound(PacketLength+BlockSize)<<1)
