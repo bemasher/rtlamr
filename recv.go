@@ -118,7 +118,7 @@ func (c *Config) Parse() (err error) {
 	}
 
 	// Create a new logger with the log file as output.
-	c.Log = log.New(c.LogFile, "", log.Lshortfile)
+	c.Log = log.New(c.LogFile, "", log.Ldate|log.Lmicroseconds)
 	if err != nil {
 		return
 	}
@@ -438,22 +438,22 @@ func init() {
 
 func main() {
 	if !config.Quiet {
-		log.Println("Server:", config.ServerAddr)
-		log.Println("BlockSize:", BlockSize)
-		log.Println("SampleRate:", SampleRate)
-		log.Println("DataRate:", DataRate)
-		log.Println("SymbolLength:", SymbolLength)
-		log.Println("PacketSymbols:", PacketSymbols)
-		log.Println("PacketLength:", PacketLength)
-		log.Println("CenterFreq:", config.CenterFreq)
-		log.Println("TimeLimit:", config.TimeLimit)
+		config.Log.Println("Server:", config.ServerAddr)
+		config.Log.Println("BlockSize:", BlockSize)
+		config.Log.Println("SampleRate:", SampleRate)
+		config.Log.Println("DataRate:", DataRate)
+		config.Log.Println("SymbolLength:", SymbolLength)
+		config.Log.Println("PacketSymbols:", PacketSymbols)
+		config.Log.Println("PacketLength:", PacketLength)
+		config.Log.Println("CenterFreq:", config.CenterFreq)
+		config.Log.Println("TimeLimit:", config.TimeLimit)
 
-		log.Println("Format:", config.format)
-		log.Println("LogFile:", config.logFilename)
-		log.Println("SampleFile:", config.sampleFilename)
+		config.Log.Println("Format:", config.format)
+		config.Log.Println("LogFile:", config.logFilename)
+		config.Log.Println("SampleFile:", config.sampleFilename)
 
 		if config.MeterID != 0 {
-			log.Println("FilterID:", config.MeterID)
+			config.Log.Println("FilterID:", config.MeterID)
 		}
 	}
 
