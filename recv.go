@@ -41,9 +41,9 @@ import (
 const (
 	BlockSize = 1 << 12
 
-	SampleRate   = 2.4e6
 	DataRate     = 32.768e3
-	SymbolLength = SampleRate / DataRate
+	SymbolLength = 73
+	SampleRate   = DataRate * SymbolLength
 
 	PreambleSymbols = 42
 	PreambleLength  = PreambleSymbols * SymbolLength
@@ -64,7 +64,6 @@ const (
 	TimeFormat = "2006-01-02T15:04:05.000"
 )
 
-var SymLen = IntRound(SymbolLength)
 var config Config
 
 type Config struct {
@@ -325,8 +324,8 @@ func (rcvr *Receiver) Run() {
 
 // Shift sample from unsigned and normalize.
 func Mag(i, q byte) float64 {
-	j := (127.5 - float64(i)) / 127
-	k := (127.5 - float64(q)) / 127
+	j := (127.4 - float64(i)) / 127.4
+	k := (127.4 - float64(q)) / 127.4
 	return math.Hypot(j, k)
 }
 
@@ -443,6 +442,8 @@ func main() {
 		config.Log.Println("SampleRate:", SampleRate)
 		config.Log.Println("DataRate:", DataRate)
 		config.Log.Println("SymbolLength:", SymbolLength)
+		config.Log.Println("PreambleSymbols:", PreambleSymbols)
+		config.Log.Println("PreambleLength:", PreambleLength)
 		config.Log.Println("PacketSymbols:", PacketSymbols)
 		config.Log.Println("PacketLength:", PacketLength)
 		config.Log.Println("CenterFreq:", config.CenterFreq)
