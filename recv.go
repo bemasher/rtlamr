@@ -36,7 +36,7 @@ import (
 const (
 	BlockSize = 1 << 12
 
-	DataRate     = 32.768e3
+	DataRate     = 32768
 	SymbolLength = 73
 	SampleRate   = DataRate * SymbolLength
 
