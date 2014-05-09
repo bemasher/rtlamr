@@ -66,6 +66,7 @@ type Receiver struct {
 
 	pd  preamble.PreambleDetector
 	bch bch.BCH
+	lut MagLUT
 }
 
 func NewReceiver(blockSize int) (rcvr Receiver) {
@@ -77,6 +78,8 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 	if !config.Quiet {
 		config.Log.Printf("BCH: %+v\n", rcvr.bch)
 	}
+
+	rcvr.lut = NewMagLUT()
 
 	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(config.ServerAddr); err != nil {
@@ -108,8 +111,8 @@ func (rcvr *Receiver) Run() {
 	signal.Notify(sigint, os.Kill, os.Interrupt)
 
 	// Allocate sample and demodulated signal buffers.
-	raw := make([]byte, IntRound(PacketLength+BlockSize)<<1)
-	amBuf := make([]float64, IntRound(PacketLength+BlockSize))
+	raw := make([]byte, (PacketLength+BlockSize)<<1)
+	amBuf := make([]float64, PacketLength+BlockSize)
 
 	// Setup time limit channel
 	tLimit := make(<-chan time.Time, 1)
@@ -131,15 +134,15 @@ func (rcvr *Receiver) Run() {
 			copy(amBuf, amBuf[BlockSize:])
 
 			// Read new sample block.
-			_, err := rcvr.Read(raw[IntRound(PacketLength)<<1:])
+			_, err := rcvr.Read(raw[PacketLength<<1:])
 			if err != nil {
 				config.Log.Fatal("Error reading samples:", err)
 			}
 
 			// AM Demodulate
-			lower := IntRound(PacketLength)
-			for i := 0; i < BlockSize; i++ {
-				amBuf[lower+i] = Mag(raw[(lower+i)<<1], raw[((lower+i)<<1)+1])
+			block := amBuf[PacketLength:]
+			for idx := range block {
+				block[idx] = math.Sqrt(rcvr.lut[raw[(idx)<<1]] + rcvr.lut[raw[((idx)<<1)+1]])
 			}
 
 			// Detect preamble in first half of demod buffer.
@@ -157,10 +160,6 @@ func (rcvr *Receiver) Run() {
 
 			// If the preamble matches.
 			if bits == PreambleBits {
-				for i := BlockSize << 1; i < len(amBuf); i++ {
-					amBuf[i] = Mag(raw[i<<1], raw[(i<<1)+1])
-				}
-
 				// Filter, slice and parse the rest of the buffered samples.
 				filtered := MatchedFilter(amBuf[align:], PacketSymbols>>1)
 				bits := BitSlice(filtered)
@@ -220,11 +219,19 @@ func (rcvr *Receiver) Run() {
 	}
 }
 
-// Shift sample from unsigned and normalize.
-func Mag(i, q byte) float64 {
-	j := (127.4 - float64(i)) / 127.4
-	k := (127.4 - float64(q)) / 127.4
-	return math.Hypot(j, k)
+// A lookup table for calculating magnitude of an interleaved unsigned byte
+// stream.
+type MagLUT []float64
+
+// Shifts sample by 127.4 (most common DC offset value of rtl-sdr dongles) and
+// stores square.
+func NewMagLUT() (lut MagLUT) {
+	lut = make([]float64, 0x100)
+	for idx := range lut {
+		lut[idx] = 127.4 - float64(idx)
+		lut[idx] *= lut[idx]
+	}
+	return
 }
 
 // Matched filter implemented as integrate and dump. Output array is equal to
@@ -233,12 +240,11 @@ func MatchedFilter(input []float64, bits int) (output []float64) {
 	output = make([]float64, bits)
 
 	fIdx := 0
-	for idx := 0.0; fIdx < bits; idx += SymbolLength * 2 {
-		lower := IntRound(idx)
-		upper := IntRound(idx + SymbolLength)
+	for idx := 0; fIdx < bits; idx += SymbolLength * 2 {
+		offset := idx + SymbolLength
 
-		for i := 0; i < upper-lower; i++ {
-			output[fIdx] += input[lower+i] - input[upper+i]
+		for i := 0; i < SymbolLength; i++ {
+			output[fIdx] += input[idx+i] - input[offset+i]
 		}
 		fIdx++
 	}
@@ -320,10 +326,6 @@ func ParseSCM(data string) (scm SCM, err error) {
 	scm.Checksum = uint16(ParseUint(data[80:96]))
 
 	return scm, nil
-}
-
-func IntRound(i float64) int {
-	return int(math.Floor(i + 0.5))
 }
 
 func init() {
