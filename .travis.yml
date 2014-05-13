@@ -1,0 +1,10 @@
+language: go
+
+go:
+    - 1.2
+
+cache: apt
+
+before_install:
+    - sudo apt-get update -qq
+    - sudo apt-get install libfftw3-dev
