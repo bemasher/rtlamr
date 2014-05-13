@@ -7,6 +7,8 @@ Currently the only known supported and tested meter is the Itron C1SR. However, 
 
 For more info check out the project page: [http://bemasher.github.io/rtlamr/](http://bemasher.github.io/rtlamr/)
 
+[![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master)](https://travis-ci.org/bemasher/rtlamr)
+
 ### Requirements
  * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
  * GCC (on windows TDM-GCCx64 works nicely)
