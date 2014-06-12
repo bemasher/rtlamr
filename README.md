@@ -41,7 +41,6 @@ This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common t
 Available command-line flags are as follows:
 
 ```bash
-$ rtlamr -h
 Usage of rtlamr:
 	-centerfreq=920299072: center frequency to receive on
 	-duration=0: time to run for, 0 for infinite
@@ -53,6 +52,11 @@ Usage of rtlamr:
 	-samplefile="NUL": received message signal dump file, offset and message length are displayed to log when enabled
 	-server="127.0.0.1:1234": address or hostname of rtl_tcp instance
 	-single=false: provides one shot execution, listens until exactly one message is recieved
+	-symbollength=73: symbol length in samples, bandwidth and performance are determined by this value
+		narrow/fast:   ( 8, 262.144 kHz)
+		medium/medium: (32,   1.048 MHz), (48, 1.572 MHz)
+		wide/slow:     (56,   1.835 MHz), (64, 2.097 MHz), (73, 2.392 MHz)
+		valid lengths: [7, 8, 9, 28, 32, 48, 50, 56, 64, 72, 73]
 ```
 
 Note that for both json and xml output, there is no root element. Instead each line is one element.
