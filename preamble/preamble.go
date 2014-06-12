@@ -21,7 +21,7 @@ type PreambleDetector struct {
 
 // Given a buffer length, symbol length and a binary bitstring, compute the
 // frequency domain of the preamble for later use.
-func NewPreambleDetector(n uint, symbolLength float64, bits string) (pd PreambleDetector) {
+func NewPreambleDetector(n uint, symbolLength int, bits string) (pd PreambleDetector) {
 	// Plan forward and reverse transforms.
 	pd.forward = fftw.NewHCDFT1D(n, nil, nil, fftw.Forward, fftw.InPlace, fftw.Measure)
 	pd.Real = pd.forward.Real
@@ -35,10 +35,9 @@ func NewPreambleDetector(n uint, symbolLength float64, bits string) (pd Preamble
 
 	// Generate the preamble basis function.
 	for idx, bit := range bits {
-		// Must account for rounding error.
 		sIdx := idx << 1
-		lower := intRound(float64(sIdx) * symbolLength)
-		upper := intRound(float64(sIdx+1) * symbolLength)
+		lower := sIdx * symbolLength
+		upper := (sIdx + 1) * symbolLength
 		for i := 0; i < upper-lower; i++ {
 			if bit == '1' {
 				pd.Real[lower+i] = 1.0

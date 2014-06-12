@@ -34,29 +34,19 @@ import (
 )
 
 const (
-	BlockSize = 1 << 12
-
-	DataRate     = 32768
-	SymbolLength = 73
-	SampleRate   = DataRate * SymbolLength
+	CenterFreq = 920299072
+	DataRate   = 32768
 
 	PreambleSymbols = 42
-	PreambleLength  = PreambleSymbols * SymbolLength
+	Preamble        = 0x1F2A60
+	PreambleBits    = "111110010101001100000"
 
 	PacketSymbols = 192
-	PacketLength  = PacketSymbols * SymbolLength
-
-	PreambleDFTSize = 8192
-
-	CenterFreq    = 920299072
-	RestrictLocal = false
-
-	Preamble     = 0x1F2A60
-	PreambleBits = "111110010101001100000"
 
 	GenPoly = 0x16F63
 
-	TimeFormat = "2006-01-02T15:04:05.000"
+	RestrictLocal = false
+	TimeFormat    = "2006-01-02T15:04:05.000"
 )
 
 var config Config
@@ -69,9 +59,9 @@ type Receiver struct {
 	lut MagLUT
 }
 
-func NewReceiver(blockSize int) (rcvr Receiver) {
+func NewReceiver() (rcvr Receiver) {
 	// Plan the preamble detector.
-	rcvr.pd = preamble.NewPreambleDetector(PreambleDFTSize, SymbolLength, PreambleBits)
+	rcvr.pd = preamble.NewPreambleDetector(uint(config.BlockSize<<1), config.SymbolLength, PreambleBits)
 
 	// Create a new BCH for error detection.
 	rcvr.bch = bch.NewBCH(GenPoly)
@@ -92,8 +82,8 @@ func NewReceiver(blockSize int) (rcvr Receiver) {
 	}
 
 	// Set some parameters for listening.
-	rcvr.SetSampleRate(SampleRate)
 	rcvr.SetCenterFreq(uint32(config.CenterFreq))
+	rcvr.SetSampleRate(uint32(config.SampleRate))
 	rcvr.SetGainMode(true)
 
 	return
@@ -111,8 +101,8 @@ func (rcvr *Receiver) Run() {
 	signal.Notify(sigint, os.Kill, os.Interrupt)
 
 	// Allocate sample and demodulated signal buffers.
-	raw := make([]byte, (PacketLength+BlockSize)<<1)
-	amBuf := make([]float64, PacketLength+BlockSize)
+	raw := make([]byte, (config.PacketLength+config.BlockSize)<<1)
+	amBuf := make([]float64, config.PacketLength+config.BlockSize)
 
 	// Setup time limit channel
 	tLimit := make(<-chan time.Time, 1)
@@ -130,17 +120,17 @@ func (rcvr *Receiver) Run() {
 			fmt.Println("Time Limit Reached:", time.Since(start))
 			return
 		default:
-			copy(raw, raw[BlockSize<<1:])
-			copy(amBuf, amBuf[BlockSize:])
+			copy(raw, raw[config.BlockSize<<1:])
+			copy(amBuf, amBuf[config.BlockSize:])
 
 			// Read new sample block.
-			_, err := rcvr.Read(raw[PacketLength<<1:])
+			_, err := rcvr.Read(raw[config.PacketLength<<1:])
 			if err != nil {
-				config.Log.Fatal("Error reading samples:", err)
+				config.Log.Fatal("Error reading samples: ", err)
 			}
 
 			// AM Demodulate
-			block := amBuf[PacketLength:]
+			block := amBuf[config.PacketLength:]
 			for idx := range block {
 				block[idx] = math.Sqrt(rcvr.lut[raw[(idx)<<1]] + rcvr.lut[raw[((idx)<<1)+1]])
 			}
@@ -150,7 +140,7 @@ func (rcvr *Receiver) Run() {
 			align := rcvr.pd.ArgMax()
 
 			// Bad framing, catch message on next block.
-			if align > BlockSize {
+			if uint(align) > config.BlockSize {
 				continue
 			}
 
@@ -172,7 +162,7 @@ func (rcvr *Receiver) Run() {
 				// Parse SCM
 				scm, err := ParseSCM(bits)
 				if err != nil {
-					config.Log.Fatal("Error parsing SCM:", err)
+					config.Log.Fatal("Error parsing SCM: ", err)
 				}
 
 				// If filtering by ID and ID doesn't match, bail.
@@ -183,13 +173,13 @@ func (rcvr *Receiver) Run() {
 				// Get current file offset.
 				offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
 				if err != nil {
-					config.Log.Fatal("Error getting sample file offset:", err)
+					config.Log.Fatal("Error getting sample file offset: ", err)
 				}
 
 				// Dump message to file.
 				_, err = config.SampleFile.Write(raw)
 				if err != nil {
-					config.Log.Fatal("Error dumping samples:", err)
+					config.Log.Fatal("Error dumping samples: ", err)
 				}
 
 				msg := Message{time.Now(), offset, len(raw), scm}
@@ -201,7 +191,7 @@ func (rcvr *Receiver) Run() {
 				} else {
 					err = config.Encoder.Encode(msg)
 					if err != nil {
-						log.Fatal("Error encoding message:", err)
+						log.Fatal("Error encoding message: ", err)
 					}
 
 					// The XML encoder doesn't write new lines after each
@@ -240,10 +230,10 @@ func MatchedFilter(input []float64, bits int) (output []float64) {
 	output = make([]float64, bits)
 
 	fIdx := 0
-	for idx := 0; fIdx < bits; idx += SymbolLength * 2 {
-		offset := idx + SymbolLength
+	for idx := 0; fIdx < bits; idx += config.SymbolLength * 2 {
+		offset := idx + config.SymbolLength
 
-		for i := 0; i < SymbolLength; i++ {
+		for i := 0; i < config.SymbolLength; i++ {
 			output[fIdx] += input[idx+i] - input[offset+i]
 		}
 		fIdx++
@@ -331,21 +321,21 @@ func ParseSCM(data string) (scm SCM, err error) {
 func init() {
 	err := config.Parse()
 	if err != nil {
-		config.Log.Fatal("Error parsing flags:", err)
+		log.Fatal("Error parsing flags: ", err)
 	}
 }
 
 func main() {
 	if !config.Quiet {
 		config.Log.Println("Server:", config.ServerAddr)
-		config.Log.Println("BlockSize:", BlockSize)
-		config.Log.Println("SampleRate:", SampleRate)
+		config.Log.Println("BlockSize:", config.BlockSize)
+		config.Log.Println("SampleRate:", config.SampleRate)
 		config.Log.Println("DataRate:", DataRate)
-		config.Log.Println("SymbolLength:", SymbolLength)
+		config.Log.Println("SymbolLength:", config.SymbolLength)
 		config.Log.Println("PreambleSymbols:", PreambleSymbols)
-		config.Log.Println("PreambleLength:", PreambleLength)
+		config.Log.Println("PreambleLength:", config.PreambleLength)
 		config.Log.Println("PacketSymbols:", PacketSymbols)
-		config.Log.Println("PacketLength:", PacketLength)
+		config.Log.Println("PacketLength:", config.PacketLength)
 		config.Log.Println("CenterFreq:", config.CenterFreq)
 		config.Log.Println("TimeLimit:", config.TimeLimit)
 
@@ -358,7 +348,7 @@ func main() {
 		}
 	}
 
-	rcvr := NewReceiver(BlockSize)
+	rcvr := NewReceiver()
 	defer rcvr.Close()
 	defer config.Close()
 
