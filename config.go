@@ -68,7 +68,7 @@ func (c *Config) Parse() (err error) {
 
 	flag.Parse()
 
-	validSymbolLengths := map[int]bool{7: true, 8: true, 9: true, 28: true, 32: true, 48: true, 50: true, 56: true, 64: true, 72: true}
+	validSymbolLengths := map[int]bool{7: true, 8: true, 9: true, 28: true, 32: true, 48: true, 50: true, 56: true, 64: true, 72: true, 73: true}
 
 	if !validSymbolLengths[c.SymbolLength] {
 		return fmt.Errorf("invalid symbol length: %d", c.SymbolLength)
