@@ -68,22 +68,6 @@ func (c *Config) Parse() (err error) {
 
 	flag.Parse()
 
-	validSymbolLengths := map[int]bool{7: true, 8: true, 9: true, 28: true, 32: true, 48: true, 50: true, 56: true, 64: true, 72: true, 73: true}
-
-	if !validSymbolLengths[c.SymbolLength] {
-		return fmt.Errorf("invalid symbol length: %d", c.SymbolLength)
-	}
-
-	c.SampleRate = DataRate * uint(c.SymbolLength)
-
-	c.PreambleLength = PreambleSymbols * uint(c.SymbolLength)
-	c.PacketLength = PacketSymbols * uint(c.SymbolLength)
-
-	// Power of two sized DFT requires BlockSize to also be power of two.
-	// BlockSize must be greater than the preamble length, so calculate next
-	// largest power of two from preamble length.
-	c.BlockSize = NextPowerOf2(c.PreambleLength)
-
 	// Parse and resolve rtl_tcp server address.
 	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
 	if err != nil {
@@ -108,6 +92,22 @@ func (c *Config) Parse() (err error) {
 	if err != nil {
 		return
 	}
+
+	validSymbolLengths := map[int]bool{7: true, 8: true, 9: true, 28: true, 32: true, 48: true, 50: true, 56: true, 64: true, 72: true, 73: true}
+
+	if !validSymbolLengths[c.SymbolLength] {
+		log.Printf("warning: invalid symbol length, probably won't receive anything")
+	}
+
+	c.SampleRate = DataRate * uint(c.SymbolLength)
+
+	c.PreambleLength = PreambleSymbols * uint(c.SymbolLength)
+	c.PacketLength = PacketSymbols * uint(c.SymbolLength)
+
+	// Power of two sized DFT requires BlockSize to also be power of two.
+	// BlockSize must be greater than the preamble length, so calculate next
+	// largest power of two from preamble length.
+	c.BlockSize = NextPowerOf2(c.PreambleLength)
 
 	// Create encoder for specified logging format.
 	switch strings.ToLower(c.format) {
