@@ -37,6 +37,22 @@ The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/githu
 
 This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add `$GOPATH/bin` to the path.
 
+#### With Docker
+This project can be built and executed using docker:
+
+```
+docker pull bemasher/rtlamr
+docker run --name rtlamr bemasher/rtlamr
+```
+
+This can also be run using the `bemasher/rtl-sdr` container:
+
+```
+docker pull bemasher/rtl-sdr
+docker run -d --privileged -v /dev/bus/usb:/dev/bus/usb --name rtl_tcp bemasher/rtl-sdr rtl_tcp -a 0.0.0.0
+docker run --name rtlamr --link rtl_tcp:rtl_tcp bemasher/rtlamr -server=rtl_tcp:1234
+```
+
 ### Usage
 Available command-line flags are as follows:
 
