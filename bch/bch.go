@@ -11,9 +11,7 @@ type BCH struct {
 	PolyLen byte
 }
 
-// Given a generator polynomial, message length and number of errors to
-// attempt to correct, calculate the polynomial length and pre-compute
-// syndromes for number of errors to be corrected.
+// Given a generator polynomial, calculate the polynomial length.
 func NewBCH(poly uint) (bch BCH) {
 	bch.GenPoly = poly
 
@@ -29,7 +27,8 @@ func (bch BCH) String() string {
 	return fmt.Sprintf("{GenPoly:%X PolyLen:%d}", bch.GenPoly, bch.PolyLen)
 }
 
-// Syndrome calculation implemented using LSFR (linear feedback shift register).
+// Syndrome calculation implemented using LSFR (linear feedback shift
+// register). Parameter bits is a string of bits (0, 1).
 func (bch BCH) Encode(bits string) (checksum uint) {
 	// For each byte of data.
 	for idx := range bits {
