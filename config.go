@@ -93,7 +93,19 @@ func (c *Config) Parse() (err error) {
 		return
 	}
 
-	validSymbolLengths := map[int]bool{7: true, 8: true, 9: true, 28: true, 32: true, 48: true, 50: true, 56: true, 64: true, 72: true, 73: true}
+	validSymbolLengths := map[int]bool{
+		7: true, 8: true, 9: true, 28: true, 29: true, 30: true, 31: true,
+		32: true, 33: true, 34: true, 35: true, 36: true, 37: true, 38: true,
+		39: true, 40: true, 41: true, 42: true, 43: true, 44: true, 45: true,
+		46: true, 47: true, 48: true, 49: true, 50: true, 51: true, 52: true,
+		53: true, 54: true, 55: true, 56: true, 57: true, 58: true, 59: true,
+		60: true, 61: true, 62: true, 63: true, 64: true, 65: true, 66: true,
+		67: true, 68: true, 69: true, 70: true, 71: true, 72: true, 73: true,
+		74: true, 75: true, 76: true, 77: true, 78: true, 79: true, 80: true,
+		81: true, 82: true, 83: true, 84: true, 85: true, 86: true, 87: true,
+		88: true, 89: true, 90: true, 91: true, 92: true, 93: true, 94: true,
+		95: true, 96: true, 97: true,
+	}
 
 	if !validSymbolLengths[c.SymbolLength] {
 		log.Printf("warning: invalid symbol length, probably won't receive anything")
