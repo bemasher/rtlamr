@@ -19,8 +19,8 @@ type PreambleDetector struct {
 	template []complex128
 }
 
-// Given a buffer length, symbol length and a binary bitstring, compute the
-// frequency domain of the preamble for later use.
+// Given a buffer length, symbol length and string of bits representing the
+// preamble, compute the frequency domain of the preamble for later use.
 func NewPreambleDetector(n uint, symbolLength int, bits string) (pd PreambleDetector) {
 	// Plan forward and reverse transforms.
 	pd.forward = fftw.NewHCDFT1D(n, nil, nil, fftw.Forward, fftw.InPlace, fftw.Measure)
@@ -68,7 +68,8 @@ func (pd *PreambleDetector) Close() {
 	pd.backward.Close()
 }
 
-// Convolves signal with frequency-domain preamble basis function.
+// Convolves signal with frequency-domain preamble basis function. Parameter
+// input is copied into pd.Real array before convolution.
 func (pd *PreambleDetector) Execute(input []float64) {
 	copy(pd.Real, input)
 
