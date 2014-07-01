@@ -7,19 +7,19 @@ Command-line Flags:
 
 Sets the center frequency of the rtl_tcp server. Defaults to 920.29MHz.
 
-	-duration=0: time to run for, 0 for infinite
+	-duration=0
 
 Sets time to receive for, 0 for infinite. If the time
 limit expires during processing of a block (which is quite likely) it will
 exit on the next pass through the receive loop. Exiting after an expired
 duration will print the total runtime to the log file. Defaults to infinite.
 
-	-filterid=0: display only messages matching given id
+	-filterid=0
 
 Sets a meter id to filter by, 0 for no filtering. Any received messages not
 matching the given id will be silently ignored. Defaults to no filtering.
 
-	-format="plain": format to write log messages in: plain, json, xml or gob
+	-format="plain"
 
 Sets the log output format. Defaults to plain.
 
