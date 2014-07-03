@@ -145,7 +145,6 @@ Usage of rtlamr:
 	2014/07/01 02:45:43.051442 Running...
 
   -samplefile="NUL": Sets file to dump samples for decoded packets to. Defaults to os.DevNull.
-
 	Output file format are interleaved in-phase and quadrature samples. Each
 	are unsigned bytes. These are unmodified output from the dongle. This flag
 	enables offset and length fields in plain text log messages. Only samples
@@ -156,8 +155,7 @@ Usage of rtlamr:
   -single=false: Provides one shot execution. Defaults to false.
 	Receiver listens until exactly one message is received before exiting.
 
-  -symbollength=73: Sets the desired symbol rate. Defaults to 73.
-
+  -symbollength=73: Sets the desired symbol length. Defaults to 73.
 	Sample rate is determined from this value as follows:
 
 		DataRate = 32768
