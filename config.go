@@ -145,6 +145,7 @@ func (c *Config) Parse() (err error) {
 
 	Sample rate is determined from this value as follows:
 
+		DataRate = 32768
 		SampleRate = SymbolLength * DataRate
 
 	The symbol length also determines the size of the convolution used for the preamble search:
@@ -154,12 +155,11 @@ func (c *Config) Parse() (err error) {
 
 	Valid symbol lengths are given below (symbol length: bandwidth):
 
-	BlockSize: 512 (fastest)
+	BlockSize: 512 (fast)
 		7: 229.376 kHz, 8: 262.144 kHz, 9: 294.912 kHz
 
 	BlockSize: 2048 (medium)
-		28: 917.504 kHz,  29: 950.272 kHz, 30: 983.040 kHz
-
+		28: 917.504 kHz,  29: 950.272 kHz,  30: 983.040 kHz
 		31: 1.015808 MHz, 32: 1.048576 MHz, 33: 1.081344 MHz,
 		34: 1.114112 MHz, 35: 1.146880 MHz, 36: 1.179648 MHz,
 		37: 1.212416 MHz, 38: 1.245184 MHz, 39: 1.277952 MHz,
