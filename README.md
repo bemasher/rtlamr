@@ -97,7 +97,7 @@ Usage of rtlamr:
 	For json and xml output each line is an element, there is no root node.
 
   -gobunsafe=false: Must be true to allow writing gob encoded output to stdout. Defaults to false.
-        Doing so would normally break a terminal, so we disable it unless
+    Doing so would normally break a terminal, so we disable it unless
 	explicitly enabled.
 
   -help=false: Print this help.
