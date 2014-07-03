@@ -138,7 +138,7 @@ func (c *Config) Parse() (err error) {
 	Receiver listens until exactly one message is received before exiting.`,
 
 		// symbollength
-		"symbollength": `Sets the desired symbol rate. Defaults to 73.
+		"symbollength": `Sets the desired symbol length. Defaults to 73.
 	Sample rate is determined from this value as follows:
 
 		DataRate = 32768
