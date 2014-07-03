@@ -45,28 +45,177 @@ type Config struct {
 
 	Quiet  bool
 	Single bool
+	Help   bool
 }
 
 func (c *Config) Parse() (err error) {
+	longHelp := map[string]string{
+		// help
+		"help": `Print this help.`,
+
+		// centerfreq
+		"centerfreq": `Sets the center frequency of the rtl_tcp server. Defaults to 920.29MHz.`,
+
+		// duration
+		"duration": `Sets time to receive for, 0 for infinite. Defaults to infinite.
+	If the time limit expires during processing of a block (which is quite
+	likely) it will exit on the next pass through the receive loop. Exiting
+	after an expired duration will print the total runtime to the log file.`,
+
+		// filterid
+		"filterid": `Sets a meter id to filter by, 0 for no filtering. Defaults to no filtering.
+	Any received messages not matching the given id will be silently ignored.
+	Defaults to no filtering.`,
+
+		// format
+		"format": `Sets the log output format. Defaults to plain.
+	Plain text is formatted using the following format string:
+
+		{Time:%s Offset:%d Length:%d SCM:{ID:%8d Type:%2d Tamper:%+v Consumption:%8d Checksum:0x%04X}}
+
+	No fields are omitted for json, xml or gob output. Plain text conditionally
+	omits offset and length fields if not dumping samples to file via -samplefile.
+
+	For json and xml output each line is an element, there is no root node.`,
+		"gobunsafe": `Must be true to allow writing gob encoded output to stdout. Defaults to false.
+        Doing so would normally break a terminal, so we disable it unless
+	explicitly enabled.`,
+
+		// logfile
+		"logfile": `Sets file to dump log messages to. Defaults to os.DevNull and prints to stderr.
+
+	Log messages have the following structure:
+
+		type Message struct {
+			Time   time.Time
+			Offset int64
+			Length int
+			SCM    SCM
+		}
+
+		type SCM struct {
+			ID          uint32
+			Type        uint8
+			Tamper      Tamper
+			Consumption uint32
+			Checksum    uint16
+		}
+
+	Messages are encoded one per line for all encoding formats except gob.`,
+
+		// quiet
+		"quiet": `Omits state information logged on startup. Defaults to false.
+	Below is sample output:
+
+	2014/07/01 02:45:42.416406 Server: 127.0.0.1:1234
+	2014/07/01 02:45:42.417406 BlockSize: 4096
+	2014/07/01 02:45:42.417406 SampleRate: 2392064
+	2014/07/01 02:45:42.417406 DataRate: 32768
+	2014/07/01 02:45:42.417406 SymbolLength: 73
+	2014/07/01 02:45:42.417406 PreambleSymbols: 42
+	2014/07/01 02:45:42.417406 PreambleLength: 3066
+	2014/07/01 02:45:42.417406 PacketSymbols: 192
+	2014/07/01 02:45:42.417406 PacketLength: 14016
+	2014/07/01 02:45:42.417406 CenterFreq: 920299072
+	2014/07/01 02:45:42.417406 TimeLimit: 0
+	2014/07/01 02:45:42.417406 Format: plain
+	2014/07/01 02:45:42.417406 LogFile: /dev/stdout
+	2014/07/01 02:45:42.417406 SampleFile: NUL
+	2014/07/01 02:45:43.050442 BCH: {GenPoly:16F63 PolyLen:16}
+	2014/07/01 02:45:43.050442 GainCount: 29
+	2014/07/01 02:45:43.051442 Running...`,
+
+		// samplefile
+		"samplefile": `Sets file to dump samples for decoded packets to. Defaults to os.DevNull.
+
+	Output file format are interleaved in-phase and quadrature samples. Each
+	are unsigned bytes. These are unmodified output from the dongle. This flag
+	enables offset and length fields in plain text log messages. Only samples
+	for correctly received messages are dumped.`,
+
+		// server
+		"server": `Sets rtl_tcp server address or hostname and port to connect to. Defaults to 127.0.0.1:1234.`,
+
+		// single
+		"single": `Provides one shot execution. Defaults to false.
+	Receiver listens until exactly one message is received before exiting.`,
+
+		// symbollength
+		"symbollength": `Sets the desired symbol rate. Defaults to 73.
+
+	Sample rate is determined from this value as follows:
+
+		SampleRate = SymbolLength * DataRate
+
+	The symbol length also determines the size of the convolution used for the preamble search:
+
+		PreambleSymbols = 42
+		BlockSize = 1 << uint(math.Ceil(math.Log2(float64(PreambleSymbols * SymbolLength))))
+
+	Valid symbol lengths are given below (symbol length: bandwidth):
+
+	BlockSize: 512 (fastest)
+		7: 229.376 kHz, 8: 262.144 kHz, 9: 294.912 kHz
+
+	BlockSize: 2048 (medium)
+		28: 917.504 kHz,  29: 950.272 kHz, 30: 983.040 kHz
+
+		31: 1.015808 MHz, 32: 1.048576 MHz, 33: 1.081344 MHz,
+		34: 1.114112 MHz, 35: 1.146880 MHz, 36: 1.179648 MHz,
+		37: 1.212416 MHz, 38: 1.245184 MHz, 39: 1.277952 MHz,
+		40: 1.310720 MHz, 41: 1.343488 MHz, 42: 1.376256 MHz,
+		43: 1.409024 MHz, 44: 1.441792 MHz, 45: 1.474560 MHz,
+		46: 1.507328 MHz, 47: 1.540096 MHz, 48: 1.572864 MHz
+
+	BlockSize: 4096 (slow)
+		49: 1.605632 MHz, 50: 1.638400 MHz, 51: 1.671168 MHz,
+		52: 1.703936 MHz, 53: 1.736704 MHz, 54: 1.769472 MHz,
+		55: 1.802240 MHz, 56: 1.835008 MHz, 57: 1.867776 MHz,
+		58: 1.900544 MHz, 59: 1.933312 MHz, 60: 1.966080 MHz,
+		61: 1.998848 MHz, 62: 2.031616 MHz, 63: 2.064384 MHz,
+		64: 2.097152 MHz, 65: 2.129920 MHz, 66: 2.162688 MHz,
+		67: 2.195456 MHz, 68: 2.228224 MHz, 69: 2.260992 MHz,
+		70: 2.293760 MHz, 71: 2.326528 MHz, 72: 2.359296 MHz,
+		73: 2.392064 MHz
+
+	BlockSize: 4096 (slow, untested)
+		74: 2.424832 MHz, 75: 2.457600 MHz, 76: 2.490368 MHz,
+		77: 2.523136 MHz, 78: 2.555904 MHz, 79: 2.588672 MHz,
+		80: 2.621440 MHz, 81: 2.654208 MHz, 82: 2.686976 MHz,
+		83: 2.719744 MHz, 84: 2.752512 MHz, 85: 2.785280 MHz,
+		86: 2.818048 MHz, 87: 2.850816 MHz, 88: 2.883584 MHz,
+		89: 2.916352 MHz, 90: 2.949120 MHz, 91: 2.981888 MHz,
+		92: 3.014656 MHz, 93: 3.047424 MHz, 94: 3.080192 MHz,
+		95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz`,
+	}
+
 	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
 	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
-	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "received message signal dump file, offset and message length are displayed to log when enabled")
+	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
 
 	flag.IntVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
-	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, bandwidth and performance are determined by this value
-	narrow/fast:   ( 8, 262.144 kHz)
-	medium/medium: (32,   1.048 MHz), (48, 1.572 MHz)
-	wide/slow:     (56,   1.835 MHz), (64, 2.097 MHz), (73, 2.392 MHz)
-	valid lengths: [7, 8, 9, 28, 32, 48, 50, 56, 64, 72, 73]`)
+	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
 
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
 	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, json, xml or gob")
 	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
-	flag.BoolVar(&c.Quiet, "quiet", false, "suppress state information printed at startup")
-	flag.BoolVar(&c.Single, "single", false, "provides one shot execution, listens until exactly one message is recieved")
+	flag.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
+	flag.BoolVar(&c.Single, "single", false, "one shot execution")
+	flag.BoolVar(&c.Help, "help", false, "print long help")
 
 	flag.Parse()
+
+	if c.Help {
+		flag.VisitAll(func(f *flag.Flag) {
+			if help, exists := longHelp[f.Name]; exists {
+				f.Usage = help + "\n"
+			}
+		})
+
+		flag.Usage()
+		os.Exit(2)
+	}
 
 	// Parse and resolve rtl_tcp server address.
 	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
