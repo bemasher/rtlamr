@@ -84,7 +84,6 @@ Usage of rtlamr:
 
   -filterid=0: Sets a meter id to filter by, 0 for no filtering. Defaults to no filtering.
 	Any received messages not matching the given id will be silently ignored.
-	Defaults to no filtering.
 
   -format="plain": Sets the log output format. Defaults to plain.
 	Plain text is formatted using the following format string:
@@ -97,13 +96,12 @@ Usage of rtlamr:
 	For json and xml output each line is an element, there is no root node.
 
   -gobunsafe=false: Must be true to allow writing gob encoded output to stdout. Defaults to false.
-    Doing so would normally break a terminal, so we disable it unless
+	Doing so would normally break a terminal, so we disable it unless
 	explicitly enabled.
 
   -help=false: Print this help.
 
   -logfile="/dev/stdout": Sets file to dump log messages to. Defaults to os.DevNull and prints to stderr.
-
 	Log messages have the following structure:
 
 		type Message struct {
@@ -126,23 +124,23 @@ Usage of rtlamr:
   -quiet=false: Omits state information logged on startup. Defaults to false.
 	Below is sample output:
 
-	2014/07/01 02:45:42.416406 Server: 127.0.0.1:1234
-	2014/07/01 02:45:42.417406 BlockSize: 4096
-	2014/07/01 02:45:42.417406 SampleRate: 2392064
-	2014/07/01 02:45:42.417406 DataRate: 32768
-	2014/07/01 02:45:42.417406 SymbolLength: 73
-	2014/07/01 02:45:42.417406 PreambleSymbols: 42
-	2014/07/01 02:45:42.417406 PreambleLength: 3066
-	2014/07/01 02:45:42.417406 PacketSymbols: 192
-	2014/07/01 02:45:42.417406 PacketLength: 14016
-	2014/07/01 02:45:42.417406 CenterFreq: 920299072
-	2014/07/01 02:45:42.417406 TimeLimit: 0
-	2014/07/01 02:45:42.417406 Format: plain
-	2014/07/01 02:45:42.417406 LogFile: /dev/stdout
-	2014/07/01 02:45:42.417406 SampleFile: NUL
-	2014/07/01 02:45:43.050442 BCH: {GenPoly:16F63 PolyLen:16}
-	2014/07/01 02:45:43.050442 GainCount: 29
-	2014/07/01 02:45:43.051442 Running...
+		2014/07/01 02:45:42.416406 Server: 127.0.0.1:1234
+		2014/07/01 02:45:42.417406 BlockSize: 4096
+		2014/07/01 02:45:42.417406 SampleRate: 2392064
+		2014/07/01 02:45:42.417406 DataRate: 32768
+		2014/07/01 02:45:42.417406 SymbolLength: 73
+		2014/07/01 02:45:42.417406 PreambleSymbols: 42
+		2014/07/01 02:45:42.417406 PreambleLength: 3066
+		2014/07/01 02:45:42.417406 PacketSymbols: 192
+		2014/07/01 02:45:42.417406 PacketLength: 14016
+		2014/07/01 02:45:42.417406 CenterFreq: 920299072
+		2014/07/01 02:45:42.417406 TimeLimit: 0
+		2014/07/01 02:45:42.417406 Format: plain
+		2014/07/01 02:45:42.417406 LogFile: /dev/stdout
+		2014/07/01 02:45:42.417406 SampleFile: NUL
+		2014/07/01 02:45:43.050442 BCH: {GenPoly:16F63 PolyLen:16}
+		2014/07/01 02:45:43.050442 GainCount: 29
+		2014/07/01 02:45:43.051442 Running...
 
   -samplefile="NUL": Sets file to dump samples for decoded packets to. Defaults to os.DevNull.
 	Output file format are interleaved in-phase and quadrature samples. Each
@@ -155,7 +153,7 @@ Usage of rtlamr:
   -single=false: Provides one shot execution. Defaults to false.
 	Receiver listens until exactly one message is received before exiting.
 
-  -symbollength=73: Sets the desired symbol length. Defaults to 73.
+  -symbollength=73: Sets the desired symbol rate. Defaults to 73.
 	Sample rate is determined from this value as follows:
 
 		DataRate = 32768
@@ -168,38 +166,38 @@ Usage of rtlamr:
 
 	Valid symbol lengths are given below (symbol length: bandwidth):
 
-	BlockSize: 512 (fast)
-		7: 229.376 kHz, 8: 262.144 kHz, 9: 294.912 kHz
+		BlockSize: 512 (fast)
+			7: 229.376 kHz, 8: 262.144 kHz, 9: 294.912 kHz
 
-	BlockSize: 2048 (medium)
-		28: 917.504 kHz,  29: 950.272 kHz,  30: 983.040 kHz
-		31: 1.015808 MHz, 32: 1.048576 MHz, 33: 1.081344 MHz,
-		34: 1.114112 MHz, 35: 1.146880 MHz, 36: 1.179648 MHz,
-		37: 1.212416 MHz, 38: 1.245184 MHz, 39: 1.277952 MHz,
-		40: 1.310720 MHz, 41: 1.343488 MHz, 42: 1.376256 MHz,
-		43: 1.409024 MHz, 44: 1.441792 MHz, 45: 1.474560 MHz,
-		46: 1.507328 MHz, 47: 1.540096 MHz, 48: 1.572864 MHz
+		BlockSize: 2048 (medium)
+			28: 917.504 kHz,  29: 950.272 kHz,  30: 983.040 kHz
+			31: 1.015808 MHz, 32: 1.048576 MHz, 33: 1.081344 MHz,
+			34: 1.114112 MHz, 35: 1.146880 MHz, 36: 1.179648 MHz,
+			37: 1.212416 MHz, 38: 1.245184 MHz, 39: 1.277952 MHz,
+			40: 1.310720 MHz, 41: 1.343488 MHz, 42: 1.376256 MHz,
+			43: 1.409024 MHz, 44: 1.441792 MHz, 45: 1.474560 MHz,
+			46: 1.507328 MHz, 47: 1.540096 MHz, 48: 1.572864 MHz
 
-	BlockSize: 4096 (slow)
-		49: 1.605632 MHz, 50: 1.638400 MHz, 51: 1.671168 MHz,
-		52: 1.703936 MHz, 53: 1.736704 MHz, 54: 1.769472 MHz,
-		55: 1.802240 MHz, 56: 1.835008 MHz, 57: 1.867776 MHz,
-		58: 1.900544 MHz, 59: 1.933312 MHz, 60: 1.966080 MHz,
-		61: 1.998848 MHz, 62: 2.031616 MHz, 63: 2.064384 MHz,
-		64: 2.097152 MHz, 65: 2.129920 MHz, 66: 2.162688 MHz,
-		67: 2.195456 MHz, 68: 2.228224 MHz, 69: 2.260992 MHz,
-		70: 2.293760 MHz, 71: 2.326528 MHz, 72: 2.359296 MHz,
-		73: 2.392064 MHz
+		BlockSize: 4096 (slow)
+			49: 1.605632 MHz, 50: 1.638400 MHz, 51: 1.671168 MHz,
+			52: 1.703936 MHz, 53: 1.736704 MHz, 54: 1.769472 MHz,
+			55: 1.802240 MHz, 56: 1.835008 MHz, 57: 1.867776 MHz,
+			58: 1.900544 MHz, 59: 1.933312 MHz, 60: 1.966080 MHz,
+			61: 1.998848 MHz, 62: 2.031616 MHz, 63: 2.064384 MHz,
+			64: 2.097152 MHz, 65: 2.129920 MHz, 66: 2.162688 MHz,
+			67: 2.195456 MHz, 68: 2.228224 MHz, 69: 2.260992 MHz,
+			70: 2.293760 MHz, 71: 2.326528 MHz, 72: 2.359296 MHz,
+			73: 2.392064 MHz
 
-	BlockSize: 4096 (slow, untested)
-		74: 2.424832 MHz, 75: 2.457600 MHz, 76: 2.490368 MHz,
-		77: 2.523136 MHz, 78: 2.555904 MHz, 79: 2.588672 MHz,
-		80: 2.621440 MHz, 81: 2.654208 MHz, 82: 2.686976 MHz,
-		83: 2.719744 MHz, 84: 2.752512 MHz, 85: 2.785280 MHz,
-		86: 2.818048 MHz, 87: 2.850816 MHz, 88: 2.883584 MHz,
-		89: 2.916352 MHz, 90: 2.949120 MHz, 91: 2.981888 MHz,
-		92: 3.014656 MHz, 93: 3.047424 MHz, 94: 3.080192 MHz,
-		95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz
+		BlockSize: 4096 (slow, untested)
+			74: 2.424832 MHz, 75: 2.457600 MHz, 76: 2.490368 MHz,
+			77: 2.523136 MHz, 78: 2.555904 MHz, 79: 2.588672 MHz,
+			80: 2.621440 MHz, 81: 2.654208 MHz, 82: 2.686976 MHz,
+			83: 2.719744 MHz, 84: 2.752512 MHz, 85: 2.785280 MHz,
+			86: 2.818048 MHz, 87: 2.850816 MHz, 88: 2.883584 MHz,
+			89: 2.916352 MHz, 90: 2.949120 MHz, 91: 2.981888 MHz,
+			92: 3.014656 MHz, 93: 3.047424 MHz, 94: 3.080192 MHz,
+			95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz
 ```
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
