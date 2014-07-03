@@ -56,7 +56,7 @@ docker run --name rtlamr --link rtl_tcp:rtl_tcp bemasher/rtlamr -server=rtl_tcp:
 ### Usage
 Available command-line flags are as follows:
 
-```bash
+```
 Usage of rtlamr:
   -centerfreq=920299072: center frequency to receive on
   -duration=0: time to run for, 0 for infinite
@@ -73,7 +73,7 @@ Usage of rtlamr:
 ```
 
 Long Help via `-help`:
-```bash
+```
 Usage of rtlamr:
   -centerfreq=920299072: Sets the center frequency of the rtl_tcp server. Defaults to 920.29MHz.
 
