@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bemasher/rtlamr/csv"
+
 	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
@@ -72,7 +74,7 @@ func (c *Config) Parse() (err error) {
 
 		{Time:%s Offset:%d Length:%d SCM:{ID:%8d Type:%2d Tamper:%+v Consumption:%8d Checksum:0x%04X}}
 
-	No fields are omitted for json, xml or gob output. Plain text conditionally
+	No fields are omitted for csv, json, xml or gob output. Plain text conditionally
 	omits offset and length fields if not dumping samples to file via -samplefile.
 
 	For json and xml output each line is an element, there is no root node.`,
@@ -97,6 +99,11 @@ func (c *Config) Parse() (err error) {
 			Tamper      Tamper
 			Consumption uint32
 			Checksum    uint16
+		}
+
+		type Tamper struct {
+			Phy uint8
+			Enc uint8
 		}
 
 	Messages are encoded one per line for all encoding formats except gob.`,
@@ -194,7 +201,7 @@ func (c *Config) Parse() (err error) {
 
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
-	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, json, xml or gob")
+	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
 	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
 	flag.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
 	flag.BoolVar(&c.Single, "single", false, "one shot execution")
@@ -270,6 +277,8 @@ func (c *Config) Parse() (err error) {
 	switch strings.ToLower(c.format) {
 	case "plain":
 		break
+	case "csv":
+		c.Encoder = csv.NewEncoder(c.LogFile)
 	case "json":
 		c.Encoder = json.NewEncoder(c.LogFile)
 	case "xml":
