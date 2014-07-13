@@ -27,10 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bemasher/rtltcp"
-
 	"github.com/bemasher/rtlamr/bch"
 	"github.com/bemasher/rtlamr/preamble"
+	"github.com/bemasher/rtltcp"
 )
 
 const (
@@ -278,6 +277,14 @@ func (msg Message) String() string {
 	)
 }
 
+func (msg Message) Record() (record []string) {
+	record = append(record, msg.Time.Format(time.RFC3339Nano))
+	record = append(record, strconv.FormatInt(int64(msg.Offset), 10))
+	record = append(record, strconv.FormatInt(int64(msg.Length), 10))
+	record = append(record, msg.SCM.Record()...)
+	return record
+}
+
 // Standard Consumption Message
 type SCM struct {
 	ID          uint32
@@ -293,6 +300,15 @@ func (scm SCM) String() string {
 	)
 }
 
+func (scm SCM) Record() (record []string) {
+	record = append(record, strconv.FormatInt(int64(scm.ID), 10))
+	record = append(record, strconv.FormatInt(int64(scm.Type), 10))
+	record = append(record, scm.Tamper.Record()...)
+	record = append(record, strconv.FormatInt(int64(scm.Consumption), 10))
+	record = append(record, fmt.Sprintf("0x%04X", scm.Checksum))
+	return
+}
+
 type Tamper struct {
 	Phy uint8
 	Enc uint8
@@ -300,6 +316,12 @@ type Tamper struct {
 
 func (t Tamper) String() string {
 	return fmt.Sprintf("{Phy:%d Enc:%d}", t.Phy, t.Enc)
+}
+
+func (tamper Tamper) Record() (record []string) {
+	record = append(record, strconv.FormatInt(int64(tamper.Phy), 10))
+	record = append(record, strconv.FormatInt(int64(tamper.Enc), 10))
+	return
 }
 
 // Given a string of bits, parse the message.
