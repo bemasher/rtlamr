@@ -130,8 +130,9 @@ func (rcvr *Receiver) Run() {
 
 			// AM Demodulate
 			block := amBuf[config.PacketLength:]
+			rawBlock := raw[config.PacketLength<<1:]
 			for idx := range block {
-				block[idx] = math.Sqrt(rcvr.lut[raw[(idx)<<1]] + rcvr.lut[raw[((idx)<<1)+1]])
+				block[idx] = math.Sqrt(rcvr.lut[rawBlock[idx<<1]] + rcvr.lut[rawBlock[(idx<<1)+1]])
 			}
 
 			// Detect preamble in first half of demod buffer.
