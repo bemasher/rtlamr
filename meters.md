@@ -1,3 +1,7 @@
+Want to help make this information more accurate? If you have a meter not listed here, or you've verified that your meter has a different ERT Type than listed, submit your info and I'll update it.
+
+Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27qPMqX0IarxFGWGKY/viewform?usp=send_form
+
 | URL                      | Model Name | Commodity | ERT Type | Lower (MHz) | Upper (MHz) |
 |:------------------------ | ----------:| --------- | --------:| -----------:| -----------:|
 | http://fcc.io/EO945ES-1  | 45ES-1     | Electric  | 7        | 910.0       | 920.0       |
@@ -10,7 +14,7 @@
 | http://fcc.io/SK9AMI6    | AMI6       | Electric  | 4        | 909.6       | 921.8       |
 | http://fcc.io/SK9C1A-2   | C1A-2      | Electric  | 4        | 910.0       | 920.0       |
 | http://fcc.io/SK9C1A-2   | C1A-2      | Electric  | 4        | 917.6       | 917.6       |
-| http://fcc.io/SK9C1A-3   | C1A-3      | Electric  | 4        | 909.0       | 922.0       |
+| http://fcc.io/SK9C1A-3   | C1A-3      | Electric  | 4,7      | 909.0       | 922.0       |
 | http://fcc.io/SK9AMI-3   | C2SOD      | Electric  | 4        | 902.2       | 927.8       |
 | http://fcc.io/SK9C3A-1H  | C3A-1H     | Electric  | 4,8      | 909.0       | 922.0       |
 | http://fcc.io/SK9AMI-5   | CVSO-B     | Electric  | 4        | 902.2       | 927.8       |
