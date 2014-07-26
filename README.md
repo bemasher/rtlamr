@@ -214,6 +214,11 @@ If you want to run the spectrum server on a different machine than the receiver 
 
 Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~250 different meters and intermittently from another 400 meters. These figures are calculated from messages received during a 25 minute window where the preamble had no bit errors and no errors were detected or corrected using the checksum. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
 
+### Compatibility
+I've compiled a list of ERT-compatible meters and modules which can be found here: https://github.com/bemasher/rtlamr/blob/master/meters.md
+
+If you've got a meter not on the list that you've successfully received messages from, you can submit this info from the meters list above.
+
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
 
