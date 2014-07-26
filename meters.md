@@ -19,6 +19,7 @@ Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27q
 | http://fcc.io/SK9C3A-1H  | C3A-1H     | Electric  | 4,8      | 909.0       | 922.0       |
 | http://fcc.io/SK9AMI-5   | CVSO-B     | Electric  | 4        | 902.2       | 927.8       |
 | http://fcc.io/SK9R300S-2 | R300S2     | Electric  | 8        | 909.3       | 918.4       |
+|                          | 40G        | Gas       | 2        |             |             |
 | http://fcc.io/EO9100G    | 100G       | Gas       | 12       | 903.0       | 928.0       |
 | http://fcc.io/EWQ100T    | 100T       | Gas       | 9        | 903.0       | 926.9       |
 | http://fcc.io/EO960W     | 60W        | Water     | 13       | 910.0       | 919.8       |
