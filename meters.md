@@ -2,7 +2,7 @@ Want to help make this information more accurate? If you have a meter not listed
 
 Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27qPMqX0IarxFGWGKY/viewform?usp=send_form
 
-According to a [marketing document](http://marketing.itron.com/campaign/FAQsSCM_Sept2011.pdf) by Itron the following commodities have these ert types:
+According to a [marketing document](http://marketing.itron.com/campaign/ItronSCMPlus_FAQMay2012.pdf) by Itron the following commodities have these ert types:
 
  * Electric: 04, 07, 08
  * Gas: 12
