@@ -61,7 +61,8 @@ Usage of rtlamr:
   -centerfreq=920299072: center frequency to receive on
   -duration=0: time to run for, 0 for infinite
   -filterid=0: display only messages matching given id
-  -format="plain": format to write log messages in: plain, json, xml or gob
+  -filtertype=0: display only messages matching given type
+  -format="plain": format to write log messages in: plain, csv, json, xml or gob
   -gobunsafe=false: allow gob output to stdout
   -help=false: print long help
   -logfile="/dev/stdout": log statement dump file
@@ -85,12 +86,15 @@ Usage of rtlamr:
   -filterid=0: Sets a meter id to filter by, 0 for no filtering. Defaults to no filtering.
 	Any received messages not matching the given id will be silently ignored.
 
+  -filtertype=0: Sets an ert type to filter by, 0 for no filtering. Defaults to no filtering.
+	Any received messages not matching the given type will be silently ignored.
+
   -format="plain": Sets the log output format. Defaults to plain.
 	Plain text is formatted using the following format string:
 
 		{Time:%s Offset:%d Length:%d SCM:{ID:%8d Type:%2d Tamper:%+v Consumption:%8d Checksum:0x%04X}}
 
-	No fields are omitted for json, xml or gob output. Plain text conditionally
+	No fields are omitted for csv, json, xml or gob output. Plain text conditionally
 	omits offset and length fields if not dumping samples to file via -samplefile.
 
 	For json and xml output each line is an element, there is no root node.
@@ -117,6 +121,11 @@ Usage of rtlamr:
 			Tamper      Tamper
 			Consumption uint32
 			Checksum    uint16
+		}
+
+		type Tamper struct {
+			Phy uint8
+			Enc uint8
 		}
 
 	Messages are encoded one per line for all encoding formats except gob.
