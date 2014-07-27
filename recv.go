@@ -170,6 +170,11 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 
+				// If filtering by type and type doesn't match, bail.
+				if config.MeterType != 0 && uint(scm.Type) != config.MeterType {
+					continue
+				}
+
 				// Get current file offset.
 				offset, err := config.SampleFile.Seek(0, os.SEEK_CUR)
 				if err != nil {

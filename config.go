@@ -25,7 +25,9 @@ type Config struct {
 
 	ServerAddr *net.TCPAddr
 	TimeLimit  time.Duration
-	MeterID    uint
+
+	MeterID   uint
+	MeterType uint
 
 	CenterFreq int
 
@@ -67,6 +69,10 @@ func (c *Config) Parse() (err error) {
 		// filterid
 		"filterid": `Sets a meter id to filter by, 0 for no filtering. Defaults to no filtering.
 	Any received messages not matching the given id will be silently ignored.`,
+
+		// filtertype
+		"filtertype": `Sets an ert type to filter by, 0 for no filtering. Defaults to no filtering.
+	Any received messages not matching the given type will be silently ignored.`,
 
 		// format
 		"format": `Sets the log output format. Defaults to plain.
@@ -201,6 +207,7 @@ func (c *Config) Parse() (err error) {
 
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
+	flag.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
 	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
 	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
 	flag.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
