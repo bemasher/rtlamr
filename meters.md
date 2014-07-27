@@ -2,6 +2,12 @@ Want to help make this information more accurate? If you have a meter not listed
 
 Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27qPMqX0IarxFGWGKY/viewform?usp=send_form
 
+According to a [marketing document](http://marketing.itron.com/campaign/FAQsSCM_Sept2011.pdf) by Itron the following commodities have these ert types:
+
+ * Electric: 04, 07, 08
+ * Gas: 12
+ * Water: 11
+
 | URL                      | Model Name | Commodity | ERT Type | Lower (MHz) | Upper (MHz) |
 |:------------------------ | ----------:| --------- | --------:| -----------:| -----------:|
 | http://fcc.io/EO945ES-1  | 45ES-1     | Electric  | 7        | 910.0       | 920.0       |
@@ -9,6 +15,9 @@ Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27q
 | http://fcc.io/EO951ESS   | 51ESS      | Electric  | 7        | 910.0       | 920.0       |
 | http://fcc.io/EO952ESS   | 52ESS      | Electric  | 5        | 910.0       | 920.0       |
 | http://fcc.io/EO953ESS   | 53ESS      | Electric  | 8        | 902.0       | 928.0       |
+|                          | 54ESS      | Electric  | 4        |             |             |
+|                          | 55ESS      | Electric  | 5        |             |             |
+|                          | 56ESS      | Electric  | 7        |             |             |
 | http://fcc.io/SK9AMI-4   | AMI4       | Electric  | 4        | 902.2       | 927.8       |
 | http://fcc.io/SK9AMI6    | AMI6       | Electric  | 4        | 902.2       | 927.8       |
 | http://fcc.io/SK9AMI6    | AMI6       | Electric  | 4        | 909.6       | 921.8       |
@@ -16,6 +25,7 @@ Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27q
 | http://fcc.io/SK9C1A-2   | C1A-2      | Electric  | 4        | 917.6       | 917.6       |
 | http://fcc.io/SK9C1A-3   | C1A-3      | Electric  | 4,7      | 909.0       | 922.0       |
 | http://fcc.io/SK9AMI-3   | C2SOD      | Electric  | 4        | 902.2       | 927.8       |
+| http://fcc.io/SK9C3A-1L  | C3A1L      | Electric  | 4,       | 909.0       | 922.0       |
 | http://fcc.io/SK9C3A-1H  | C3A-1H     | Electric  | 4,8      | 909.0       | 922.0       |
 | http://fcc.io/SK9AMI-5   | CVSO-B     | Electric  | 4        | 902.2       | 927.8       |
 | http://fcc.io/SK9R300S-2 | R300S2     | Electric  | 8        | 909.3       | 918.4       |
