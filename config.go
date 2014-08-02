@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,8 +29,6 @@ type Config struct {
 
 	MeterID   uint
 	MeterType uint
-
-	CenterFreq int
 
 	SymbolLength int
 
@@ -202,9 +201,17 @@ func (c *Config) Parse() (err error) {
 	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
 	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
 
-	flag.IntVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
-	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
+	// Override centerfreq value so rtlamr can run without any non-default flags.
+	centerfreqFlag := flag.Lookup("centerfreq")
+	centerfreqStr := strconv.FormatUint(CenterFreq, 10)
 
+	centerfreqFlag.DefValue = centerfreqStr
+	err = centerfreqFlag.Value.Set(centerfreqStr)
+	if err != nil {
+		log.Fatal("Error setting default center frequency:", err)
+	}
+
+	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
 	flag.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
