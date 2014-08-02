@@ -58,7 +58,6 @@ Available command-line flags are as follows:
 
 ```
 Usage of rtlamr:
-  -centerfreq=920299072: center frequency to receive on
   -duration=0: time to run for, 0 for infinite
   -filterid=0: display only messages matching given id
   -filtertype=0: display only messages matching given type
@@ -71,13 +70,25 @@ Usage of rtlamr:
   -server="127.0.0.1:1234": address or hostname of rtl_tcp instance
   -single=false: one shot execution
   -symbollength=73: symbol length in samples, see -help for valid lengths
+
+rtltcp specific:
+  -agcmode=false: enable/disable rtl agc
+  -centerfreq=920299072: center frequency to receive on
+  -directsampling=false: enable/disable direct sampling
+  -freqcorrection=0: frequency correction in ppm
+  -gainbyindex=0: set gain by index
+  -offsettuning=false: enable/disable offset tuning
+  -rtlxtalfreq=0: set rtl xtal frequency
+  -samplerate=2400000: sample rate
+  -testmode=false: enable/disable test mode
+  -tunergain=0: set tuner gain in dB
+  -tunergainmode=true: enable/disable tuner gain
+  -tunerxtalfreq=0: set tuner xtal frequency
 ```
 
 Long Help via `-help`:
 ```
 Usage of rtlamr:
-  -centerfreq=920299072: Sets the center frequency of the rtl_tcp server. Defaults to 920.29MHz.
-
   -duration=0: Sets time to receive for, 0 for infinite. Defaults to infinite.
 	If the time limit expires during processing of a block (which is quite
 	likely) it will exit on the next pass through the receive loop. Exiting
@@ -207,6 +218,22 @@ Usage of rtlamr:
 			89: 2.916352 MHz, 90: 2.949120 MHz, 91: 2.981888 MHz,
 			92: 3.014656 MHz, 93: 3.047424 MHz, 94: 3.080192 MHz,
 			95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz
+
+
+rtltcp specific:
+  -agcmode=false: enable/disable rtl agc
+  -centerfreq=920299072: center frequency to receive on
+  -directsampling=false: enable/disable direct sampling
+  -freqcorrection=0: frequency correction in ppm
+  -gainbyindex=0: set gain by index
+  -offsettuning=false: enable/disable offset tuning
+  -rtlxtalfreq=0: set rtl xtal frequency
+  -samplerate=2400000: sample rate
+  -testmode=false: enable/disable test mode
+  -tunergain=0: set tuner gain in dB
+  -tunergainmode=true: enable/disable tuner gain
+  -tunerxtalfreq=0: set tuner xtal frequency
+
 ```
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
