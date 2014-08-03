@@ -48,10 +48,7 @@ const (
 	TimeFormat    = "2006-01-02T15:04:05.000"
 )
 
-var (
-	config Config
-	rcvr   Receiver
-)
+var config Config
 
 type Receiver struct {
 	rtltcp.SDR
@@ -61,7 +58,7 @@ type Receiver struct {
 	lut MagLUT
 }
 
-func (rcvr *Receiver) Init() {
+func NewReceiver() (rcvr Receiver) {
 	// Plan the preamble detector.
 	rcvr.pd = preamble.NewPreambleDetector(uint(config.BlockSize<<1), config.SymbolLength, PreambleBits)
 
@@ -74,7 +71,7 @@ func (rcvr *Receiver) Init() {
 	rcvr.lut = NewMagLUT()
 
 	// Connect to rtl_tcp server.
-	if err := rcvr.Connect(nil); err != nil {
+	if err := rcvr.Connect(config.ServerAddr); err != nil {
 		config.Log.Fatal(err)
 	}
 
@@ -84,6 +81,7 @@ func (rcvr *Receiver) Init() {
 	}
 
 	// Set some parameters for listening.
+	rcvr.SetCenterFreq(uint32(config.CenterFreq))
 	rcvr.SetSampleRate(uint32(config.SampleRate))
 	rcvr.SetGainMode(true)
 
@@ -349,20 +347,10 @@ func ParseSCM(data string) (scm SCM, err error) {
 }
 
 func init() {
-	// Register rtltcp specific flags.
-	rcvr.RegisterFlags()
-
-	// Parse configuration
 	err := config.Parse()
 	if err != nil {
 		log.Fatal("Error parsing flags: ", err)
 	}
-
-	// Connect receiver and set some defaults.
-	rcvr.Init()
-
-	// Handle rtltcp specific flags.
-	rcvr.HandleFlags()
 }
 
 func main() {
@@ -376,7 +364,7 @@ func main() {
 		config.Log.Println("PreambleLength:", config.PreambleLength)
 		config.Log.Println("PacketSymbols:", PacketSymbols)
 		config.Log.Println("PacketLength:", config.PacketLength)
-		config.Log.Println("CenterFreq:", rcvr.Flags.CenterFreq)
+		config.Log.Println("CenterFreq:", config.CenterFreq)
 		config.Log.Println("TimeLimit:", config.TimeLimit)
 
 		config.Log.Println("Format:", config.format)
@@ -388,6 +376,7 @@ func main() {
 		}
 	}
 
+	rcvr := NewReceiver()
 	defer rcvr.Close()
 	defer config.Close()
 

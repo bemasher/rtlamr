@@ -7,7 +7,6 @@ import (
 	"math"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +28,8 @@ type Config struct {
 
 	MeterID   uint
 	MeterType uint
+
+	CenterFreq int
 
 	SymbolLength int
 
@@ -197,20 +198,13 @@ func (c *Config) Parse() (err error) {
 			95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz`,
 	}
 
+	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
 	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
 	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
 
-	// Override centerfreq value so rtlamr can run without any non-default flags.
-	centerfreqFlag := rcvr.Flags.Lookup("centerfreq")
-	centerfreqStr := strconv.FormatUint(CenterFreq, 10)
-
-	centerfreqFlag.DefValue = centerfreqStr
-	err = centerfreqFlag.Value.Set(centerfreqStr)
-	if err != nil {
-		log.Fatal("Error setting default center frequency:", err)
-	}
-
+	flag.IntVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
 	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
+
 	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
 	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
 	flag.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
@@ -219,14 +213,6 @@ func (c *Config) Parse() (err error) {
 	flag.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
 	flag.BoolVar(&c.Single, "single", false, "one shot execution")
 	flag.BoolVar(&c.Help, "help", false, "print long help")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		flag.PrintDefaults()
-		fmt.Println()
-		fmt.Println("rtltcp specific:")
-		rcvr.Flags.PrintDefaults()
-	}
 
 	flag.Parse()
 
@@ -239,6 +225,12 @@ func (c *Config) Parse() (err error) {
 
 		flag.Usage()
 		os.Exit(2)
+	}
+
+	// Parse and resolve rtl_tcp server address.
+	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
+	if err != nil {
+		return
 	}
 
 	// Open or create the log file.
