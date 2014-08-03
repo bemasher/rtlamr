@@ -197,7 +197,6 @@ func (c *Config) Parse() (err error) {
 			95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz`,
 	}
 
-	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
 	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
 	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
 
@@ -240,12 +239,6 @@ func (c *Config) Parse() (err error) {
 
 		flag.Usage()
 		os.Exit(2)
-	}
-
-	// Parse and resolve rtl_tcp server address.
-	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
-	if err != nil {
-		return
 	}
 
 	// Open or create the log file.

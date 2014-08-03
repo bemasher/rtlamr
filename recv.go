@@ -74,7 +74,7 @@ func (rcvr *Receiver) Init() {
 	rcvr.lut = NewMagLUT()
 
 	// Connect to rtl_tcp server.
-	if err := rcvr.Connect(config.ServerAddr); err != nil {
+	if err := rcvr.Connect(nil); err != nil {
 		config.Log.Fatal(err)
 	}
 
