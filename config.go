@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"net"
@@ -18,7 +19,6 @@ import (
 )
 
 type Config struct {
-	serverAddr     string
 	logFilename    string
 	sampleFilename string
 	format         string
@@ -28,8 +28,6 @@ type Config struct {
 
 	MeterID   uint
 	MeterType uint
-
-	CenterFreq int
 
 	SymbolLength int
 
@@ -47,18 +45,19 @@ type Config struct {
 
 	SampleFile *os.File
 
-	Quiet  bool
-	Single bool
-	Help   bool
+	Quiet     bool
+	Single    bool
+	ShortHelp bool
+	LongHelp  bool
 }
 
 func (c *Config) Parse() (err error) {
 	longHelp := map[string]string{
-		// help
-		"help": `Print this help.`,
+		// short help
+		"h": `Print short help.`,
 
-		// centerfreq
-		"centerfreq": `Sets the center frequency of the rtl_tcp server. Defaults to 920.29MHz.`,
+		// long help
+		"help": `Print long help.`,
 
 		// duration
 		"duration": `Sets time to receive for, 0 for infinite. Defaults to infinite.
@@ -143,9 +142,6 @@ func (c *Config) Parse() (err error) {
 	enables offset and length fields in plain text log messages. Only samples
 	for correctly received messages are dumped.`,
 
-		// server
-		"server": `Sets rtl_tcp server address or hostname and port to connect to. Defaults to 127.0.0.1:1234.`,
-
 		// single
 		"single": `Provides one shot execution. Defaults to false.
 	Receiver listens until exactly one message is received before exiting.`,
@@ -198,39 +194,63 @@ func (c *Config) Parse() (err error) {
 			95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz`,
 	}
 
-	flag.StringVar(&c.serverAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
-	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
-	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
+	mainFlags := flag.NewFlagSet("main", flag.ContinueOnError)
 
-	flag.IntVar(&c.CenterFreq, "centerfreq", 920299072, "center frequency to receive on")
-	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
+	mainFlags.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
+	mainFlags.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
 
-	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
-	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
-	flag.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
-	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
-	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
-	flag.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
-	flag.BoolVar(&c.Single, "single", false, "one shot execution")
-	flag.BoolVar(&c.Help, "help", false, "print long help")
+	mainFlags.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
 
-	flag.Parse()
+	mainFlags.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
+	mainFlags.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
+	mainFlags.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
+	mainFlags.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
+	mainFlags.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
+	mainFlags.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
+	mainFlags.BoolVar(&c.Single, "single", false, "one shot execution")
+	mainFlags.BoolVar(&c.ShortHelp, "h", false, "print short help")
+	mainFlags.BoolVar(&c.LongHelp, "help", false, "print long help")
 
-	if c.Help {
-		flag.VisitAll(func(f *flag.Flag) {
+	rcvr.Flags.BoolVar(&c.ShortHelp, "h", false, "print short help")
+	rcvr.Flags.BoolVar(&c.LongHelp, "help", false, "print long help")
+
+	// Override default center frequency.
+	centerfreqFlag := rcvr.Flags.Lookup("centerfreq")
+	centerfreqFlag.DefValue = fmt.Sprintf("%d", CenterFreq)
+	centerfreqFlag.Value.Set(fmt.Sprintf("%d", CenterFreq))
+
+	mainFlags.Usage = func() {}
+	mainFlags.SetOutput(ioutil.Discard)
+	rcvr.Flags.SetOutput(ioutil.Discard)
+
+	mainFlags.Parse(os.Args[1:])
+	rcvr.Flags.Parse(os.Args[1:])
+
+	mainFlags.SetOutput(os.Stderr)
+	rcvr.Flags.SetOutput(os.Stderr)
+
+	mainFlags.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		mainFlags.PrintDefaults()
+		fmt.Println()
+		fmt.Println("rtltcp specific:")
+		rcvr.Flags.PrintDefaults()
+	}
+
+	if c.ShortHelp {
+		mainFlags.Usage()
+		os.Exit(2)
+	}
+
+	if c.LongHelp {
+		mainFlags.VisitAll(func(f *flag.Flag) {
 			if help, exists := longHelp[f.Name]; exists {
 				f.Usage = help + "\n"
 			}
 		})
 
-		flag.Usage()
+		mainFlags.Usage()
 		os.Exit(2)
-	}
-
-	// Parse and resolve rtl_tcp server address.
-	c.ServerAddr, err = net.ResolveTCPAddr("tcp", c.serverAddr)
-	if err != nil {
-		return
 	}
 
 	// Open or create the log file.

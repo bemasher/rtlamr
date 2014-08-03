@@ -48,7 +48,10 @@ const (
 	TimeFormat    = "2006-01-02T15:04:05.000"
 )
 
-var config Config
+var (
+	rcvr   Receiver
+	config Config
+)
 
 type Receiver struct {
 	rtltcp.SDR
@@ -58,7 +61,7 @@ type Receiver struct {
 	lut MagLUT
 }
 
-func NewReceiver() (rcvr Receiver) {
+func (rcvr *Receiver) Init() {
 	// Plan the preamble detector.
 	rcvr.pd = preamble.NewPreambleDetector(uint(config.BlockSize<<1), config.SymbolLength, PreambleBits)
 
@@ -71,7 +74,7 @@ func NewReceiver() (rcvr Receiver) {
 	rcvr.lut = NewMagLUT()
 
 	// Connect to rtl_tcp server.
-	if err := rcvr.Connect(config.ServerAddr); err != nil {
+	if err := rcvr.Connect(nil); err != nil {
 		config.Log.Fatal(err)
 	}
 
@@ -80,8 +83,10 @@ func NewReceiver() (rcvr Receiver) {
 		config.Log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 	}
 
+	rcvr.HandleFlags()
+
 	// Set some parameters for listening.
-	rcvr.SetCenterFreq(uint32(config.CenterFreq))
+	rcvr.SetCenterFreq(uint32(rcvr.Flags.CenterFreq))
 	rcvr.SetSampleRate(uint32(config.SampleRate))
 	rcvr.SetGainMode(true)
 
@@ -347,15 +352,19 @@ func ParseSCM(data string) (scm SCM, err error) {
 }
 
 func init() {
+	rcvr.RegisterFlags()
+
 	err := config.Parse()
 	if err != nil {
 		log.Fatal("Error parsing flags: ", err)
 	}
+
+	rcvr.Init()
 }
 
 func main() {
 	if !config.Quiet {
-		config.Log.Println("Server:", config.ServerAddr)
+		config.Log.Println("Server:", rcvr.Flags.ServerAddr)
 		config.Log.Println("BlockSize:", config.BlockSize)
 		config.Log.Println("SampleRate:", config.SampleRate)
 		config.Log.Println("DataRate:", DataRate)
@@ -364,7 +373,7 @@ func main() {
 		config.Log.Println("PreambleLength:", config.PreambleLength)
 		config.Log.Println("PacketSymbols:", PacketSymbols)
 		config.Log.Println("PacketLength:", config.PacketLength)
-		config.Log.Println("CenterFreq:", config.CenterFreq)
+		config.Log.Println("CenterFreq:", rcvr.Flags.CenterFreq)
 		config.Log.Println("TimeLimit:", config.TimeLimit)
 
 		config.Log.Println("Format:", config.format)
@@ -376,7 +385,6 @@ func main() {
 		}
 	}
 
-	rcvr := NewReceiver()
 	defer rcvr.Close()
 	defer config.Close()
 
