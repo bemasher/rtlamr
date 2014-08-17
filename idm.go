@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
@@ -36,7 +37,7 @@ func NewIDMDecoder(symbolLength int) (idm IDMDecoder) {
 	pc.SampleRate = DataRate * uint(pc.SymbolLength)
 
 	pc.PreambleBits = strconv.FormatUint(0x555516A3, 2)
-	pc.PreambleBits += strings.Repeat("0", int(pc.PreambleSymbols>>1)-len(pc.PreambleBits))
+	pc.PreambleBits = strings.Repeat("0", int(pc.PreambleSymbols>>1)-len(pc.PreambleBits)) + pc.PreambleBits
 
 	idm.pktConfig = pc
 
@@ -61,50 +62,52 @@ func (idm IDMDecoder) SearchPreamble(buf []float64) int {
 
 // Standard Consumption Message
 type IDM struct {
-	ID     uint32
-	Type   uint8
-	Tamper struct {
-		Phy uint8
-		Enc uint8
-	}
-	Consumption uint32
-	Checksum    uint16
+	Preamble        uint32
+	PacketType      uint8
+	PacketLength    uint8
+	AppVersion      uint8
+	CommodityType   uint8
+	SerialNumber    uint32
+	SerialNumberCRC uint16
+	PacketCRC       uint16
 }
 
-func (scm IDM) String() string {
-	return fmt.Sprintf("{ID:%8d Type:%2d Tamper:{Phy:%d Enc:%d} Consumption:%8d Checksum:0x%04X}",
-		scm.ID, scm.Type, scm.Tamper.Phy, scm.Tamper.Enc, scm.Consumption, scm.Checksum,
+func (idm IDM) String() string {
+	return fmt.Sprintf("{Preamble:%08X PktType:%02X PktLen:%2d AppVer:%02X CommType:%02X Serial:% 10d SerCRC:%04X PktCRC:%04X}",
+		idm.Preamble,
+		idm.PacketType,
+		idm.PacketLength,
+		idm.AppVersion,
+		idm.CommodityType,
+		idm.SerialNumber,
+		idm.SerialNumberCRC,
+		idm.PacketCRC,
 	)
 }
 
-func (idm IDMDecoder) Decode(data Data) (fmt.Stringer, error) {
-	var scm IDM
+func (idmd IDMDecoder) Decode(data Data) (fmt.Stringer, error) {
+	var idm IDM
 
-	if len(data.Bits) != int(idm.pktConfig.PacketSymbols>>1) {
-		return scm, errors.New("invalid input length")
+	if len(data.Bits) != int(idmd.pktConfig.PacketSymbols>>1) {
+		return idm, errors.New("invalid input length")
 	}
 
-	if idm.crc.Checksum(data.Bytes[2:]) != 0 {
-		return scm, errors.New("checksum failed")
+	idm.Preamble = binary.BigEndian.Uint32(data.Bytes[0:4])
+	idm.PacketType = data.Bytes[4]
+	idm.PacketLength = data.Bytes[5]
+	idm.AppVersion = data.Bytes[7]
+	idm.CommodityType = data.Bytes[8] & 0x0F
+	idm.SerialNumber = binary.BigEndian.Uint32(data.Bytes[9:13])
+	idm.SerialNumberCRC = binary.BigEndian.Uint16(data.Bytes[88:90])
+	idm.PacketCRC = binary.BigEndian.Uint16(data.Bytes[90:92])
+
+	if idmd.crc.Checksum(data.Bytes[4:]) != idmd.crc.Residue {
+		return idm, errors.New("checksum failed")
 	}
 
-	id, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 32)
-	ertType, _ := strconv.ParseUint(data.Bits[26:30], 2, 8)
-	tamperPhy, _ := strconv.ParseUint(data.Bits[24:26], 2, 8)
-	tamperEnc, _ := strconv.ParseUint(data.Bits[30:32], 2, 8)
-	consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 32)
-	checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
-
-	scm.ID = uint32(id)
-	scm.Type = uint8(ertType)
-	scm.Tamper.Phy = uint8(tamperPhy)
-	scm.Tamper.Enc = uint8(tamperEnc)
-	scm.Consumption = uint32(consumption)
-	scm.Checksum = uint16(checksum)
-
-	if scm.ID == 0 {
-		return scm, errors.New("invalid meter id")
+	if idm.SerialNumber == 0 {
+		return idm, errors.New("invalid meter id")
 	}
 
-	return scm, nil
+	return idm, nil
 }

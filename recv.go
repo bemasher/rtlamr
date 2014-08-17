@@ -128,10 +128,10 @@ func (rcvr *Receiver) Run() {
 				filtered := MatchedFilter(amBuf[align:], int(cfg.PacketSymbols>>1))
 				data := BitSlice(filtered)
 
-				// Parse SCM
-				scm, err := rcvr.pktDecoder.Decode(data)
+				// Parse packet.
+				pkt, err := rcvr.pktDecoder.Decode(data)
 				if err == nil {
-					fmt.Printf("%+v\n", scm)
+					fmt.Printf("%+v\n", pkt)
 				}
 			}
 		}
@@ -148,7 +148,8 @@ func init() {
 }
 
 func main() {
-	scmd := NewSCMDecoder(73)
+	// scmd := NewSCMDecoder(73)
+	scmd := NewIDMDecoder(73)
 	cfg := scmd.pktConfig
 
 	log.Println("Server:", rcvr.Flags.ServerAddr)
@@ -160,7 +161,7 @@ func main() {
 	log.Println("PreambleLength:", cfg.PreambleLength)
 	log.Println("PacketSymbols:", cfg.PacketSymbols)
 	log.Println("PacketLength:", cfg.PacketLength)
-	log.Println("PreambleBits:", scmd.pktConfig.PreambleBits)
+	log.Println("PreambleBits:", cfg.PreambleBits)
 	log.Println("CRC:", scmd.crc)
 
 	rcvr.NewReceiver(scmd)
