@@ -17,7 +17,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -47,8 +46,7 @@ type Receiver struct {
 
 func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
 	rcvr.RegisterFlags()
-	flag.Parse()
-	rcvr.HandleFlags()
+	rcvr.Flags.FlagSet.Parse(os.Args[1:])
 
 	rcvr.pktDecoder = pktDecoder
 	rcvr.pktConfig = pktDecoder.PacketConfig()
@@ -59,6 +57,8 @@ func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
 	if err := rcvr.Connect(nil); err != nil {
 		log.Fatal(err)
 	}
+
+	rcvr.HandleFlags()
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
 	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
