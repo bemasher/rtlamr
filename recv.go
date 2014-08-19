@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"os"
@@ -31,25 +30,22 @@ const (
 	DataRate   = 32768
 )
 
-var (
-	rcvr Receiver
-)
+var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
 
-	lut MagLUT
-
-	pktDecoder PacketDecoder
-	pktConfig  PacketConfig
+	lut     MagLUT
+	cfg     PacketConfig
+	decoder PacketDecoder
 }
 
 func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
 	rcvr.RegisterFlags()
 	rcvr.Flags.FlagSet.Parse(os.Args[1:])
 
-	rcvr.pktDecoder = pktDecoder
-	rcvr.pktConfig = pktDecoder.PacketConfig()
+	rcvr.decoder = pktDecoder
+	rcvr.cfg = pktDecoder.PacketConfig()
 
 	rcvr.lut = NewMagLUT()
 
@@ -65,7 +61,7 @@ func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
 
 	// Set some parameters for listening.
 	rcvr.SetCenterFreq(CenterFreq)
-	rcvr.SetSampleRate(uint32(rcvr.pktConfig.SampleRate))
+	rcvr.SetSampleRate(uint32(rcvr.cfg.SampleRate))
 	rcvr.SetGainMode(true)
 
 	return
@@ -74,19 +70,17 @@ func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
 // Clean up rtl_tcp connection and destroy preamble detection plan.
 func (rcvr *Receiver) Close() {
 	rcvr.SDR.Close()
-	rcvr.pktDecoder.Close()
+	rcvr.decoder.Close()
 }
 
 func (rcvr *Receiver) Run() {
-	cfg := rcvr.pktConfig
-
 	// Setup signal channel for interruption.
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Kill, os.Interrupt)
 
 	// Allocate sample and demodulated signal buffers.
-	raw := make([]byte, (cfg.PacketLength+cfg.BlockSize)<<1)
-	amBuf := make([]float64, cfg.PacketLength+cfg.BlockSize)
+	raw := make([]byte, (rcvr.cfg.PacketLength+rcvr.cfg.BlockSize)<<1)
+	amBuf := make([]float64, rcvr.cfg.PacketLength+rcvr.cfg.BlockSize)
 
 	for {
 		// Exit on interrupt or time limit, otherwise receive.
@@ -94,44 +88,44 @@ func (rcvr *Receiver) Run() {
 		case <-sigint:
 			return
 		default:
-			copy(raw, raw[cfg.BlockSize<<1:])
-			copy(amBuf, amBuf[cfg.BlockSize:])
+			copy(raw, raw[rcvr.cfg.BlockSize<<1:])
+			copy(amBuf, amBuf[rcvr.cfg.BlockSize:])
 
 			// Read new sample block.
-			_, err := rcvr.Read(raw[cfg.PacketLength<<1:])
+			_, err := rcvr.Read(raw[rcvr.cfg.PacketLength<<1:])
 			if err != nil {
 				log.Fatal("Error reading samples: ", err)
 			}
 
 			// AM Demodulate
-			block := amBuf[cfg.PacketLength:]
-			rawBlock := raw[cfg.PacketLength<<1:]
+			block := amBuf[rcvr.cfg.PacketLength:]
+			rawBlock := raw[rcvr.cfg.PacketLength<<1:]
 			for idx := range block {
 				block[idx] = math.Sqrt(rcvr.lut[rawBlock[idx<<1]] + rcvr.lut[rawBlock[(idx<<1)+1]])
 			}
 
 			// Detect preamble in first half of demod buffer.
-			align := rcvr.pktDecoder.SearchPreamble(amBuf)
+			align := rcvr.decoder.SearchPreamble(amBuf)
 
 			// Bad framing, catch message on next block.
-			if uint(align) > cfg.BlockSize {
+			if uint(align) > rcvr.cfg.BlockSize {
 				continue
 			}
 
 			// Filter signal and bit slice enough data to catch the preamble.
-			filtered := MatchedFilter(amBuf[align:], int(cfg.PreambleSymbols>>1))
+			filtered := MatchedFilter(rcvr.cfg, amBuf[align:], int(rcvr.cfg.PreambleSymbols>>1))
 			data := BitSlice(filtered)
 
 			// If the preamble matches.
-			if data.Bits == cfg.PreambleBits {
+			if data.Bits == rcvr.cfg.PreambleBits {
 				// Filter, slice and parse the rest of the buffered samples.
-				filtered := MatchedFilter(amBuf[align:], int(cfg.PacketSymbols>>1))
+				filtered := MatchedFilter(rcvr.cfg, amBuf[align:], int(rcvr.cfg.PacketSymbols>>1))
 				data := BitSlice(filtered)
 
 				// Parse packet.
-				pkt, err := rcvr.pktDecoder.Decode(data)
+				pkt, err := rcvr.decoder.Decode(data)
 				if err == nil {
-					fmt.Printf("%+v\n", pkt)
+					log.Printf("%+v\n", pkt)
 				}
 			}
 		}
@@ -145,26 +139,24 @@ type Data struct {
 
 func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
+	log.SetOutput(os.Stdout)
 }
 
 func main() {
-	// scmd := NewSCMDecoder(73)
-	scmd := NewIDMDecoder(73)
-	cfg := scmd.pktConfig
+	rcvr.NewReceiver(NewIDMDecoder(73))
+	defer rcvr.Close()
 
 	log.Println("Server:", rcvr.Flags.ServerAddr)
-	log.Println("BlockSize:", cfg.BlockSize)
-	log.Println("SampleRate:", cfg.SampleRate)
+	log.Println("BlockSize:", rcvr.cfg.BlockSize)
+	log.Println("SampleRate:", rcvr.cfg.SampleRate)
 	log.Println("DataRate:", DataRate)
-	log.Println("SymbolLength:", cfg.SymbolLength)
-	log.Println("PreambleSymbols:", cfg.PreambleSymbols)
-	log.Println("PreambleLength:", cfg.PreambleLength)
-	log.Println("PacketSymbols:", cfg.PacketSymbols)
-	log.Println("PacketLength:", cfg.PacketLength)
-	log.Println("PreambleBits:", cfg.PreambleBits)
-	log.Println("CRC:", scmd.crc)
+	log.Println("SymbolLength:", rcvr.cfg.SymbolLength)
+	log.Println("PreambleSymbols:", rcvr.cfg.PreambleSymbols)
+	log.Println("PreambleLength:", rcvr.cfg.PreambleLength)
+	log.Println("PacketSymbols:", rcvr.cfg.PacketSymbols)
+	log.Println("PacketLength:", rcvr.cfg.PacketLength)
+	log.Println("PreambleBits:", rcvr.cfg.PreambleBits)
+	log.Println("Checksum:", rcvr.decoder.CRC())
 
-	rcvr.NewReceiver(scmd)
-	defer rcvr.Close()
 	rcvr.Run()
 }

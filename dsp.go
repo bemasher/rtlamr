@@ -19,14 +19,14 @@ func NewMagLUT() (lut MagLUT) {
 
 // Matched filter implemented as integrate and dump. Output array is equal to
 // the number of manchester coded symbols per packet.
-func MatchedFilter(input []float64, bits int) (output []float64) {
+func MatchedFilter(cfg PacketConfig, input []float64, bits int) (output []float64) {
 	output = make([]float64, bits)
 
 	fIdx := 0
-	for idx := 0; fIdx < bits; idx += rcvr.pktConfig.SymbolLength * 2 {
-		offset := idx + rcvr.pktConfig.SymbolLength
+	for idx := 0; fIdx < bits; idx += cfg.SymbolLength << 1 {
+		offset := idx + cfg.SymbolLength
 
-		for i := 0; i < rcvr.pktConfig.SymbolLength; i++ {
+		for i := 0; i < cfg.SymbolLength; i++ {
 			output[fIdx] += input[idx+i] - input[offset+i]
 		}
 		fIdx++

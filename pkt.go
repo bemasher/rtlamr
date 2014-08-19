@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 	"math"
+
+	"github.com/bemasher/rtlamr/crc"
 )
 
 type PacketDecoder interface {
 	PacketConfig() PacketConfig
 	SearchPreamble([]float64) int
 	Decode(Data) (fmt.Stringer, error)
+	CRC() crc.CRC
 	Close()
 }
 
