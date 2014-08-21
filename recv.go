@@ -241,13 +241,17 @@ func MatchedFilter(input []float64, bits int) (output []float64) {
 
 	fIdx := 0
 	for idx := 0; fIdx < bits; idx += config.SymbolLength * 2 {
-		offset := idx + config.SymbolLength
+		lower := input[idx : idx+config.SymbolLength]
+		upper := input[idx+config.SymbolLength : idx+config.SymbolLength*2]
 
-		for i := 0; i < config.SymbolLength; i++ {
-			output[fIdx] += input[idx+i] - input[offset+i]
+		var s float64
+		for i, l := range lower {
+			s += l - upper[i]
 		}
+		output[fIdx] = s
 		fIdx++
 	}
+
 	return
 }
 
