@@ -17,10 +17,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"math"
+	"net/http"
 	"os"
 	"os/signal"
+
+	_ "net/http/pprof"
 
 	"github.com/bemasher/rtltcp"
 )
@@ -81,6 +84,17 @@ func (rcvr *Receiver) Run() {
 	// Allocate sample and demodulated signal buffers.
 	raw := make([]byte, (rcvr.cfg.PacketLength+rcvr.cfg.BlockSize)<<1)
 	amBuf := make([]float64, rcvr.cfg.PacketLength+rcvr.cfg.BlockSize)
+	quantized := make([]byte, len(amBuf))
+
+	preamble := make([]byte, len(rcvr.cfg.PreambleBits))
+	for idx := range preamble {
+		if rcvr.cfg.PreambleBits[idx] == '1' {
+			preamble[idx] = 1
+		}
+	}
+
+	symlen := rcvr.cfg.SymbolLength
+	symlen2 := symlen << 1
 
 	for {
 		// Exit on interrupt or time limit, otherwise receive.
@@ -100,32 +114,43 @@ func (rcvr *Receiver) Run() {
 			// AM Demodulate
 			block := amBuf[rcvr.cfg.PacketLength:]
 			rawBlock := raw[rcvr.cfg.PacketLength<<1:]
-			for idx := range block {
-				block[idx] = math.Sqrt(rcvr.lut[rawBlock[idx<<1]] + rcvr.lut[rawBlock[(idx<<1)+1]])
+			rcvr.lut.Execute(rawBlock, block)
+
+			Filter(amBuf[rcvr.cfg.PacketLength-uint(symlen2):], symlen)
+			Quantize(amBuf, quantized)
+
+			rcvr.Search(quantized, preamble)
+		}
+	}
+}
+
+func (rcvr *Receiver) Search(quantized, preamble []byte) {
+	scmCrc := rcvr.decoder.CRC()
+	seen := make(map[string]bool)
+	pkt := make([]byte, rcvr.cfg.PacketSymbols>>1>>3)
+	symlen := rcvr.cfg.SymbolLength
+	symlen2 := symlen << 1
+
+	for symbolIdx := 0; symbolIdx < int(rcvr.cfg.BlockSize); symbolIdx += symlen2 {
+		for symbolOffset := 0; symbolOffset < symlen2; symbolOffset++ {
+			idx := symbolIdx + symbolOffset
+			found := true
+			for bitIdx, bit := range preamble {
+				found = found && quantized[idx+(bitIdx*symlen2)] == bit
 			}
-
-			// Detect preamble in first half of demod buffer.
-			align := rcvr.decoder.SearchPreamble(amBuf)
-
-			// Bad framing, catch message on next block.
-			if uint(align) > rcvr.cfg.BlockSize {
-				continue
-			}
-
-			// Filter signal and bit slice enough data to catch the preamble.
-			filtered := MatchedFilter(rcvr.cfg, amBuf[align:], int(rcvr.cfg.PreambleSymbols>>1))
-			data := BitSlice(filtered)
-
-			// If the preamble matches.
-			if data.Bits == rcvr.cfg.PreambleBits {
-				// Filter, slice and parse the rest of the buffered samples.
-				filtered := MatchedFilter(rcvr.cfg, amBuf[align:], int(rcvr.cfg.PacketSymbols>>1))
-				data := BitSlice(filtered)
-
-				// Parse packet.
-				pkt, err := rcvr.decoder.Decode(data)
-				if err == nil {
-					log.Printf("%+v\n", pkt)
+			if found {
+				for pktIdx := range pkt {
+					for bitIdx := 0; bitIdx < 8; bitIdx++ {
+						pkt[pktIdx] <<= 1
+						pkt[pktIdx] |= quantized[idx+((pktIdx<<3+bitIdx)*symlen2)]
+					}
+				}
+				if checksum := scmCrc.Checksum(pkt[2:]); checksum == 0 {
+					pktStr := fmt.Sprintf("%02X", pkt)
+					if !seen[pktStr] {
+						fmt.Printf("%02X %04X\n", pkt, checksum)
+						seen[pktStr] = true
+					}
 				}
 			}
 		}
@@ -143,7 +168,7 @@ func init() {
 }
 
 func main() {
-	rcvr.NewReceiver(NewIDMDecoder(73))
+	rcvr.NewReceiver(NewSCMDecoder(73))
 	defer rcvr.Close()
 
 	log.Println("Server:", rcvr.Flags.ServerAddr)
@@ -157,6 +182,8 @@ func main() {
 	log.Println("PacketLength:", rcvr.cfg.PacketLength)
 	log.Println("PreambleBits:", rcvr.cfg.PreambleBits)
 	log.Println("Checksum:", rcvr.decoder.CRC())
+
+	go http.ListenAndServe("0.0.0.0:6060", nil)
 
 	rcvr.Run()
 }

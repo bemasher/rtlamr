@@ -40,6 +40,34 @@ func TestIdentity(t *testing.T) {
 	}
 }
 
+func BenchmarkBCH(b *testing.B) {
+	input := make([]byte, 16384)
+	crand.Read(input)
+
+	bch := NewCRC("BCH", 0, 0x6F63, 0)
+
+	b.SetBytes(16384 >> 3)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		bch.Checksum(input)
+	}
+}
+
+func BenchmarkCCITT(b *testing.B) {
+	input := make([]byte, 16384)
+	crand.Read(input)
+
+	ccitt := NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
+
+	b.SetBytes(16384 >> 3)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		ccitt.Checksum(input)
+	}
+}
+
 func init() {
 	mrand.Seed(time.Now().UnixNano())
 }

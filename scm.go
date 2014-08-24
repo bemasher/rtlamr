@@ -59,6 +59,10 @@ func (scmd SCMDecoder) SearchPreamble(buf []float64) int {
 	return scmd.pd.ArgMax()
 }
 
+func (scmd SCMDecoder) CRC() crc.CRC {
+	return scmd.crc
+}
+
 // Standard Consumption Message
 type SCM struct {
 	ID     uint32
