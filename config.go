@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -194,62 +194,76 @@ func (c *Config) Parse() (err error) {
 			95: 3.112960 MHz, 96: 3.145728 MHz, 97: 3.178496 MHz`,
 	}
 
-	mainFlags := flag.NewFlagSet("main", flag.ContinueOnError)
+	flag.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
+	flag.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
 
-	mainFlags.StringVar(&c.logFilename, "logfile", "/dev/stdout", "log statement dump file")
-	mainFlags.StringVar(&c.sampleFilename, "samplefile", os.DevNull, "raw signal dump file")
+	flag.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
 
-	mainFlags.IntVar(&c.SymbolLength, "symbollength", 73, `symbol length in samples, see -help for valid lengths`)
-
-	mainFlags.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
-	mainFlags.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
-	mainFlags.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
-	mainFlags.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
-	mainFlags.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
-	mainFlags.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
-	mainFlags.BoolVar(&c.Single, "single", false, "one shot execution")
-	mainFlags.BoolVar(&c.ShortHelp, "h", false, "print short help")
-	mainFlags.BoolVar(&c.LongHelp, "help", false, "print long help")
-
-	rcvr.Flags.BoolVar(&c.ShortHelp, "h", false, "print short help")
-	rcvr.Flags.BoolVar(&c.LongHelp, "help", false, "print long help")
+	flag.DurationVar(&c.TimeLimit, "duration", 0, "time to run for, 0 for infinite")
+	flag.UintVar(&c.MeterID, "filterid", 0, "display only messages matching given id")
+	flag.UintVar(&c.MeterType, "filtertype", 0, "display only messages matching given type")
+	flag.StringVar(&c.format, "format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
+	flag.BoolVar(&c.GobUnsafe, "gobunsafe", false, "allow gob output to stdout")
+	flag.BoolVar(&c.Quiet, "quiet", false, "suppress printing state information at startup")
+	flag.BoolVar(&c.Single, "single", false, "one shot execution")
+	flag.BoolVar(&c.ShortHelp, "h", false, "print short help")
+	flag.BoolVar(&c.LongHelp, "help", false, "print long help")
 
 	// Override default center frequency.
-	centerfreqFlag := rcvr.Flags.Lookup("centerfreq")
-	centerfreqFlag.DefValue = fmt.Sprintf("%d", CenterFreq)
-	centerfreqFlag.Value.Set(fmt.Sprintf("%d", CenterFreq))
+	centerFreqFlag := flag.CommandLine.Lookup("centerfreq")
+	centerFreqString := strconv.FormatUint(CenterFreq, 10)
+	centerFreqFlag.DefValue = centerFreqString
+	centerFreqFlag.Value.Set(centerFreqString)
 
-	mainFlags.Usage = func() {}
-	mainFlags.SetOutput(ioutil.Discard)
-	rcvr.Flags.SetOutput(ioutil.Discard)
+	flag.Parse()
 
-	mainFlags.Parse(os.Args[1:])
-	rcvr.Flags.Parse(os.Args[1:])
+	rtlamrFlags := map[string]bool{
+		"logfile":      true,
+		"samplefile":   true,
+		"symbollength": true,
+		"duration":     true,
+		"filterid":     true,
+		"filtertype":   true,
+		"format":       true,
+		"gobunsafe":    true,
+		"quiet":        true,
+		"single":       true,
+		"h":            true,
+		"help":         true,
+	}
+	printDefaults := func(validFlags map[string]bool, inclusion bool) {
+		flag.CommandLine.VisitAll(func(f *flag.Flag) {
+			if validFlags[f.Name] != inclusion {
+				return
+			}
 
-	mainFlags.SetOutput(os.Stderr)
-	rcvr.Flags.SetOutput(os.Stderr)
+			format := "  -%s=%s: %s\n"
+			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
+		})
+	}
 
-	mainFlags.Usage = func() {
+	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		mainFlags.PrintDefaults()
-		fmt.Println()
-		fmt.Println("rtltcp specific:")
-		rcvr.Flags.PrintDefaults()
+		printDefaults(rtlamrFlags, true)
+
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "rtltcp specific:")
+		printDefaults(rtlamrFlags, false)
 	}
 
 	if c.ShortHelp {
-		mainFlags.Usage()
+		flag.Usage()
 		os.Exit(2)
 	}
 
 	if c.LongHelp {
-		mainFlags.VisitAll(func(f *flag.Flag) {
+		flag.VisitAll(func(f *flag.Flag) {
 			if help, exists := longHelp[f.Name]; exists {
 				f.Usage = help + "\n"
 			}
 		})
 
-		mainFlags.Usage()
+		flag.Usage()
 		os.Exit(2)
 	}
 
