@@ -17,11 +17,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 
 	_ "net/http/pprof"
 
@@ -30,27 +32,24 @@ import (
 
 const (
 	CenterFreq = 920299072
-	DataRate   = 32768
 )
 
 var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
-
-	lut     MagLUT
-	cfg     PacketConfig
-	decoder PacketDecoder
+	d Decoder
+	p Parser
 }
 
-func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
+func (rcvr *Receiver) NewReceiver(cfg PacketConfig) {
+	rcvr.d = NewDecoder(cfg)
+	rcvr.p = NewSCMParser()
+
+	fmt.Println(rcvr.d.cfg)
+
 	rcvr.RegisterFlags()
-	rcvr.Flags.FlagSet.Parse(os.Args[1:])
-
-	rcvr.decoder = pktDecoder
-	rcvr.cfg = pktDecoder.PacketConfig()
-
-	rcvr.lut = NewMagLUT()
+	flag.Parse()
 
 	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(nil); err != nil {
@@ -64,16 +63,10 @@ func (rcvr *Receiver) NewReceiver(pktDecoder PacketDecoder) {
 
 	// Set some parameters for listening.
 	rcvr.SetCenterFreq(CenterFreq)
-	rcvr.SetSampleRate(uint32(rcvr.cfg.SampleRate))
+	rcvr.SetSampleRate(uint32(rcvr.d.cfg.SampleRate))
 	rcvr.SetGainMode(true)
 
 	return
-}
-
-// Clean up rtl_tcp connection and destroy preamble detection plan.
-func (rcvr *Receiver) Close() {
-	rcvr.SDR.Close()
-	rcvr.decoder.Close()
 }
 
 func (rcvr *Receiver) Run() {
@@ -81,20 +74,7 @@ func (rcvr *Receiver) Run() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Kill, os.Interrupt)
 
-	// Allocate sample and demodulated signal buffers.
-	raw := make([]byte, (rcvr.cfg.PacketLength+rcvr.cfg.BlockSize)<<1)
-	amBuf := make([]float64, rcvr.cfg.PacketLength+rcvr.cfg.BlockSize)
-	quantized := make([]byte, len(amBuf))
-
-	preamble := make([]byte, len(rcvr.cfg.PreambleBits))
-	for idx := range preamble {
-		if rcvr.cfg.PreambleBits[idx] == '1' {
-			preamble[idx] = 1
-		}
-	}
-
-	symlen := rcvr.cfg.SymbolLength
-	symlen2 := symlen << 1
+	block := make([]byte, rcvr.d.cfg.BlockSize2)
 
 	for {
 		// Exit on interrupt or time limit, otherwise receive.
@@ -102,56 +82,18 @@ func (rcvr *Receiver) Run() {
 		case <-sigint:
 			return
 		default:
-			copy(raw, raw[rcvr.cfg.BlockSize<<1:])
-			copy(amBuf, amBuf[rcvr.cfg.BlockSize:])
-
 			// Read new sample block.
-			_, err := rcvr.Read(raw[rcvr.cfg.PacketLength<<1:])
+			_, err := rcvr.Read(block)
 			if err != nil {
 				log.Fatal("Error reading samples: ", err)
 			}
 
-			// AM Demodulate
-			block := amBuf[rcvr.cfg.PacketLength:]
-			rawBlock := raw[rcvr.cfg.PacketLength<<1:]
-			rcvr.lut.Execute(rawBlock, block)
-
-			Filter(amBuf[rcvr.cfg.PacketLength-uint(symlen2):], symlen)
-			Quantize(amBuf, quantized)
-
-			rcvr.Search(quantized, preamble)
-		}
-	}
-}
-
-func (rcvr *Receiver) Search(quantized, preamble []byte) {
-	scmCrc := rcvr.decoder.CRC()
-	seen := make(map[string]bool)
-	pkt := make([]byte, rcvr.cfg.PacketSymbols>>1>>3)
-	symlen := rcvr.cfg.SymbolLength
-	symlen2 := symlen << 1
-
-	for symbolIdx := 0; symbolIdx < int(rcvr.cfg.BlockSize); symbolIdx += symlen2 {
-		for symbolOffset := 0; symbolOffset < symlen2; symbolOffset++ {
-			idx := symbolIdx + symbolOffset
-			found := true
-			for bitIdx, bit := range preamble {
-				found = found && quantized[idx+(bitIdx*symlen2)] == bit
-			}
-			if found {
-				for pktIdx := range pkt {
-					for bitIdx := 0; bitIdx < 8; bitIdx++ {
-						pkt[pktIdx] <<= 1
-						pkt[pktIdx] |= quantized[idx+((pktIdx<<3+bitIdx)*symlen2)]
-					}
+			for _, pkt := range rcvr.d.Decode(block) {
+				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
+				if err != nil {
+					continue
 				}
-				if checksum := scmCrc.Checksum(pkt[2:]); checksum == 0 {
-					pktStr := fmt.Sprintf("%02X", pkt)
-					if !seen[pktStr] {
-						fmt.Printf("%02X %04X\n", pkt, checksum)
-						seen[pktStr] = true
-					}
-				}
+				fmt.Println(scm)
 			}
 		}
 	}
@@ -162,26 +104,35 @@ type Data struct {
 	Bytes []byte
 }
 
+func NewDataFromBytes(data []byte) (d Data) {
+	d.Bytes = data
+	for _, b := range data {
+		d.Bits += fmt.Sprintf("%08b", b)
+	}
+	return
+}
+
+func NewDataFromBits(data string) (d Data) {
+	d.Bits = data
+	for idx := 0; idx < len(data); idx += 8 {
+		b, _ := strconv.ParseUint(d.Bits[idx:idx+8], 2, 8)
+		d.Bytes[idx>>3] = uint8(b)
+	}
+	return
+}
+
+type Parser interface {
+	Parse(Data) (interface{}, error)
+}
+
 func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	log.SetOutput(os.Stdout)
 }
 
 func main() {
-	rcvr.NewReceiver(NewSCMDecoder(73))
+	rcvr.NewReceiver(NewSCMPacketConfig(73))
 	defer rcvr.Close()
-
-	log.Println("Server:", rcvr.Flags.ServerAddr)
-	log.Println("BlockSize:", rcvr.cfg.BlockSize)
-	log.Println("SampleRate:", rcvr.cfg.SampleRate)
-	log.Println("DataRate:", DataRate)
-	log.Println("SymbolLength:", rcvr.cfg.SymbolLength)
-	log.Println("PreambleSymbols:", rcvr.cfg.PreambleSymbols)
-	log.Println("PreambleLength:", rcvr.cfg.PreambleLength)
-	log.Println("PacketSymbols:", rcvr.cfg.PacketSymbols)
-	log.Println("PacketLength:", rcvr.cfg.PacketLength)
-	log.Println("PreambleBits:", rcvr.cfg.PreambleBits)
-	log.Println("Checksum:", rcvr.decoder.CRC())
 
 	go http.ListenAndServe("0.0.0.0:6060", nil)
 
