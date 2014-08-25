@@ -24,6 +24,8 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
+	"time"
 
 	_ "net/http/pprof"
 
@@ -32,6 +34,7 @@ import (
 
 const (
 	CenterFreq = 920299072
+	TimeFormat = "2006-01-02T15:04:05.000"
 )
 
 var rcvr Receiver
@@ -46,10 +49,10 @@ func (rcvr *Receiver) NewReceiver(cfg PacketConfig) {
 	rcvr.d = NewDecoder(cfg)
 	rcvr.p = NewSCMParser()
 
-	fmt.Println(rcvr.d.cfg)
-
-	rcvr.RegisterFlags()
-	flag.Parse()
+	if !*quiet {
+		rcvr.d.cfg.Log()
+		log.Println("CRC:", rcvr.p)
+	}
 
 	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(nil); err != nil {
@@ -59,7 +62,9 @@ func (rcvr *Receiver) NewReceiver(cfg PacketConfig) {
 	rcvr.HandleFlags()
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
-	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+	if !*quiet {
+		log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+	}
 
 	// Set some parameters for listening.
 	rcvr.SetCenterFreq(CenterFreq)
@@ -74,12 +79,22 @@ func (rcvr *Receiver) Run() {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Kill, os.Interrupt)
 
+	// Setup time limit channel
+	tLimit := make(<-chan time.Time, 1)
+	if *timeLimit != 0 {
+		tLimit = time.After(*timeLimit)
+	}
+
 	block := make([]byte, rcvr.d.cfg.BlockSize2)
 
+	start := time.Now()
 	for {
 		// Exit on interrupt or time limit, otherwise receive.
 		select {
 		case <-sigint:
+			return
+		case <-tLimit:
+			fmt.Println("Time Limit Reached:", time.Since(start))
 			return
 		default:
 			// Read new sample block.
@@ -88,12 +103,50 @@ func (rcvr *Receiver) Run() {
 				log.Fatal("Error reading samples: ", err)
 			}
 
+			pktFound := false
 			for _, pkt := range rcvr.d.Decode(block) {
 				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
 				if err != nil {
 					continue
 				}
-				fmt.Println(scm)
+
+				if *meterID != 0 && uint32(*meterID) != scm.ID() {
+					continue
+				}
+
+				if *meterType != 0 && uint8(*meterType) != scm.Type() {
+					continue
+				}
+
+				msg := NewLogMessage(scm)
+				pktFound = true
+
+				if encoder == nil {
+					// A nil encoder is just plain-text output.
+					fmt.Fprintln(logFile, msg)
+				} else {
+					err = encoder.Encode(msg)
+					if err != nil {
+						log.Fatal("Error encoding message: ", err)
+					}
+
+					// The XML encoder doesn't write new lines after each
+					// element, add them.
+					if strings.ToLower(*format) == "xml" {
+						fmt.Fprintln(logFile)
+					}
+				}
+
+				if *single {
+					return
+				}
+			}
+
+			if pktFound {
+				_, err = sampleFile.Write(rcvr.d.iq)
+				if err != nil {
+					log.Fatal("Error writing raw samples to file:", err)
+				}
 			}
 		}
 	}
@@ -122,16 +175,55 @@ func NewDataFromBits(data string) (d Data) {
 }
 
 type Parser interface {
-	Parse(Data) (interface{}, error)
+	Parse(Data) (Message, error)
+}
+
+type Message interface {
+	Name() string
+	ID() uint32
+	Type() uint8
+}
+
+type LogMessage struct {
+	Time   time.Time
+	Offset int64
+	Length int
+	Body   Message
+}
+
+func NewLogMessage(body Message) (msg LogMessage) {
+	msg.Time = time.Now()
+	msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+	msg.Length = rcvr.d.cfg.BufferLength << 1
+	msg.Body = body
+
+	return
+}
+
+func (msg LogMessage) String() string {
+	if *sampleFilename == os.DevNull {
+		return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.Body.Name(), msg.Body)
+	}
+
+	return fmt.Sprintf("{Time:%s Offset:%d Length:%d %s:%s}",
+		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.Body.Name(), msg.Body,
+	)
 }
 
 func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	log.SetOutput(os.Stdout)
 }
 
 func main() {
-	rcvr.NewReceiver(NewSCMPacketConfig(73))
+	rcvr.RegisterFlags()
+	RegisterFlags()
+	flag.Parse()
+	HandleFlags()
+
+	rcvr.NewReceiver(NewSCMPacketConfig(*symbolLength))
+
+	defer logFile.Close()
+	defer sampleFile.Close()
 	defer rcvr.Close()
 
 	go http.ListenAndServe("0.0.0.0:6060", nil)

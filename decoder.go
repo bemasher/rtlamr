@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 )
 
@@ -17,18 +18,16 @@ type PacketConfig struct {
 	Preamble                       string
 }
 
-func (cfg PacketConfig) String() (r string) {
-	r += fmt.Sprintln("BlockSize:", cfg.BlockSize)
-	r += fmt.Sprintln("SampleRate:", cfg.SampleRate)
-	r += fmt.Sprintln("DataRate:", cfg.DataRate)
-	r += fmt.Sprintln("SymbolLength:", cfg.SymbolLength)
-	r += fmt.Sprintln("PreambleSymbols:", cfg.PreambleSymbols)
-	r += fmt.Sprintln("PreambleLength:", cfg.PreambleLength)
-	r += fmt.Sprintln("PacketSymbols:", cfg.PacketSymbols)
-	r += fmt.Sprintln("PacketLength:", cfg.PacketLength)
-	r += fmt.Sprintln("Preamble:", cfg.Preamble)
-
-	return
+func (cfg PacketConfig) Log() {
+	log.Println("BlockSize:", cfg.BlockSize)
+	log.Println("SampleRate:", cfg.SampleRate)
+	log.Println("DataRate:", cfg.DataRate)
+	log.Println("SymbolLength:", cfg.SymbolLength)
+	log.Println("PreambleSymbols:", cfg.PreambleSymbols)
+	log.Println("PreambleLength:", cfg.PreambleLength)
+	log.Println("PacketSymbols:", cfg.PacketSymbols)
+	log.Println("PacketLength:", cfg.PacketLength)
+	log.Println("Preamble:", cfg.Preamble)
 }
 
 type Decoder struct {
