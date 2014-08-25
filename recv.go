@@ -20,14 +20,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"time"
-
-	_ "net/http/pprof"
 
 	"github.com/bemasher/rtltcp"
 )
@@ -225,8 +222,6 @@ func main() {
 	defer logFile.Close()
 	defer sampleFile.Close()
 	defer rcvr.Close()
-
-	go http.ListenAndServe("0.0.0.0:6060", nil)
 
 	rcvr.Run()
 }
