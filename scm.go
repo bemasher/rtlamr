@@ -56,14 +56,14 @@ func (p SCMParser) Parse(data Data) (msg Message, err error) {
 	consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 32)
 	checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
 
-	scm.ERTID = uint32(ertid)
-	scm.ERTType = uint8(erttype)
+	scm.ID = uint32(ertid)
+	scm.Type = uint8(erttype)
 	scm.TamperPhy = uint8(tamperphy)
 	scm.TamperEnc = uint8(tamperenc)
 	scm.Consumption = uint32(consumption)
 	scm.Checksum = uint16(checksum)
 
-	if scm.ERTID == 0 {
+	if scm.ID == 0 {
 		err = errors.New("invalid ert id")
 	}
 
@@ -72,28 +72,28 @@ func (p SCMParser) Parse(data Data) (msg Message, err error) {
 
 // Standard Consumption Message
 type SCM struct {
-	ERTID       uint32
-	ERTType     uint8
-	TamperPhy   uint8
-	TamperEnc   uint8
-	Consumption uint32
-	Checksum    uint16
+	ID          uint32 `xml:",attr"`
+	Type        uint8  `xml:",attr"`
+	TamperPhy   uint8  `xml:",attr"`
+	TamperEnc   uint8  `xml:",attr"`
+	Consumption uint32 `xml:",attr"`
+	Checksum    uint16 `xml:",attr"`
 }
 
-func (scm SCM) Name() string {
+func (scm SCM) MsgType() string {
 	return "SCM"
 }
 
-func (scm SCM) ID() uint32 {
-	return scm.ERTID
+func (scm SCM) MeterID() uint32 {
+	return scm.ID
 }
 
-func (scm SCM) Type() uint8 {
-	return scm.ERTType
+func (scm SCM) MeterType() uint8 {
+	return scm.Type
 }
 
 func (scm SCM) String() string {
 	return fmt.Sprintf("{ID:%8d Type:%2d Tamper:{Phy:%02X Enc:%02X} Consumption:%8d CRC:0x%04X}",
-		scm.ERTID, scm.ERTType, scm.TamperPhy, scm.TamperEnc, scm.Consumption, scm.Checksum,
+		scm.ID, scm.Type, scm.TamperPhy, scm.TamperEnc, scm.Consumption, scm.Checksum,
 	)
 }

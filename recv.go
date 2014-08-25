@@ -64,7 +64,6 @@ func (rcvr *Receiver) NewReceiver(cfg PacketConfig) {
 	}
 
 	// Set some parameters for listening.
-	rcvr.SetCenterFreq(CenterFreq)
 	rcvr.SetSampleRate(uint32(rcvr.d.cfg.SampleRate))
 	rcvr.SetGainMode(true)
 
@@ -107,11 +106,11 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 
-				if *meterID != 0 && uint32(*meterID) != scm.ID() {
+				if *meterID != 0 && uint32(*meterID) != scm.MeterID() {
 					continue
 				}
 
-				if *meterType != 0 && uint8(*meterType) != scm.Type() {
+				if *meterType != 0 && uint8(*meterType) != scm.MeterType() {
 					continue
 				}
 
@@ -176,9 +175,9 @@ type Parser interface {
 }
 
 type Message interface {
-	Name() string
-	ID() uint32
-	Type() uint8
+	MsgType() string
+	MeterID() uint32
+	MeterType() uint8
 }
 
 type LogMessage struct {
@@ -199,11 +198,11 @@ func NewLogMessage(body Message) (msg LogMessage) {
 
 func (msg LogMessage) String() string {
 	if *sampleFilename == os.DevNull {
-		return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.Body.Name(), msg.Body)
+		return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.Body.MsgType(), msg.Body)
 	}
 
 	return fmt.Sprintf("{Time:%s Offset:%d Length:%d %s:%s}",
-		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.Body.Name(), msg.Body,
+		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.Body.MsgType(), msg.Body,
 	)
 }
 
@@ -214,6 +213,7 @@ func init() {
 func main() {
 	rcvr.RegisterFlags()
 	RegisterFlags()
+
 	flag.Parse()
 	HandleFlags()
 
