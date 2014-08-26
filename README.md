@@ -9,6 +9,13 @@ For more info check out the project page: [http://bemasher.github.io/rtlamr/](ht
 
 [![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master)](https://travis-ci.org/bemasher/rtlamr)
 
+### Experimental Build
+If you're not up for setting up the go toolchain along with gcc checkout a new experimental build that doesn't require libFFTW and therefore cgo. Cross-compiled builds are available for all major platforms and architectures: 
+
+https://github.com/bemasher/rtlamr/releases/tag/v0.2-beta
+
+Please be aware that this is purely experimental and there are likely bugs and unexpected behavior.
+
 ### Requirements
  * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
  * GCC (on windows TDM-GCCx64 works nicely)
