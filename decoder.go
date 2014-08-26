@@ -174,14 +174,14 @@ func (d Decoder) Pack(input []byte, slices [][]byte) {
 func (d Decoder) Search(slices [][]byte, preamble []byte) (indexes []int) {
 	for symbolOffset, slice := range slices {
 		for symbolIdx := range slice[:len(slice)-len(preamble)] {
-			found := true
-			for bitIdx := range preamble {
-				found = found && preamble[bitIdx] == slice[symbolIdx+bitIdx]
-				if !found {
+			var result uint8
+			for bitIdx, bit := range preamble {
+				result |= bit ^ slice[symbolIdx+bitIdx]
+				if result != 0 {
 					break
 				}
 			}
-			if found {
+			if result == 0 {
 				indexes = append(indexes, symbolIdx*d.cfg.SymbolLength2+symbolOffset)
 			}
 		}
