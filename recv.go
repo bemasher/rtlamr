@@ -44,9 +44,17 @@ type Receiver struct {
 	p Parser
 }
 
-func (rcvr *Receiver) NewReceiver(cfg PacketConfig) {
-	rcvr.d = NewDecoder(cfg)
-	rcvr.p = NewSCMParser()
+func (rcvr *Receiver) NewReceiver() {
+	switch strings.ToLower(*msgType) {
+	case "scm":
+		rcvr.d = NewDecoder(NewSCMPacketConfig(*symbolLength))
+		rcvr.p = NewSCMParser()
+	case "idm":
+		rcvr.d = NewDecoder(NewIDMPacketConfig(*symbolLength))
+		rcvr.p = NewIDMParser()
+	default:
+		log.Fatalf("Invalid message type: %q\n", *msgType)
+	}
 
 	if !*quiet {
 		rcvr.d.cfg.Log()
@@ -105,6 +113,7 @@ func (rcvr *Receiver) Run() {
 			for _, pkt := range rcvr.d.Decode(block) {
 				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
 				if err != nil {
+					// log.Println(err)
 					continue
 				}
 
@@ -230,7 +239,7 @@ func main() {
 	flag.Parse()
 	HandleFlags()
 
-	rcvr.NewReceiver(NewSCMPacketConfig(*symbolLength))
+	rcvr.NewReceiver()
 
 	defer logFile.Close()
 	defer sampleFile.Close()

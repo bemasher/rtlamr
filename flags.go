@@ -20,7 +20,9 @@ var logFile *os.File
 var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file")
 var sampleFile *os.File
 
-var symbolLength = flag.Int("symbollength", 73, `symbol length in samples, see -help for valid lengths`)
+var msgType = flag.String("msgtype", "scm", "message type to receive: scm or idm")
+
+var symbolLength = flag.Int("symbollength", 73, "symbol length in samples, see -help for valid lengths")
 
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite")
 var meterID = flag.Uint("filterid", 0, "display only messages matching given id")
@@ -43,6 +45,7 @@ func RegisterFlags() {
 	rtlamrFlags := map[string]bool{
 		"logfile":      true,
 		"samplefile":   true,
+		"msgtype":      true,
 		"symbollength": true,
 		"duration":     true,
 		"filterid":     true,
