@@ -22,10 +22,12 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/bemasher/rtlamr/csv"
 	"github.com/bemasher/rtltcp"
 )
 
@@ -178,6 +180,7 @@ type Message interface {
 	MsgType() string
 	MeterID() uint32
 	MeterType() uint8
+	csv.Recorder
 }
 
 type LogMessage struct {
@@ -206,9 +209,19 @@ func (msg LogMessage) String() string {
 	)
 }
 
+func (msg LogMessage) Record() (r []string) {
+	r = append(r, msg.Time.Format(time.RFC3339Nano))
+	r = append(r, strconv.FormatInt(msg.Offset, 10))
+	r = append(r, strconv.FormatInt(int64(msg.Length), 10))
+	r = append(r, msg.Body.Record()...)
+	return r
+}
+
 func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 }
+
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to this file")
 
 func main() {
 	rcvr.RegisterFlags()
@@ -222,6 +235,15 @@ func main() {
 	defer logFile.Close()
 	defer sampleFile.Close()
 	defer rcvr.Close()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	rcvr.Run()
 }

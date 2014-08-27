@@ -97,3 +97,14 @@ func (scm SCM) String() string {
 		scm.ID, scm.Type, scm.TamperPhy, scm.TamperEnc, scm.Consumption, scm.Checksum,
 	)
 }
+
+func (scm SCM) Record() (r []string) {
+	r = append(r, strconv.FormatUint(uint64(scm.ID), 10))
+	r = append(r, strconv.FormatUint(uint64(scm.Type), 10))
+	r = append(r, "0x"+strconv.FormatUint(uint64(scm.TamperPhy), 16))
+	r = append(r, "0x"+strconv.FormatUint(uint64(scm.TamperEnc), 16))
+	r = append(r, strconv.FormatUint(uint64(scm.Consumption), 10))
+	r = append(r, "0x"+strconv.FormatUint(uint64(scm.Checksum), 16))
+
+	return
+}

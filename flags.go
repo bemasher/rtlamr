@@ -10,6 +10,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/bemasher/rtlamr/csv"
 )
 
 var logFilename = flag.String("logfile", "/dev/stdout", "log statement dump file")
@@ -95,6 +97,8 @@ func HandleFlags() {
 	switch *format {
 	case "plain":
 		break
+	case "csv":
+		encoder = csv.NewEncoder(logFile)
 	case "json":
 		encoder = json.NewEncoder(logFile)
 	case "xml":
