@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"log"
@@ -109,8 +110,16 @@ func (rcvr *Receiver) Run() {
 				log.Fatal("Error reading samples: ", err)
 			}
 
-			pktFound := false
+			seen := make(map[string]bool)
 			for _, pkt := range rcvr.d.Decode(block) {
+				data := NewDataFromBytes(pkt)
+
+				if !seen[data.Bits] {
+					seen[data.Bits] = true
+				} else {
+					continue
+				}
+
 				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
 				if err != nil {
 					// log.Println(err)
@@ -126,7 +135,6 @@ func (rcvr *Receiver) Run() {
 				}
 
 				msg := NewLogMessage(scm)
-				pktFound = true
 
 				if encoder == nil {
 					// A nil encoder is just plain-text output.
@@ -139,7 +147,7 @@ func (rcvr *Receiver) Run() {
 
 					// The XML encoder doesn't write new lines after each
 					// element, add them.
-					if strings.ToLower(*format) == "xml" {
+					if _, ok := encoder.(*xml.Encoder); ok {
 						fmt.Fprintln(logFile)
 					}
 				}
@@ -149,7 +157,7 @@ func (rcvr *Receiver) Run() {
 				}
 			}
 
-			if pktFound {
+			if *sampleFilename != os.DevNull {
 				_, err = sampleFile.Write(rcvr.d.iq)
 				if err != nil {
 					log.Fatal("Error writing raw samples to file:", err)
@@ -196,25 +204,25 @@ type LogMessage struct {
 	Time   time.Time
 	Offset int64
 	Length int
-	Body   Message
+	Message
 }
 
-func NewLogMessage(body Message) (msg LogMessage) {
-	msg.Time = time.Now()
-	msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-	msg.Length = rcvr.d.cfg.BufferLength << 1
-	msg.Body = body
+func NewLogMessage(msg Message) (logMsg LogMessage) {
+	logMsg.Time = time.Now()
+	logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+	logMsg.Length = rcvr.d.cfg.BufferLength << 1
+	logMsg.Message = msg
 
 	return
 }
 
 func (msg LogMessage) String() string {
 	if *sampleFilename == os.DevNull {
-		return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.Body.MsgType(), msg.Body)
+		return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.MsgType(), msg.Message)
 	}
 
 	return fmt.Sprintf("{Time:%s Offset:%d Length:%d %s:%s}",
-		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.Body.MsgType(), msg.Body,
+		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.MsgType(), msg.Message,
 	)
 }
 
@@ -222,7 +230,7 @@ func (msg LogMessage) Record() (r []string) {
 	r = append(r, msg.Time.Format(time.RFC3339Nano))
 	r = append(r, strconv.FormatInt(msg.Offset, 10))
 	r = append(r, strconv.FormatInt(int64(msg.Length), 10))
-	r = append(r, msg.Body.Record()...)
+	r = append(r, msg.Message.Record()...)
 	return r
 }
 
