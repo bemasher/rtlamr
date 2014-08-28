@@ -36,6 +36,7 @@ Available command-line flags are as follows:
 Usage of rtlamr:
   -cpuprofile=: write cpu profile to this file
   -duration=0: time to run for, 0 for infinite, ex. 1h5m10s
+  -fastmag=false: use faster alpha max + beta min magnitude approximation
   -filterid=0: display only messages matching given id
   -filtertype=0: display only messages matching given type
   -format=plain: format to write log messages in: plain, csv, json, xml or gob
