@@ -161,7 +161,7 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 
 type AlphaMaxBetaMinLUT []float64
 
-func NewAlphaMaxBetaMinLUT() (lut MagLUT) {
+func NewAlphaMaxBetaMinLUT() (lut AlphaMaxBetaMinLUT) {
 	lut = make([]float64, 0x100)
 	for idx := range lut {
 		lut[idx] = math.Abs(127.4 - float64(idx))
