@@ -110,6 +110,7 @@ func (rcvr *Receiver) Run() {
 				log.Fatal("Error reading samples: ", err)
 			}
 
+			pktFound := false
 			for _, pkt := range rcvr.d.Decode(block) {
 				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
 				if err != nil {
@@ -143,15 +144,21 @@ func (rcvr *Receiver) Run() {
 					}
 				}
 
+				pktFound = true
 				if *single {
-					return
+					break
 				}
 			}
 
-			if *sampleFilename != os.DevNull {
-				_, err = sampleFile.Write(rcvr.d.iq)
-				if err != nil {
-					log.Fatal("Error writing raw samples to file:", err)
+			if pktFound {
+				if *sampleFilename != os.DevNull {
+					_, err = sampleFile.Write(rcvr.d.iq)
+					if err != nil {
+						log.Fatal("Error writing raw samples to file:", err)
+					}
+				}
+				if *single {
+					return
 				}
 			}
 		}
