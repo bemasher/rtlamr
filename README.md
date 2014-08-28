@@ -22,6 +22,10 @@ For more info check out the project page: [http://bemasher.github.io/rtlamr/](ht
 This project requires the package [`github.com/bemasher/rtltcp`](http://godoc.org/github.com/bemasher/rtltcp), which provides a means of controlling and sampling from rtl-sdr dongles via the `rtl_tcp` tool. This package will be automatically downloaded and installed when getting rtlamr. The following command should be all that is required to install rtlamr.
 
 	go get github.com/bemasher/rtlamr
+	
+	cd $GOPATH/src/github.com/bemasher/rtlamr
+	git checkout experimental
+	go install
 
 This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add `$GOPATH/bin` to the path.
 
