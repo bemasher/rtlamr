@@ -37,6 +37,7 @@ var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file
 var sampleFile *os.File
 
 var msgType = flag.String("msgtype", "scm", "message type to receive: scm or idm")
+var fastMag = flag.Bool("fastmag", false, "use faster alpha max + beta min magnitude approximation")
 
 var symbolLength = flag.Int("symbollength", 73, "symbol length in samples, see -help for valid lengths")
 
@@ -71,6 +72,7 @@ func RegisterFlags() {
 		"quiet":        true,
 		"single":       true,
 		"cpuprofile":   true,
+		"fastmag":      true,
 	}
 
 	printDefaults := func(validFlags map[string]bool, inclusion bool) {

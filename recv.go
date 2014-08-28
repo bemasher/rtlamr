@@ -110,16 +110,7 @@ func (rcvr *Receiver) Run() {
 				log.Fatal("Error reading samples: ", err)
 			}
 
-			seen := make(map[string]bool)
 			for _, pkt := range rcvr.d.Decode(block) {
-				data := NewDataFromBytes(pkt)
-
-				if !seen[data.Bits] {
-					seen[data.Bits] = true
-				} else {
-					continue
-				}
-
 				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
 				if err != nil {
 					// log.Println(err)
