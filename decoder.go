@@ -53,7 +53,7 @@ type Decoder struct {
 	signal    []float64
 	quantized []byte
 
-	lut MagLUT
+	lut MagnitudeLUT
 
 	preamble []byte
 	slices   [][]byte
@@ -68,7 +68,11 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 	d.signal = make([]float64, d.cfg.BufferLength)
 	d.quantized = make([]byte, d.cfg.BufferLength)
 
-	d.lut = NewMagLUT()
+	if *fastMag {
+		d.lut = NewAlphaMaxBetaMinLUT()
+	} else {
+		d.lut = NewSqrtMagLUT()
+	}
 
 	d.preamble = make([]byte, len(d.cfg.Preamble))
 	for idx := range d.cfg.Preamble {
@@ -133,9 +137,13 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	return
 }
 
+type MagnitudeLUT interface {
+	Execute([]byte, []float64)
+}
+
 type MagLUT []float64
 
-func NewMagLUT() (lut MagLUT) {
+func NewSqrtMagLUT() (lut MagLUT) {
 	lut = make([]float64, 0x100)
 	for idx := range lut {
 		lut[idx] = 127.4 - float64(idx)
@@ -148,6 +156,34 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 	for idx := range output {
 		lutIdx := idx << 1
 		output[idx] = math.Sqrt(lut[input[lutIdx]] + lut[input[lutIdx+1]])
+	}
+}
+
+type AlphaMaxBetaMinLUT []float64
+
+func NewAlphaMaxBetaMinLUT() (lut MagLUT) {
+	lut = make([]float64, 0x100)
+	for idx := range lut {
+		lut[idx] = math.Abs(127.4 - float64(idx))
+	}
+	return
+}
+
+func (lut AlphaMaxBetaMinLUT) Execute(input []byte, output []float64) {
+	const (
+		α = 0.948059448969
+		ß = 0.392699081699
+	)
+
+	for idx := range output {
+		lutIdx := idx << 1
+		i := lut[input[lutIdx]]
+		q := lut[input[lutIdx+1]]
+		if i > q {
+			output[idx] = α*i + ß*q
+		} else {
+			output[idx] = α*q + ß*i
+		}
 	}
 }
 
