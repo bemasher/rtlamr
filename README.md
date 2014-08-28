@@ -19,7 +19,7 @@ For more info check out the project page: [http://bemasher.github.io/rtlamr/](ht
    * Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 
 ### Building
-This project requires two other packages I've written for SDR related things in Go. The package [`github.com/bemasher/rtltcp`](http://godoc.org/github.com/bemasher/rtltcp) provides a means of controlling and sampling from rtl-sdr dongles via the `rtl_tcp` tool. This package will be automatically downloaded and installed when getting rtlamr. The following command should be all that is required to install rtlamr.
+This project requires the package [`github.com/bemasher/rtltcp`](http://godoc.org/github.com/bemasher/rtltcp), which provides a means of controlling and sampling from rtl-sdr dongles via the `rtl_tcp` tool. This package will be automatically downloaded and installed when getting rtlamr. The following command should be all that is required to install rtlamr.
 
 	go get github.com/bemasher/rtlamr
 
