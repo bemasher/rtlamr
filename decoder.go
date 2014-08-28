@@ -53,7 +53,8 @@ type Decoder struct {
 	signal    []float64
 	quantized []byte
 
-	lut MagnitudeLUT
+	csum []float64
+	lut  MagnitudeLUT
 
 	preamble []byte
 	slices   [][]byte
@@ -67,6 +68,8 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 	d.iq = make([]byte, d.cfg.BufferLength<<1)
 	d.signal = make([]float64, d.cfg.BufferLength)
 	d.quantized = make([]byte, d.cfg.BufferLength)
+
+	d.csum = make([]float64, d.cfg.BlockSize+d.cfg.SymbolLength2+1)
 
 	if *fastMag {
 		d.lut = NewAlphaMaxBetaMinLUT()
@@ -188,18 +191,16 @@ func (lut AlphaMaxBetaMinLUT) Execute(input []byte, output []float64) {
 }
 
 func (d Decoder) Filter(input []float64) {
-	csum := make([]float64, len(input)+1)
-
 	var sum float64
 	for idx, v := range input {
 		sum += v
-		csum[idx+1] = sum
+		d.csum[idx+1] = sum
 	}
 
-	lower := csum[d.cfg.SymbolLength:]
-	upper := csum[d.cfg.SymbolLength2:]
+	lower := d.csum[d.cfg.SymbolLength:]
+	upper := d.csum[d.cfg.SymbolLength2:]
 	for idx := range input[:len(input)-d.cfg.SymbolLength2] {
-		input[idx] = (lower[idx] - csum[idx]) - (upper[idx] - lower[idx])
+		input[idx] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
 	}
 
 	return
