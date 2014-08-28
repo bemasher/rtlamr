@@ -24,7 +24,7 @@ var msgType = flag.String("msgtype", "scm", "message type to receive: scm or idm
 
 var symbolLength = flag.Int("symbollength", 73, "symbol length in samples, see -help for valid lengths")
 
-var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite")
+var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
 var meterID = flag.Uint("filterid", 0, "display only messages matching given id")
 var meterType = flag.Uint("filtertype", 0, "display only messages matching given type")
 
@@ -54,7 +54,7 @@ func RegisterFlags() {
 		"gobunsafe":    true,
 		"quiet":        true,
 		"single":       true,
-		// "help":         true,
+		"cpuprofile":   true,
 	}
 
 	printDefaults := func(validFlags map[string]bool, inclusion bool) {
