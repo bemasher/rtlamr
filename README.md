@@ -1,20 +1,9 @@
 ### Purpose
-For several years now utilities have been using "smart meters" to optimize their residential meter reading infrastructure. Smart meters continuously transmit consumption information in the 900MHz ISM band allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. The protocol used to transmit these messages is fairly straight forward, however I have yet to find any reasonably priced product for receiving these messages.
+Utilities often use "smart meters" to optimize their residential meter reading infrastructure. Smart meters transmit consumption information in the 900MHz ISM band allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. One protocol in particular: Encoder Receiver Transmitter by Itron is fairly straight forward to decode, however I have yet to find any reasonably priced product for receiving these messages.
 
-This project is a proof of concept software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
-
-Currently the only known supported and tested meter is the Itron C1SR. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
-
-For more info check out the project page: [http://bemasher.github.io/rtlamr/](http://bemasher.github.io/rtlamr/)
+This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
 [![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master)](https://travis-ci.org/bemasher/rtlamr)
-
-### Experimental Build
-If you're not up for setting up the go toolchain along with gcc checkout a new experimental build that doesn't require libFFTW and therefore cgo. Cross-compiled builds are available for all major platforms and architectures: 
-
-https://github.com/bemasher/rtlamr/releases/tag/v0.2-beta
-
-Please be aware that this is purely experimental and there are likely bugs and unexpected behavior.
 
 ### Requirements
  * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
@@ -74,14 +63,20 @@ $ rtl_tcp
 $ rtlamr
 ```
 
-If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp`.
+If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp` with an address accessible by the system running the receiver.
 
+### Messages
+Currently both SCM (Standard Consumption Message) and IDM (Interval Data Message) packets can be decoded but are mutually exclusive, you cannot receive both simultaneously. See (Wikipedia: Encoder Receiver Transmitter)[http://en.wikipedia.org/wiki/Encoder_receiver_transmitter] for more details on packet structure.
+
+### Sensitivity
 Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~250 different meters and intermittently from another 400 meters. These figures are calculated from messages received during a 25 minute window where the preamble had no bit errors and no errors were detected or corrected using the checksum. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
 
 ### Compatibility
-I've compiled a list of ERT-compatible meters and modules which can be found here: https://github.com/bemasher/rtlamr/blob/master/meters.md
+Currently the only tested meter is the Itron C1SR. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
 
-If you've got a meter not on the list that you've successfully received messages from, you can submit this info from the meters list above.
+Check out the table of meters I've been compiling from various internet sources: [ERT Compatible Meters](https://github.com/bemasher/rtlamr/blob/master/meters.md)
+
+If you've got a meter not on the list that you've successfully received messages from, you can submit this info via a form available at the link above.
 
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
