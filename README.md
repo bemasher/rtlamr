@@ -1,6 +1,3 @@
-# Experimental Branch
-This branch is an experimental version of rtlamr, and is essentially a rewrite. This version uses a new preamble detection algorithm which doesn't require an FFT and so doesn't require libFFTW. This will allow cross-compiled builds for all major platforms and architectures now that cgo is no longer used. The rest of the documentation will be updated to reflect the build process in the near future.
-
 ### Purpose
 For several years now utilities have been using "smart meters" to optimize their residential meter reading infrastructure. Smart meters continuously transmit consumption information in the 900MHz ISM band allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. The protocol used to transmit these messages is fairly straight forward, however I have yet to find any reasonably priced product for receiving these messages.
 
@@ -22,10 +19,6 @@ For more info check out the project page: [http://bemasher.github.io/rtlamr/](ht
 This project requires the package [`github.com/bemasher/rtltcp`](http://godoc.org/github.com/bemasher/rtltcp), which provides a means of controlling and sampling from rtl-sdr dongles via the `rtl_tcp` tool. This package will be automatically downloaded and installed when getting rtlamr. The following command should be all that is required to install rtlamr.
 
 	go get github.com/bemasher/rtlamr
-	
-	cd $GOPATH/src/github.com/bemasher/rtlamr
-	git checkout experimental
-	go install
 
 This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add `$GOPATH/bin` to the path.
 
@@ -60,7 +53,7 @@ rtltcp specific:
   -server=127.0.0.1:1234: address or hostname of rtl_tcp instance
   -testmode=false: enable/disable test mode
   -tunergain=0: set tuner gain in dB
-  -tunergainmode=true: enable/disable tuner gain
+  -tunergainmode=false: enable/disable tuner gain
   -tunerxtalfreq=0: set tuner xtal frequency
 ```
 
