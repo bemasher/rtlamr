@@ -74,9 +74,24 @@ func (rcvr *Receiver) NewReceiver() {
 		log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 	}
 
+	gainFlagSet := false
+	sampleRateFlagSet := false
+	flag.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "gainbyindex", "tunergainmode", "tunergain", "agcmode":
+			gainFlagSet = true
+		case "samplerate":
+			sampleRateFlagSet = true
+		}
+	})
+
 	// Set some parameters for listening.
-	rcvr.SetSampleRate(uint32(rcvr.d.cfg.SampleRate))
-	rcvr.SetGainMode(true)
+	if !sampleRateFlagSet {
+		rcvr.SetSampleRate(uint32(rcvr.d.cfg.SampleRate))
+	}
+	if !gainFlagSet {
+		rcvr.SetGainMode(true)
+	}
 
 	return
 }
