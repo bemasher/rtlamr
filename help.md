@@ -8,7 +8,49 @@ Detailed usage information for the various flags of RTLAMR.
   - `fastmag` uses a faster magnitude calculation algorithm, sacrifices accuracy for speed. Defaults to false.
   - `filterid` display and dump raw samples only for messages with a matching meter id. Defaults to 0 for no filtering.
   - `filtertype` display and dump raw samples only for messages with a matching type. Defaults to 0 for no filtering.
-  - `format` format to write log messages in. Defaults to plain. Options: plain, csv, json, xml or gob
+  - `format` format to write log messages in. Defaults to plain. Options: plain, csv, json, xml or gob.
+
+    ```go
+	type LogMessage struct {
+		Time   time.Time
+		Offset int64
+		Length int
+		Message // SCM and IDM both implement Message.
+	}
+    ```
+
+    ```go
+	type SCM struct {
+		ID          uint32
+		Type        uint8
+		TamperPhy   uint8
+		TamperEnc   uint8
+		Consumption uint32
+		Checksum    uint16
+	}
+    ```
+
+    ```go
+	type IDM struct {
+		Preamble                         uint32
+		PacketTypeID                     uint8
+		PacketLength                     uint8
+		HammingCode                      uint8
+		ApplicationVersion               uint8
+		ERTType                          uint8
+		ERTSerialNumber                  uint32
+		ConsumptionIntervalCount         uint8
+		ModuleProgrammingState           uint8
+		TamperCounters                   []byte // 6 Bytes
+		AsynchronousCounters             uint16
+		PowerOutageFlags                 []byte // 6 Bytes
+		LastConsumptionCount             uint32
+		DifferentialConsumptionIntervals [47]uint16 // 53 Bytes
+		TransmitTimeOffset               uint16
+		SerialNumberCRC                  uint16
+		PacketCRC                        uint16
+	}
+    ```
   - `gobunsafe` allows gob output to stdout. Gob output is not stdout safe and will bork a terminal so user must specify `-gobunsafe` or specify a non-stdout file via `-logfile`. Defaults to false and warns user.
   - `msgtype` specifies the message type to receive: scm or idm. Defaults to scm.
   - `quiet` suppresses printing state information at startup. Defaults to false.
