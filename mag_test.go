@@ -3,11 +3,13 @@ package main
 import (
 	"crypto/rand"
 
+	"github.com/bemasher/rtlamr/decode"
+
 	"testing"
 )
 
 func BenchmarkSqrtMag(b *testing.B) {
-	lut := NewSqrtMagLUT()
+	lut := decode.NewSqrtMagLUT()
 	input := make([]byte, 8192)
 	output := make([]float64, 4096)
 
@@ -22,7 +24,7 @@ func BenchmarkSqrtMag(b *testing.B) {
 }
 
 func BenchmarkAlphaMaxBetaMinMag(b *testing.B) {
-	lut := NewAlphaMaxBetaMinLUT()
+	lut := decode.NewAlphaMaxBetaMinLUT()
 	input := make([]byte, 8192)
 	output := make([]float64, 4096)
 
