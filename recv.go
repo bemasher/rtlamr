@@ -49,10 +49,10 @@ type Receiver struct {
 func (rcvr *Receiver) NewReceiver() {
 	switch strings.ToLower(*msgType) {
 	case "scm":
-		rcvr.d = decode.NewDecoder(NewSCMPacketConfig(*symbolLength))
+		rcvr.d = decode.NewDecoder(NewSCMPacketConfig(*symbolLength), *fastMag)
 		rcvr.p = NewSCMParser()
 	case "idm":
-		rcvr.d = decode.NewDecoder(NewIDMPacketConfig(*symbolLength))
+		rcvr.d = decode.NewDecoder(NewIDMPacketConfig(*symbolLength), *fastMag)
 		rcvr.p = NewIDMParser()
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)

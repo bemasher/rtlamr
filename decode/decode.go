@@ -33,8 +33,6 @@ type PacketConfig struct {
 	PreambleLength, PacketLength   int
 	BufferLength                   int
 	Preamble                       string
-
-	FastMag bool
 }
 
 func (cfg PacketConfig) Log() {
@@ -67,7 +65,7 @@ type Decoder struct {
 }
 
 // Create a new decoder with the given packet configuration.
-func NewDecoder(cfg PacketConfig) (d Decoder) {
+func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 	d.Cfg = cfg
 
 	// Allocate necessary buffers.
@@ -78,7 +76,7 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 	d.csum = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength2+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	if cfg.FastMag {
+	if fastMag {
 		d.lut = NewAlphaMaxBetaMinLUT()
 	} else {
 		d.lut = NewSqrtMagLUT()
