@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bemasher/rtlamr/csv"
+	"github.com/bemasher/rtlamr/decode"
 	"github.com/bemasher/rtltcp"
 )
 
@@ -41,24 +42,24 @@ var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
-	d Decoder
+	d decode.Decoder
 	p Parser
 }
 
 func (rcvr *Receiver) NewReceiver() {
 	switch strings.ToLower(*msgType) {
 	case "scm":
-		rcvr.d = NewDecoder(NewSCMPacketConfig(*symbolLength))
+		rcvr.d = decode.NewDecoder(NewSCMPacketConfig(*symbolLength))
 		rcvr.p = NewSCMParser()
 	case "idm":
-		rcvr.d = NewDecoder(NewIDMPacketConfig(*symbolLength))
+		rcvr.d = decode.NewDecoder(NewIDMPacketConfig(*symbolLength))
 		rcvr.p = NewIDMParser()
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
 
 	if !*quiet {
-		rcvr.d.cfg.Log()
+		rcvr.d.Cfg.Log()
 		log.Println("CRC:", rcvr.p)
 	}
 
@@ -94,7 +95,7 @@ func (rcvr *Receiver) NewReceiver() {
 	}
 
 	if !sampleRateFlagSet {
-		rcvr.SetSampleRate(uint32(rcvr.d.cfg.SampleRate))
+		rcvr.SetSampleRate(uint32(rcvr.d.Cfg.SampleRate))
 	}
 	if !gainFlagSet {
 		rcvr.SetGainMode(true)
@@ -114,7 +115,7 @@ func (rcvr *Receiver) Run() {
 		tLimit = time.After(*timeLimit)
 	}
 
-	block := make([]byte, rcvr.d.cfg.BlockSize2)
+	block := make([]byte, rcvr.d.Cfg.BlockSize2)
 
 	start := time.Now()
 	for {
@@ -174,7 +175,7 @@ func (rcvr *Receiver) Run() {
 
 			if pktFound {
 				if *sampleFilename != os.DevNull {
-					_, err = sampleFile.Write(rcvr.d.iq)
+					_, err = sampleFile.Write(rcvr.d.IQ)
 					if err != nil {
 						log.Fatal("Error writing raw samples to file:", err)
 					}
@@ -231,7 +232,7 @@ type LogMessage struct {
 func NewLogMessage(msg Message) (logMsg LogMessage) {
 	logMsg.Time = time.Now()
 	logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-	logMsg.Length = rcvr.d.cfg.BufferLength << 1
+	logMsg.Length = rcvr.d.Cfg.BufferLength << 1
 	logMsg.Message = msg
 
 	return

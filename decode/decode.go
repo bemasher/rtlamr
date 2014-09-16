@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package decode
 
 import (
 	"fmt"
@@ -33,6 +33,8 @@ type PacketConfig struct {
 	PreambleLength, PacketLength   int
 	BufferLength                   int
 	Preamble                       string
+
+	FastMag bool
 }
 
 func (cfg PacketConfig) Log() {
@@ -49,11 +51,11 @@ func (cfg PacketConfig) Log() {
 
 // Decoder contains buffers and radio configuration.
 type Decoder struct {
-	cfg PacketConfig
+	Cfg PacketConfig
 
-	iq        []byte
-	signal    []float64
-	quantized []byte
+	IQ        []byte
+	Signal    []float64
+	Quantized []byte
 
 	csum []float64
 	lut  MagnitudeLUT
@@ -66,26 +68,26 @@ type Decoder struct {
 
 // Create a new decoder with the given packet configuration.
 func NewDecoder(cfg PacketConfig) (d Decoder) {
-	d.cfg = cfg
+	d.Cfg = cfg
 
 	// Allocate necessary buffers.
-	d.iq = make([]byte, d.cfg.BufferLength<<1)
-	d.signal = make([]float64, d.cfg.BufferLength)
-	d.quantized = make([]byte, d.cfg.BufferLength)
+	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
+	d.Signal = make([]float64, d.Cfg.BufferLength)
+	d.Quantized = make([]byte, d.Cfg.BufferLength)
 
-	d.csum = make([]float64, d.cfg.BlockSize+d.cfg.SymbolLength2+1)
+	d.csum = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength2+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	if *fastMag {
+	if cfg.FastMag {
 		d.lut = NewAlphaMaxBetaMinLUT()
 	} else {
 		d.lut = NewSqrtMagLUT()
 	}
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
-	d.preamble = make([]byte, len(d.cfg.Preamble))
-	for idx := range d.cfg.Preamble {
-		if d.cfg.Preamble[idx] == '1' {
+	d.preamble = make([]byte, len(d.Cfg.Preamble))
+	for idx := range d.Cfg.Preamble {
+		if d.Cfg.Preamble[idx] == '1' {
 			d.preamble[idx] = 1
 		}
 	}
@@ -93,18 +95,18 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 	// Slice quantized sample buffer to make searching for the preamble more
 	// memory local. Pre-allocate a flat buffer so memory is contiguous and
 	// assign slices to the buffer.
-	d.slices = make([][]byte, d.cfg.SymbolLength2)
-	flat := make([]byte, d.cfg.BlockSize2-(d.cfg.BlockSize2%d.cfg.SymbolLength2))
+	d.slices = make([][]byte, d.Cfg.SymbolLength2)
+	flat := make([]byte, d.Cfg.BlockSize2-(d.Cfg.BlockSize2%d.Cfg.SymbolLength2))
 
 	for symbolOffset := range d.slices {
-		lower := symbolOffset * (d.cfg.BlockSize2 / d.cfg.SymbolLength2)
-		upper := (symbolOffset + 1) * (d.cfg.BlockSize2 / d.cfg.SymbolLength2)
+		lower := symbolOffset * (d.Cfg.BlockSize2 / d.Cfg.SymbolLength2)
+		upper := (symbolOffset + 1) * (d.Cfg.BlockSize2 / d.Cfg.SymbolLength2)
 		d.slices[symbolOffset] = flat[lower:upper]
 	}
 
 	// Signal up to the final stage is 1-bit per byte. Allocate a buffer to
 	// store packed version 8-bits per byte.
-	d.pkt = make([]byte, d.cfg.PacketSymbols>>3)
+	d.pkt = make([]byte, d.Cfg.PacketSymbols>>3)
 
 	return
 }
@@ -112,28 +114,28 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 // Decode accepts a sample block and performs various DSP techniques to extract a packet.
 func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	// Shift buffers to append new block.
-	copy(d.iq, d.iq[d.cfg.BlockSize<<1:])
-	copy(d.signal, d.signal[d.cfg.BlockSize:])
-	copy(d.quantized, d.quantized[d.cfg.BlockSize:])
-	copy(d.iq[d.cfg.PacketLength<<1:], input[:])
+	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
+	copy(d.Signal, d.Signal[d.Cfg.BlockSize:])
+	copy(d.Quantized, d.Quantized[d.Cfg.BlockSize:])
+	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
-	iqBlock := d.iq[d.cfg.PacketLength<<1:]
-	signalBlock := d.signal[d.cfg.PacketLength:]
+	iqBlock := d.IQ[d.Cfg.PacketLength<<1:]
+	signalBlock := d.Signal[d.Cfg.PacketLength:]
 
 	// Compute the magnitude of the new block.
 	d.lut.Execute(iqBlock, signalBlock)
 
-	signalBlock = d.signal[d.cfg.PacketLength-d.cfg.SymbolLength2:]
+	signalBlock = d.Signal[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
 
 	// Perform matched filter on new block.
 	d.Filter(signalBlock)
-	signalBlock = d.signal[d.cfg.PacketLength-d.cfg.SymbolLength2:]
+	signalBlock = d.Signal[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
 
 	// Perform bit-decision on new block.
-	Quantize(signalBlock, d.quantized[d.cfg.PacketLength-d.cfg.SymbolLength2:])
+	Quantize(signalBlock, d.Quantized[d.Cfg.PacketLength-d.Cfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
-	d.Pack(d.quantized[:d.cfg.BlockSize2], d.slices)
+	d.Pack(d.Quantized[:d.Cfg.BlockSize2], d.slices)
 
 	// Get a list of indexes the preamble exists at.
 	indexes := d.Search(d.slices, d.preamble)
@@ -146,14 +148,14 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	for _, qIdx := range indexes {
 		// Check that we're still within the first sample block. We'll catch
 		// the message on the next sample block otherwise.
-		if qIdx > d.cfg.BlockSize {
+		if qIdx > d.Cfg.BlockSize {
 			continue
 		}
 
 		// Packet is 1 bit per byte, pack to 8-bits per byte.
-		for pIdx := 0; pIdx < d.cfg.PacketSymbols; pIdx++ {
+		for pIdx := 0; pIdx < d.Cfg.PacketSymbols; pIdx++ {
 			d.pkt[pIdx>>3] <<= 1
-			d.pkt[pIdx>>3] |= d.quantized[qIdx+(pIdx*d.cfg.SymbolLength2)]
+			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.Cfg.SymbolLength2)]
 		}
 
 		// Store the packet in the seen map and append to the packet list.
@@ -236,9 +238,9 @@ func (d Decoder) Filter(input []float64) {
 	}
 
 	// Filter result is difference of summation of lower and upper symbols.
-	lower := d.csum[d.cfg.SymbolLength:]
-	upper := d.csum[d.cfg.SymbolLength2:]
-	for idx := range input[:len(input)-d.cfg.SymbolLength2] {
+	lower := d.csum[d.Cfg.SymbolLength:]
+	upper := d.csum[d.Cfg.SymbolLength2:]
+	for idx := range input[:len(input)-d.Cfg.SymbolLength2] {
 		input[idx] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
 	}
 
@@ -260,7 +262,7 @@ func Quantize(input []float64, output []byte) {
 func (d Decoder) Pack(input []byte, slices [][]byte) {
 	for symbolOffset, slice := range slices {
 		for symbolIdx := range slice {
-			slice[symbolIdx] = input[symbolIdx*d.cfg.SymbolLength2+symbolOffset]
+			slice[symbolIdx] = input[symbolIdx*d.Cfg.SymbolLength2+symbolOffset]
 		}
 	}
 
@@ -281,7 +283,7 @@ func (d Decoder) Search(slices [][]byte, preamble []byte) (indexes []int) {
 				}
 			}
 			if result == 0 {
-				indexes = append(indexes, symbolIdx*d.cfg.SymbolLength2+symbolOffset)
+				indexes = append(indexes, symbolIdx*d.Cfg.SymbolLength2+symbolOffset)
 			}
 		}
 	}
