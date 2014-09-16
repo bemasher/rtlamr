@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package scm
 
 import (
 	"errors"
@@ -23,9 +23,10 @@ import (
 
 	"github.com/bemasher/rtlamr/crc"
 	"github.com/bemasher/rtlamr/decode"
+	"github.com/bemasher/rtlamr/parse"
 )
 
-func NewSCMPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
+func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	cfg.DataRate = 32768
 
 	cfg.SymbolLength = symbolLength
@@ -49,16 +50,16 @@ func NewSCMPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	return
 }
 
-type SCMParser struct {
+type Parser struct {
 	crc.CRC
 }
 
-func NewSCMParser() (p SCMParser) {
+func NewParser() (p Parser) {
 	p.CRC = crc.NewCRC("BCH", 0, 0x6F63, 0)
 	return
 }
 
-func (p SCMParser) Parse(data Data) (msg Message, err error) {
+func (p Parser) Parse(data parse.Data) (msg parse.Message, err error) {
 	var scm SCM
 
 	if p.Checksum(data.Bytes[2:]) != 0 {

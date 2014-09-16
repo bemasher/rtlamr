@@ -24,18 +24,18 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/bemasher/rtlamr/csv"
 	"github.com/bemasher/rtlamr/decode"
+	"github.com/bemasher/rtlamr/idm"
+	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/scm"
 	"github.com/bemasher/rtltcp"
 )
 
 const (
 	CenterFreq = 920299072
-	TimeFormat = "2006-01-02T15:04:05.000"
 )
 
 var rcvr Receiver
@@ -43,17 +43,17 @@ var rcvr Receiver
 type Receiver struct {
 	rtltcp.SDR
 	d decode.Decoder
-	p Parser
+	p parse.Parser
 }
 
 func (rcvr *Receiver) NewReceiver() {
 	switch strings.ToLower(*msgType) {
 	case "scm":
-		rcvr.d = decode.NewDecoder(NewSCMPacketConfig(*symbolLength), *fastMag)
-		rcvr.p = NewSCMParser()
+		rcvr.d = decode.NewDecoder(scm.NewPacketConfig(*symbolLength), *fastMag)
+		rcvr.p = scm.NewParser()
 	case "idm":
-		rcvr.d = decode.NewDecoder(NewIDMPacketConfig(*symbolLength), *fastMag)
-		rcvr.p = NewIDMParser()
+		rcvr.d = decode.NewDecoder(idm.NewPacketConfig(*symbolLength), *fastMag)
+		rcvr.p = idm.NewParser()
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
@@ -135,7 +135,7 @@ func (rcvr *Receiver) Run() {
 
 			pktFound := false
 			for _, pkt := range rcvr.d.Decode(block) {
-				scm, err := rcvr.p.Parse(NewDataFromBytes(pkt))
+				scm, err := rcvr.p.Parse(parse.NewDataFromBytes(pkt))
 				if err != nil {
 					// log.Println(err)
 					continue
@@ -149,11 +149,19 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 
-				msg := NewLogMessage(scm)
+				var msg parse.LogMessage
+				msg.Time = time.Now()
+				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+				msg.Length = rcvr.d.Cfg.BufferLength << 1
+				msg.Message = scm
 
 				if encoder == nil {
 					// A nil encoder is just plain-text output.
-					fmt.Fprintln(logFile, msg)
+					if *sampleFilename == os.DevNull {
+						fmt.Fprintln(logFile, msg.StringNoOffset())
+					} else {
+						fmt.Fprintln(logFile, msg)
+					}
 				} else {
 					err = encoder.Encode(msg)
 					if err != nil {
@@ -186,74 +194,6 @@ func (rcvr *Receiver) Run() {
 			}
 		}
 	}
-}
-
-type Data struct {
-	Bits  string
-	Bytes []byte
-}
-
-func NewDataFromBytes(data []byte) (d Data) {
-	d.Bytes = data
-	for _, b := range data {
-		d.Bits += fmt.Sprintf("%08b", b)
-	}
-
-	return
-}
-
-func NewDataFromBits(data string) (d Data) {
-	d.Bits = data
-	for idx := 0; idx < len(data); idx += 8 {
-		b, _ := strconv.ParseUint(d.Bits[idx:idx+8], 2, 8)
-		d.Bytes[idx>>3] = uint8(b)
-	}
-	return
-}
-
-type Parser interface {
-	Parse(Data) (Message, error)
-}
-
-type Message interface {
-	MsgType() string
-	MeterID() uint32
-	MeterType() uint8
-	csv.Recorder
-}
-
-type LogMessage struct {
-	Time   time.Time
-	Offset int64
-	Length int
-	Message
-}
-
-func NewLogMessage(msg Message) (logMsg LogMessage) {
-	logMsg.Time = time.Now()
-	logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-	logMsg.Length = rcvr.d.Cfg.BufferLength << 1
-	logMsg.Message = msg
-
-	return
-}
-
-func (msg LogMessage) String() string {
-	if *sampleFilename == os.DevNull {
-		return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.MsgType(), msg.Message)
-	}
-
-	return fmt.Sprintf("{Time:%s Offset:%d Length:%d %s:%s}",
-		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.MsgType(), msg.Message,
-	)
-}
-
-func (msg LogMessage) Record() (r []string) {
-	r = append(r, msg.Time.Format(time.RFC3339Nano))
-	r = append(r, strconv.FormatInt(msg.Offset, 10))
-	r = append(r, strconv.FormatInt(int64(msg.Length), 10))
-	r = append(r, msg.Message.Record()...)
-	return r
 }
 
 func init() {

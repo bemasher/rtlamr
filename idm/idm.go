@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package idm
 
 import (
 	"encoding/binary"
@@ -25,9 +25,10 @@ import (
 
 	"github.com/bemasher/rtlamr/crc"
 	"github.com/bemasher/rtlamr/decode"
+	"github.com/bemasher/rtlamr/parse"
 )
 
-func NewIDMPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
+func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	cfg.DataRate = 32768
 
 	cfg.SymbolLength = symbolLength
@@ -50,11 +51,11 @@ func NewIDMPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	return
 }
 
-type IDMParser struct {
+type Parser struct {
 	crc.CRC
 }
 
-func NewIDMParser() (p IDMParser) {
+func NewParser() (p Parser) {
 	p.CRC = crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
 	return
 }
@@ -151,7 +152,7 @@ func (idm IDM) Record() (r []string) {
 	return
 }
 
-func (p IDMParser) Parse(data Data) (msg Message, err error) {
+func (p Parser) Parse(data parse.Data) (msg parse.Message, err error) {
 	var idm IDM
 
 	if residue := p.Checksum(data.Bytes[4:]); residue != p.Residue {
