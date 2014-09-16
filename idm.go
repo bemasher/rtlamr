@@ -24,9 +24,10 @@ import (
 	"strings"
 
 	"github.com/bemasher/rtlamr/crc"
+	"github.com/bemasher/rtlamr/decode"
 )
 
-func NewIDMPacketConfig(symbolLength int) (cfg PacketConfig) {
+func NewIDMPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	cfg.DataRate = 32768
 
 	cfg.SymbolLength = symbolLength
@@ -40,7 +41,7 @@ func NewIDMPacketConfig(symbolLength int) (cfg PacketConfig) {
 	cfg.PreambleLength = cfg.PreambleSymbols * cfg.SymbolLength2
 	cfg.PacketLength = cfg.PacketSymbols * cfg.SymbolLength2
 
-	cfg.BlockSize = NextPowerOf2(cfg.PreambleLength)
+	cfg.BlockSize = decode.NextPowerOf2(cfg.PreambleLength)
 	cfg.BlockSize2 = cfg.BlockSize << 1
 
 	cfg.BufferLength = cfg.PacketLength + cfg.BlockSize

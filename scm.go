@@ -22,9 +22,10 @@ import (
 	"strconv"
 
 	"github.com/bemasher/rtlamr/crc"
+	"github.com/bemasher/rtlamr/decode"
 )
 
-func NewSCMPacketConfig(symbolLength int) (cfg PacketConfig) {
+func NewSCMPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	cfg.DataRate = 32768
 
 	cfg.SymbolLength = symbolLength
@@ -38,7 +39,7 @@ func NewSCMPacketConfig(symbolLength int) (cfg PacketConfig) {
 	cfg.PreambleLength = cfg.PreambleSymbols * cfg.SymbolLength2
 	cfg.PacketLength = cfg.PacketSymbols * cfg.SymbolLength2
 
-	cfg.BlockSize = NextPowerOf2(cfg.PreambleLength)
+	cfg.BlockSize = decode.NextPowerOf2(cfg.PreambleLength)
 	cfg.BlockSize2 = cfg.BlockSize << 1
 
 	cfg.BufferLength = cfg.PacketLength + cfg.BlockSize
