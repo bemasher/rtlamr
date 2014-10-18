@@ -28,6 +28,7 @@ func NewDataFromBytes(data []byte) (d Data) {
 
 func NewDataFromBits(data string) (d Data) {
 	d.Bits = data
+	d.Bytes = make([]byte, len(data)>>3+1)
 	for idx := 0; idx < len(data); idx += 8 {
 		b, _ := strconv.ParseUint(d.Bits[idx:idx+8], 2, 8)
 		d.Bytes[idx>>3] = uint8(b)
