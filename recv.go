@@ -141,11 +141,11 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 
-				if *meterID != 0 && uint32(*meterID) != scm.MeterID() {
+				if len(meterID) > 0 && !meterID[uint(scm.MeterID())] {
 					continue
 				}
 
-				if *meterType != 0 && uint8(*meterType) != scm.MeterType() {
+				if len(meterType) > 0 && !meterType[uint(scm.MeterType())] {
 					continue
 				}
 

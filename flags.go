@@ -42,8 +42,8 @@ var fastMag = flag.Bool("fastmag", false, "use faster alpha max + beta min magni
 var symbolLength = flag.Int("symbollength", 73, "symbol length in samples, see -help for valid lengths")
 
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
-var meterID = flag.Uint("filterid", 0, "display only messages matching given id")
-var meterType = flag.Uint("filtertype", 0, "display only messages matching given type")
+var meterID UintMap
+var meterType UintMap
 
 var encoder Encoder
 var format = flag.String("format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
@@ -53,6 +53,12 @@ var quiet = flag.Bool("quiet", false, "suppress printing state information at st
 var single = flag.Bool("single", false, "one shot execution")
 
 func RegisterFlags() {
+	meterID = make(UintMap)
+	meterType = make(UintMap)
+
+	flag.Var(meterID, "filterid", "display only messages matching an id in a comma-separated list of ids.")
+	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
+
 	// Override default center frequency.
 	centerFreqFlag := flag.CommandLine.Lookup("centerfreq")
 	centerFreqString := strconv.FormatUint(CenterFreq, 10)
@@ -137,4 +143,29 @@ func HandleFlags() {
 // output formatting.
 type Encoder interface {
 	Encode(interface{}) error
+}
+
+type UintMap map[uint]bool
+
+func (m UintMap) String() (s string) {
+	var values []string
+	for k := range m {
+		values = append(values, strconv.FormatUint(uint64(k), 10))
+	}
+	return strings.Join(values, ",")
+}
+
+func (m UintMap) Set(value string) error {
+	values := strings.Split(value, ",")
+
+	for _, v := range values {
+		n, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		m[uint(n)] = true
+	}
+
+	return nil
 }
