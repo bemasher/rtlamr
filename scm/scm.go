@@ -62,7 +62,11 @@ func NewParser() (p Parser) {
 func (p Parser) Parse(data parse.Data) (msg parse.Message, err error) {
 	var scm SCM
 
-	if p.Checksum(data.Bytes[2:]) != 0 {
+	if l := len(data.Bytes); l < 12 {
+		err = fmt.Errorf("packet too short: %d", l)
+		return
+	}
+	if p.Checksum(data.Bytes[2:12]) != 0 {
 		err = errors.New("checksum failed")
 		return
 	}
