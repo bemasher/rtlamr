@@ -3,7 +3,8 @@ Utilities often use "smart meters" to optimize their residential meter reading i
 
 This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
-[![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master)](https://travis-ci.org/bemasher/rtlamr)
+[![Build Status](http://img.shields.io/travis/bemasher/rtlamr.svg?style=flat)](https://travis-ci.org/bemasher/rtlamr)
+[![AGPL License](http://img.shields.io/badge/license-AGPL-blue.svg?style=flat)](http://www.gnu.org/licenses/agpl-3.0.html)
 
 ### Requirements
  * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
