@@ -20,6 +20,12 @@ import (
 	"fmt"
 	"log"
 	"math"
+
+	"github.com/bemasher/rtlamr/decode/dft"
+)
+
+const (
+	ChannelWidth = 196568
 )
 
 // PacketConfig specifies packet-specific radio configuration.
@@ -44,6 +50,8 @@ func (cfg PacketConfig) Log() {
 	log.Println("PreambleLength:", cfg.PreambleLength)
 	log.Println("PacketSymbols:", cfg.PacketSymbols)
 	log.Println("PacketLength:", cfg.PacketLength)
+	log.Println("Channels:", cfg.SampleRate/ChannelWidth)
+	log.Println("ExcessBandwidth:", cfg.SampleRate%ChannelWidth)
 	log.Println("Preamble:", cfg.Preamble)
 }
 
@@ -54,6 +62,10 @@ type Decoder struct {
 	IQ        []byte
 	Signal    []float64
 	Quantized []byte
+
+	Periodogram Periodogram
+
+	Re, Im []float64
 
 	csum []float64
 	lut  MagnitudeLUT
@@ -73,7 +85,12 @@ func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 	d.Signal = make([]float64, d.Cfg.BufferLength)
 	d.Quantized = make([]byte, d.Cfg.BufferLength)
 
+	d.Re = make([]float64, d.Cfg.BufferLength)
+	d.Im = make([]float64, d.Cfg.BufferLength)
+
 	d.csum = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength2+1)
+
+	d.Periodogram = NewPeriodogram(d.Cfg.SampleRate / ChannelWidth)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
 	if fastMag {
@@ -120,6 +137,13 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	iqBlock := d.IQ[d.Cfg.PacketLength<<1:]
 	signalBlock := d.Signal[d.Cfg.PacketLength:]
 
+	re := d.Re[d.Cfg.PacketLength:]
+	im := d.Im[d.Cfg.PacketLength:]
+	for idx := range signalBlock {
+		re[idx] = 127.4 - float64(d.IQ[idx<<1])
+		im[idx] = 127.4 - float64(d.IQ[idx<<1+1])
+	}
+
 	// Compute the magnitude of the new block.
 	d.lut.Execute(iqBlock, signalBlock)
 
@@ -165,6 +189,74 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 		}
 	}
 	return
+}
+
+type Periodogram struct {
+	length int
+	power  []float64
+	re, im []float64
+	dft    func(ri, ii, ro, io []float64)
+}
+
+func NewPeriodogram(n int) (p Periodogram) {
+	p.length = n
+	p.power = make([]float64, p.length)
+	p.re = make([]float64, p.length)
+	p.im = make([]float64, p.length)
+
+	switch p.length {
+	case 5:
+		p.dft = dft.DFT5
+	case 6:
+		p.dft = dft.DFT6
+	case 7:
+		p.dft = dft.DFT7
+	case 8:
+		p.dft = dft.DFT8
+	case 9:
+		p.dft = dft.DFT9
+	case 10:
+		p.dft = dft.DFT10
+	case 11:
+		p.dft = dft.DFT11
+	case 12:
+		p.dft = dft.DFT12
+	case 13:
+		p.dft = dft.DFT13
+	case 14:
+		p.dft = dft.DFT14
+	case 15:
+		p.dft = dft.DFT15
+	case 16:
+		p.dft = dft.DFT16
+	default:
+		panic(fmt.Errorf("invalid transform length: %d", p.length))
+	}
+
+	return
+}
+
+func (p Periodogram) Execute(re, im []float64) int {
+	for idx := range p.power {
+		p.power[idx] = 0
+	}
+
+	for idx := 0; idx < len(re)-p.length; idx += p.length >> 1 {
+		p.dft(re[idx:], im[idx:], p.re, p.im)
+		for pIdx := range p.power {
+			p.power[pIdx] += math.Sqrt(p.re[pIdx]*p.re[pIdx] + p.im[pIdx]*p.im[pIdx])
+		}
+	}
+
+	max := 0.0
+	argmax := 0
+	for idx, val := range p.power {
+		if max < val {
+			max = val
+			argmax = idx
+		}
+	}
+	return argmax
 }
 
 // A MagnitudeLUT knows how to perform complex magnitude on a slice of IQ samples.
