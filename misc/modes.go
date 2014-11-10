@@ -27,7 +27,9 @@ func main() {
 	for symbolLength := 1; symbolLength < int(math.Ceil(UpperMax/DataRate)); symbolLength++ {
 		sampleRate := symbolLength * DataRate
 		if (LowerMin < sampleRate && sampleRate <= LowerMax) || (UpperMin < sampleRate && sampleRate <= UpperMax) {
-			fmt.Printf("SymbolLength:%d SampleRate:%d Channels:%d ExcessBandwidth:%d\n", symbolLength, sampleRate, sampleRate/ChannelWidth, sampleRate%ChannelWidth)
+			if sampleRate%ChannelWidth <= 640 {
+				fmt.Printf("SymbolLength:%d SampleRate:%d Channels:%d ExcessBandwidth:%d\n", symbolLength, sampleRate, sampleRate/ChannelWidth, sampleRate%ChannelWidth)
+			}
 		}
 	}
 }
