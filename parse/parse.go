@@ -48,20 +48,21 @@ type Message interface {
 }
 
 type LogMessage struct {
-	Time   time.Time
-	Offset int64
-	Length int
+	Time    time.Time
+	Offset  int64
+	Length  int
+	Channel int
 	Message
 }
 
 func (msg LogMessage) String() string {
-	return fmt.Sprintf("{Time:%s Offset:%d Length:%d %s:%s}",
-		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.MsgType(), msg.Message,
+	return fmt.Sprintf("{Time:%s Offset:%d Length:%d Channel:%d %s:%s}",
+		msg.Time.Format(TimeFormat), msg.Offset, msg.Length, msg.Channel, msg.MsgType(), msg.Message,
 	)
 }
 
 func (msg LogMessage) StringNoOffset() string {
-	return fmt.Sprintf("{Time:%s %s:%s}", msg.Time.Format(TimeFormat), msg.MsgType(), msg.Message)
+	return fmt.Sprintf("{Time:%s Channel:%d %s:%s}", msg.Time.Format(TimeFormat), msg.Channel, msg.MsgType(), msg.Message)
 }
 
 func (msg LogMessage) Record() (r []string) {
