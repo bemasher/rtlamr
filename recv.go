@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	CenterFreq = 920299072
+	CenterFreq = 920200788
 )
 
 var rcvr Receiver
@@ -153,6 +153,7 @@ func (rcvr *Receiver) Run() {
 				msg.Time = time.Now()
 				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
 				msg.Length = rcvr.d.Cfg.BufferLength << 1
+				msg.Channel = rcvr.d.Periodogram.Execute(rcvr.d.Re, rcvr.d.Im)
 				msg.Message = scm
 
 				if encoder == nil {
