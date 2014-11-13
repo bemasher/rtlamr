@@ -47,6 +47,39 @@ type Message interface {
 	csv.Recorder
 }
 
+type Logger interface {
+	fmt.Stringer
+	csv.Recorder
+	StringNoOffset() string
+}
+
+type HopMessage struct {
+	Time          time.Time
+	ID            uint32
+	Type          uint8
+	CenterChannel int
+	OffsetChannel int
+}
+
+func (msg HopMessage) String() string {
+	return fmt.Sprintf("{Time:%s ID:%d Type:%d CenterChannel:%d OffsetChannel:%d}",
+		msg.Time.Format(TimeFormat), msg.ID, msg.Type, msg.CenterChannel, msg.OffsetChannel,
+	)
+}
+
+func (msg HopMessage) StringNoOffset() string {
+	return msg.String()
+}
+
+func (msg HopMessage) Record() (r []string) {
+	r = append(r, msg.Time.Format(time.RFC3339Nano))
+	r = append(r, strconv.FormatInt(int64(msg.ID), 10))
+	r = append(r, strconv.FormatInt(int64(msg.Type), 10))
+	r = append(r, strconv.FormatInt(int64(msg.CenterChannel), 10))
+	r = append(r, strconv.FormatInt(int64(msg.OffsetChannel), 10))
+	return r
+}
+
 type LogMessage struct {
 	Time    time.Time
 	Offset  int64
@@ -62,7 +95,9 @@ func (msg LogMessage) String() string {
 }
 
 func (msg LogMessage) StringNoOffset() string {
-	return fmt.Sprintf("{Time:%s Channel:%d %s:%s}", msg.Time.Format(TimeFormat), msg.Channel, msg.MsgType(), msg.Message)
+	return fmt.Sprintf("{Time:%s Channel:%d %s:%s}",
+		msg.Time.Format(TimeFormat), msg.Channel, msg.MsgType(), msg.Message,
+	)
 }
 
 func (msg LogMessage) Record() (r []string) {
