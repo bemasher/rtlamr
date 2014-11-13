@@ -155,8 +155,8 @@ func (idm IDM) Record() (r []string) {
 func (p Parser) Parse(data parse.Data) (msg parse.Message, err error) {
 	var idm IDM
 
-	if residue := p.Checksum(data.Bytes[4:]); residue != p.Residue {
-		err = fmt.Errorf("checksum failed: 0x%04X", residue)
+	if residue := p.Checksum(data.Bytes[4:92]); residue != p.Residue {
+		err = fmt.Errorf("packet checksum failed: 0x%04X", residue)
 		return
 	}
 
