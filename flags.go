@@ -52,6 +52,8 @@ var gobUnsafe = flag.Bool("gobunsafe", false, "allow gob output to stdout")
 var quiet = flag.Bool("quiet", false, "suppress printing state information at startup")
 var single = flag.Bool("single", false, "one shot execution")
 
+var hop = flag.Bool("hop", false, "hop to new channel after each message")
+
 func RegisterFlags() {
 	meterID = make(UintMap)
 	meterType = make(UintMap)
