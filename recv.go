@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -42,8 +43,11 @@ var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
-	d decode.Decoder
-	p parse.Parser
+	d        decode.Decoder
+	p        parse.Parser
+	pIdx     int
+	pattern  []int
+	channels []uint32
 }
 
 func (rcvr *Receiver) NewReceiver() {
@@ -57,6 +61,21 @@ func (rcvr *Receiver) NewReceiver() {
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
+
+	rcvr.channels = []uint32{
+		909586111, 909782679, 909979247, 910175815, 911224178, 911420746,
+		911617314, 911813882, 912010451, 912207019, 912403587, 912600155,
+		912796723, 912993291, 913189859, 913386427, 913582995, 913779563,
+		913976132, 915024495, 915221063, 915417631, 915614199, 915810767,
+		916007335, 916203903, 916400471, 916597040, 916793608, 916990176,
+		917186744, 917383312, 917579880, 917776448, 918824811, 919021379,
+		919217947, 919414516, 919611084, 919807652, 920004220, 920200788,
+		920397356, 920593924, 920790492, 920987060, 921183628, 921380197,
+		921576765, 921773333,
+	}
+	rcvr.pIdx = 0
+	rcvr.pattern = rand.Perm(50)
+	log.Println("Pattern:", rcvr.pattern)
 
 	if !*quiet {
 		rcvr.d.Cfg.Log()
@@ -90,8 +109,12 @@ func (rcvr *Receiver) NewReceiver() {
 	})
 
 	// Set some parameters for listening.
-	if !centerfreqFlagSet {
-		rcvr.SetCenterFreq(uint32(rcvr.Flags.CenterFreq))
+	if *hop {
+		rcvr.SetCenterFreq(rcvr.channels[rcvr.pattern[rcvr.pIdx]])
+	} else {
+		if !centerfreqFlagSet {
+			rcvr.SetCenterFreq(uint32(rcvr.Flags.CenterFreq))
+		}
 	}
 
 	if !sampleRateFlagSet {
@@ -149,12 +172,26 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 
-				var msg parse.LogMessage
-				msg.Time = time.Now()
-				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-				msg.Length = rcvr.d.Cfg.BufferLength << 1
-				msg.Channel = rcvr.d.Periodogram.Execute(rcvr.d.Re, rcvr.d.Im)
-				msg.Message = scm
+				var msg parse.Logger
+				if *hop {
+					msg = parse.HopMessage{
+						time.Now(),
+						scm.MeterID(),
+						scm.MeterType(),
+						rcvr.pattern[rcvr.pIdx],
+						rcvr.d.Periodogram.Execute(rcvr.d.Re, rcvr.d.Im),
+					}
+				} else {
+					offset, _ := sampleFile.Seek(0, os.SEEK_CUR)
+
+					msg = parse.LogMessage{
+						time.Now(),
+						offset,
+						rcvr.d.Cfg.BufferLength << 1,
+						rcvr.pattern[rcvr.pIdx] + rcvr.d.Periodogram.Execute(rcvr.d.Re, rcvr.d.Im),
+						scm,
+					}
+				}
 
 				if encoder == nil {
 					// A nil encoder is just plain-text output.
@@ -177,6 +214,20 @@ func (rcvr *Receiver) Run() {
 				}
 
 				pktFound = true
+
+				if *hop && scm.MeterID() == 17581447 {
+					rcvr.pIdx++
+
+					if rcvr.pIdx == 50 {
+						rcvr.pattern = rand.Perm(50)
+						rcvr.pIdx = 0
+						log.Println("Pattern:", rcvr.pattern)
+					}
+
+					rcvr.SetCenterFreq(rcvr.channels[rcvr.pattern[rcvr.pIdx]])
+					rcvr.d.Reset()
+				}
+
 				if *single {
 					break
 				}
@@ -189,6 +240,7 @@ func (rcvr *Receiver) Run() {
 						log.Fatal("Error writing raw samples to file:", err)
 					}
 				}
+
 				if *single {
 					return
 				}
@@ -199,6 +251,7 @@ func (rcvr *Receiver) Run() {
 
 func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
+	rand.Seed(time.Now().UnixNano())
 }
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to this file")
