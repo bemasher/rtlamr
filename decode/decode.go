@@ -191,6 +191,18 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	return
 }
 
+func (d Decoder) Reset() {
+	for idx := range d.IQ {
+		d.IQ[idx] = 0
+	}
+	for idx := range d.Signal {
+		d.Signal[idx] = 0
+		d.Quantized[idx] = 0
+		d.Re[idx] = 0
+		d.Im[idx] = 0
+	}
+}
+
 type Periodogram struct {
 	length int
 	power  []float64
@@ -255,6 +267,10 @@ func (p Periodogram) Execute(re, im []float64) int {
 			max = val
 			argmax = idx
 		}
+	}
+	// return (argmax - p.length>>1) + p.length&1
+	if argmax > (p.length>>1 + p.length&1) {
+		return argmax - p.length
 	}
 	return argmax
 }
