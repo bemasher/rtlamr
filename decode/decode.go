@@ -248,7 +248,7 @@ func NewPeriodogram(n int) (p Periodogram) {
 	return
 }
 
-func (p Periodogram) Execute(re, im []float64) int {
+func (p Periodogram) Execute(re, im []float64) (argmax int) {
 	for idx := range p.power {
 		p.power[idx] = 0
 	}
@@ -261,17 +261,17 @@ func (p Periodogram) Execute(re, im []float64) int {
 	}
 
 	max := 0.0
-	argmax := 0
 	for idx, val := range p.power {
 		if max < val {
 			max = val
 			argmax = idx
 		}
 	}
-	// return (argmax - p.length>>1) + p.length&1
+
 	if argmax > (p.length>>1 + p.length&1) {
-		return argmax - p.length
+		argmax -= p.length
 	}
+
 	return argmax
 }
 
