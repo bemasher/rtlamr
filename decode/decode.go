@@ -104,7 +104,7 @@ func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 
 	// Signal up to the final stage is 1-bit per byte. Allocate a buffer to
 	// store packed version 8-bits per byte.
-	d.pkt = make([]byte, int(math.Ceil(float64(d.Cfg.PacketSymbols)/8)))
+	d.pkt = make([]byte, (d.Cfg.PacketSymbols+7)>>3)
 
 	return
 }
