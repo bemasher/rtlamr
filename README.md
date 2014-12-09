@@ -105,8 +105,3 @@ The source of this project is licensed under Affero GPL. According to [http://ch
 
 ### Feedback
 If you have any general questions or feedback leave a comment below. For bugs, feature suggestions and anything directly relating to the program itself, submit an issue in github.
-
-### Donate
-Like my work? I've got a day job but every little bit helps.
-
-<a href='https://pledgie.com/campaigns/27563'><img alt='Click here to lend your support to: RTLAMR and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/27563.png?skin_name=chrome' border='0' ></a>
