@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bemasher/rtlamr/decode"
+
 	"github.com/bemasher/rtlamr/csv"
 )
 
@@ -37,14 +39,16 @@ func NewDataFromBits(data string) (d Data) {
 }
 
 type Parser interface {
-	Parse(Data) (Message, error)
+	Parse([]int) []Message
+	Dec() decode.Decoder
+	Cfg() decode.PacketConfig
 }
 
 type Message interface {
+	csv.Recorder
 	MsgType() string
 	MeterID() uint32
 	MeterType() uint8
-	csv.Recorder
 }
 
 type LogMessage struct {

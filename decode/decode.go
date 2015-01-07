@@ -110,7 +110,7 @@ func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 }
 
 // Decode accepts a sample block and performs various DSP techniques to extract a packet.
-func (d Decoder) Decode(input []byte) (pkts [][]byte) {
+func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
 	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
 	copy(d.Signal, d.Signal[d.Cfg.BlockSize:])
@@ -135,39 +135,12 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	// Pack the quantized signal into slices for searching.
 	d.Pack(d.Quantized[:d.Cfg.BlockSize2], d.slices)
 
-	// Get a list of indexes the preamble exists at.
-	indexes := d.Search(d.slices, d.preamble)
-
-	// We will likely find multiple instances of the message so only keep
-	// track of unique instances.
-	seen := make(map[string]bool)
-
-	// For each of the indexes the preamble exists at.
-	for _, qIdx := range indexes {
-		// Check that we're still within the first sample block. We'll catch
-		// the message on the next sample block otherwise.
-		if qIdx > d.Cfg.BlockSize {
-			continue
-		}
-
-		// Packet is 1 bit per byte, pack to 8-bits per byte.
-		for pIdx := 0; pIdx < d.Cfg.PacketSymbols; pIdx++ {
-			d.pkt[pIdx>>3] <<= 1
-			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.Cfg.SymbolLength2)]
-		}
-
-		// Store the packet in the seen map and append to the packet list.
-		pktStr := fmt.Sprintf("%02X", d.pkt)
-		if !seen[pktStr] {
-			seen[pktStr] = true
-			pkts = append(pkts, make([]byte, len(d.pkt)))
-			copy(pkts[len(pkts)-1], d.pkt)
-		}
-	}
-	return
+	// Return a list of indexes the preamble exists at.
+	return d.Search(d.slices, d.preamble)
 }
 
-// A Demodulator knows how to demodulate an array of uint8 IQ samples into an array of float64 samples.
+// A Demodulator knows how to demodulate an array of uint8 IQ samples into an
+// array of float64 samples.
 type Demodulator interface {
 	Execute([]byte, []float64)
 }
@@ -283,6 +256,40 @@ func (d Decoder) Search(slices [][]byte, preamble []byte) (indexes []int) {
 			if result == 0 {
 				indexes = append(indexes, symbolIdx*d.Cfg.SymbolLength2+symbolOffset)
 			}
+		}
+	}
+
+	return
+}
+
+// Given a list of indeces the preamble exists at, sample the appropriate bits
+// of the signal's bit-decision. Pack bits of each index into an array of byte
+// arrays and return.
+func (d Decoder) Slice(indices []int) (pkts [][]byte) {
+	// We will likely find multiple instances of the message so only keep
+	// track of unique instances.
+	seen := make(map[string]bool)
+
+	// For each of the indices the preamble exists at.
+	for _, qIdx := range indices {
+		// Check that we're still within the first sample block. We'll catch
+		// the message on the next sample block otherwise.
+		if qIdx > d.Cfg.BlockSize {
+			continue
+		}
+
+		// Packet is 1 bit per byte, pack to 8-bits per byte.
+		for pIdx := 0; pIdx < d.Cfg.PacketSymbols; pIdx++ {
+			d.pkt[pIdx>>3] <<= 1
+			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.Cfg.SymbolLength2)]
+		}
+
+		// Store the packet in the seen map and append to the packet list.
+		pktStr := fmt.Sprintf("%02X", d.pkt)
+		if !seen[pktStr] {
+			seen[pktStr] = true
+			pkts = append(pkts, make([]byte, len(d.pkt)))
+			copy(pkts[len(pkts)-1], d.pkt)
 		}
 	}
 

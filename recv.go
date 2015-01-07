@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bemasher/rtlamr/decode"
 	"github.com/bemasher/rtlamr/idm"
 	"github.com/bemasher/rtlamr/parse"
 	"github.com/bemasher/rtlamr/scm"
@@ -42,24 +41,21 @@ var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
-	d decode.Decoder
 	p parse.Parser
 }
 
 func (rcvr *Receiver) NewReceiver() {
 	switch strings.ToLower(*msgType) {
 	case "scm":
-		rcvr.d = decode.NewDecoder(scm.NewPacketConfig(*symbolLength), *fastMag)
-		rcvr.p = scm.NewParser()
+		rcvr.p = scm.NewParser(*symbolLength, *fastMag)
 	case "idm":
-		rcvr.d = decode.NewDecoder(idm.NewPacketConfig(*symbolLength), *fastMag)
-		rcvr.p = idm.NewParser()
+		rcvr.p = idm.NewParser(*symbolLength, *fastMag)
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
 
 	if !*quiet {
-		rcvr.d.Cfg.Log()
+		rcvr.p.Cfg().Log()
 		log.Println("CRC:", rcvr.p)
 	}
 
@@ -95,7 +91,7 @@ func (rcvr *Receiver) NewReceiver() {
 	}
 
 	if !sampleRateFlagSet {
-		rcvr.SetSampleRate(uint32(rcvr.d.Cfg.SampleRate))
+		rcvr.SetSampleRate(uint32(rcvr.p.Cfg().SampleRate))
 	}
 	if !gainFlagSet {
 		rcvr.SetGainMode(true)
@@ -115,7 +111,7 @@ func (rcvr *Receiver) Run() {
 		tLimit = time.After(*timeLimit)
 	}
 
-	block := make([]byte, rcvr.d.Cfg.BlockSize2)
+	block := make([]byte, rcvr.p.Cfg().BlockSize2)
 
 	start := time.Now()
 	for {
@@ -134,26 +130,22 @@ func (rcvr *Receiver) Run() {
 			}
 
 			pktFound := false
-			for _, pkt := range rcvr.d.Decode(block) {
-				scm, err := rcvr.p.Parse(parse.NewDataFromBytes(pkt))
-				if err != nil {
-					// log.Println(err)
+			indices := rcvr.p.Dec().Decode(block)
+
+			for _, pkt := range rcvr.p.Parse(indices) {
+				if len(meterID) > 0 && !meterID[uint(pkt.MeterID())] {
 					continue
 				}
 
-				if len(meterID) > 0 && !meterID[uint(scm.MeterID())] {
-					continue
-				}
-
-				if len(meterType) > 0 && !meterType[uint(scm.MeterType())] {
+				if len(meterType) > 0 && !meterType[uint(pkt.MeterType())] {
 					continue
 				}
 
 				var msg parse.LogMessage
 				msg.Time = time.Now()
 				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-				msg.Length = rcvr.d.Cfg.BufferLength << 1
-				msg.Message = scm
+				msg.Length = rcvr.p.Cfg().BufferLength << 1
+				msg.Message = pkt
 
 				if encoder == nil {
 					// A nil encoder is just plain-text output.
@@ -183,7 +175,7 @@ func (rcvr *Receiver) Run() {
 
 			if pktFound {
 				if *sampleFilename != os.DevNull {
-					_, err = sampleFile.Write(rcvr.d.IQ)
+					_, err = sampleFile.Write(rcvr.p.Dec().IQ)
 					if err != nil {
 						log.Fatal("Error writing raw samples to file:", err)
 					}

@@ -17,7 +17,6 @@
 package scm
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -51,45 +50,71 @@ func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 }
 
 type Parser struct {
+	decode.Decoder
 	crc.CRC
 }
 
-func NewParser() (p Parser) {
+func NewParser(symbolLength int, fastMag bool) (p Parser) {
+	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), fastMag)
 	p.CRC = crc.NewCRC("BCH", 0, 0x6F63, 0)
 	return
 }
 
-func (p Parser) Parse(data parse.Data) (msg parse.Message, err error) {
-	var scm SCM
+func (p Parser) Dec() decode.Decoder {
+	return p.Decoder
+}
 
-	if l := len(data.Bytes); l < 12 {
-		err = fmt.Errorf("packet too short: %d", l)
-		return
+func (p Parser) Cfg() decode.PacketConfig {
+	return p.Decoder.Cfg
+}
+
+func (p Parser) Parse(indices []int) (msgs []parse.Message) {
+	seen := make(map[string]bool)
+
+	for _, pkt := range p.Decoder.Slice(indices) {
+		if s := string(pkt); !seen[s] {
+			seen[s] = true
+		} else {
+			continue
+		}
+
+		data := parse.NewDataFromBytes(pkt)
+
+		// If the packet is too short, bail.
+		if l := len(data.Bytes); l < 12 {
+			continue
+		}
+
+		// If the checksum fails, bail.
+		if p.Checksum(data.Bytes[2:12]) != 0 {
+			continue
+		}
+
+		ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 32)
+		erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 8)
+		tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 8)
+		tamperenc, _ := strconv.ParseUint(data.Bits[30:32], 2, 8)
+		consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 32)
+		checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
+
+		var scm SCM
+
+		scm.ID = uint32(ertid)
+		scm.Type = uint8(erttype)
+		scm.TamperPhy = uint8(tamperphy)
+		scm.TamperEnc = uint8(tamperenc)
+		scm.Consumption = uint32(consumption)
+		scm.Checksum = uint16(checksum)
+
+		// If the meter id is 0, bail.
+		if scm.ID == 0 {
+			continue
+		}
+
+		msgs = append(msgs, scm)
 	}
-	if p.Checksum(data.Bytes[2:12]) != 0 {
-		err = errors.New("checksum failed")
-		return
-	}
 
-	ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 32)
-	erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 8)
-	tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 8)
-	tamperenc, _ := strconv.ParseUint(data.Bits[30:32], 2, 8)
-	consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 32)
-	checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
-
-	scm.ID = uint32(ertid)
-	scm.Type = uint8(erttype)
-	scm.TamperPhy = uint8(tamperphy)
-	scm.TamperEnc = uint8(tamperenc)
-	scm.Consumption = uint32(consumption)
-	scm.Checksum = uint16(checksum)
-
-	if scm.ID == 0 {
-		err = errors.New("invalid ert id")
-	}
-
-	return scm, err
+	return
 }
 
 // Standard Consumption Message
