@@ -55,8 +55,8 @@ type Decoder struct {
 	Signal    []float64
 	Quantized []byte
 
-	csum []float64
-	lut  MagnitudeLUT
+	csum  []float64
+	demod Demodulator
 
 	preamble []byte
 	slices   [][]byte
@@ -77,9 +77,9 @@ func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
 	if fastMag {
-		d.lut = NewAlphaMaxBetaMinLUT()
+		d.demod = NewAlphaMaxBetaMinLUT()
 	} else {
-		d.lut = NewSqrtMagLUT()
+		d.demod = NewSqrtMagLUT()
 	}
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
@@ -121,7 +121,7 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	signalBlock := d.Signal[d.Cfg.PacketLength:]
 
 	// Compute the magnitude of the new block.
-	d.lut.Execute(iqBlock, signalBlock)
+	d.demod.Execute(iqBlock, signalBlock)
 
 	signalBlock = d.Signal[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
 
@@ -167,8 +167,8 @@ func (d Decoder) Decode(input []byte) (pkts [][]byte) {
 	return
 }
 
-// A MagnitudeLUT knows how to perform complex magnitude on a slice of IQ samples.
-type MagnitudeLUT interface {
+// A Demodulator knows how to demodulate an array of uint8 IQ samples into an array of float64 samples.
+type Demodulator interface {
 	Execute([]byte, []float64)
 }
 
