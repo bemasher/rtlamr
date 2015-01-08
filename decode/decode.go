@@ -53,6 +53,7 @@ type Decoder struct {
 
 	IQ        []byte
 	Signal    []float64
+	Filtered  []float64
 	Quantized []byte
 
 	csum  []float64
@@ -71,6 +72,7 @@ func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 	// Allocate necessary buffers.
 	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
 	d.Signal = make([]float64, d.Cfg.BufferLength)
+	d.Filtered = make([]float64, d.Cfg.BufferLength)
 	d.Quantized = make([]byte, d.Cfg.BufferLength)
 
 	d.csum = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength2+1)
@@ -114,6 +116,7 @@ func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
 	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
 	copy(d.Signal, d.Signal[d.Cfg.BlockSize:])
+	copy(d.Filtered, d.Filtered[d.Cfg.BlockSize:])
 	copy(d.Quantized, d.Quantized[d.Cfg.BlockSize:])
 	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
@@ -124,13 +127,13 @@ func (d Decoder) Decode(input []byte) []int {
 	d.demod.Execute(iqBlock, signalBlock)
 
 	signalBlock = d.Signal[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
+	filterBlock := d.Filtered[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
 
 	// Perform matched filter on new block.
-	d.Filter(signalBlock)
-	signalBlock = d.Signal[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
+	d.Filter(signalBlock, filterBlock)
 
 	// Perform bit-decision on new block.
-	Quantize(signalBlock, d.Quantized[d.Cfg.PacketLength-d.Cfg.SymbolLength2:])
+	Quantize(filterBlock, d.Quantized[d.Cfg.PacketLength-d.Cfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
 	d.Pack(d.Quantized[:d.Cfg.BlockSize2], d.slices)
@@ -199,7 +202,7 @@ func (lut AlphaMaxBetaMinLUT) Execute(input []byte, output []float64) {
 
 // Matched filter for Manchester coded signals. Output signal's sign at each
 // sample determines the bit-value since Manchester symbols have odd symmetry.
-func (d Decoder) Filter(input []float64) {
+func (d Decoder) Filter(input, output []float64) {
 	// Computing the cumulative summation over the signal simplifies
 	// filtering to the difference of a pair of subtractions.
 	var sum float64
@@ -212,7 +215,7 @@ func (d Decoder) Filter(input []float64) {
 	lower := d.csum[d.Cfg.SymbolLength:]
 	upper := d.csum[d.Cfg.SymbolLength2:]
 	for idx := range input[:len(input)-d.Cfg.SymbolLength2] {
-		input[idx] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
+		output[idx] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
 	}
 
 	return
