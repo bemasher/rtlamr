@@ -90,11 +90,11 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 			continue
 		}
 
-		ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 32)
-		erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 8)
-		tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 8)
-		tamperenc, _ := strconv.ParseUint(data.Bits[30:32], 2, 8)
-		consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 32)
+		ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 26)
+		erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 4)
+		tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 2)
+		tamperenc, _ := strconv.ParseUint(data.Bits[30:32], 2, 2)
+		consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 24)
 		checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
 
 		var scm SCM
