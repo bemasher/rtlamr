@@ -72,11 +72,10 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 	seen := make(map[string]bool)
 
 	for _, pkt := range p.Decoder.Slice(indices) {
-		if s := string(pkt); !seen[s] {
-			seen[s] = true
-		} else {
+		if s := string(pkt); seen[s] {
 			continue
 		}
+		seen[s] = true
 
 		data := parse.NewDataFromBytes(pkt)
 
