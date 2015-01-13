@@ -72,7 +72,8 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 	seen := make(map[string]bool)
 
 	for _, pkt := range p.Decoder.Slice(indices) {
-		if s := string(pkt); seen[s] {
+		s := string(pkt)
+		if seen[s] {
 			continue
 		}
 		seen[s] = true
