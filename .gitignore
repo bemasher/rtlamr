@@ -1,2 +1,5 @@
 data
 *.exe
+scm/Makefile
+release.7z
+*.diff
