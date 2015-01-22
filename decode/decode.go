@@ -1,5 +1,5 @@
 // RTLAMR - An rtl-sdr receiver for smart meters operating in the 900MHz ISM band.
-// Copyright (C) 2014 Douglas Hall
+// Copyright (C) 2015 Douglas Hall
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -33,10 +33,13 @@ type PacketConfig struct {
 	PreambleLength, PacketLength   int
 	BufferLength                   int
 	Preamble                       string
+
+	CenterFreq uint32
 }
 
 func (cfg PacketConfig) Log() {
 	log.Println("BlockSize:", cfg.BlockSize)
+	log.Println("CenterFreq:", cfg.CenterFreq)
 	log.Println("SampleRate:", cfg.SampleRate)
 	log.Println("DataRate:", cfg.DataRate)
 	log.Println("SymbolLength:", cfg.SymbolLength)

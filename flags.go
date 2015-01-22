@@ -1,5 +1,5 @@
 // RTLAMR - An rtl-sdr receiver for smart meters operating in the 900MHz ISM band.
-// Copyright (C) 2014 Douglas Hall
+// Copyright (C) 2015 Douglas Hall
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published
@@ -58,12 +58,6 @@ func RegisterFlags() {
 
 	flag.Var(meterID, "filterid", "display only messages matching an id in a comma-separated list of ids.")
 	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
-
-	// Override default center frequency.
-	centerFreqFlag := flag.CommandLine.Lookup("centerfreq")
-	centerFreqString := strconv.FormatUint(CenterFreq, 10)
-	centerFreqFlag.DefValue = centerFreqString
-	centerFreqFlag.Value.Set(centerFreqString)
 
 	rtlamrFlags := map[string]bool{
 		"logfile":      true,
