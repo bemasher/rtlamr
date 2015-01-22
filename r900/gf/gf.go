@@ -154,7 +154,7 @@ func (f *Field) Syndrome(message []byte, paritySymbolCount, offset int) (syndrom
 		panic("gf: invalid offset: " + strconv.Itoa(offset))
 	}
 
-	if paritySymbolCount < 0 || paritySymbolCount > len(msg) {
+	if paritySymbolCount < 0 || paritySymbolCount > len(message) {
 		panic("gf: invalid paritySymbolCount: " + strconv.Itoa(paritySymbolCount))
 	}
 

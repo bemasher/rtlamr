@@ -36,7 +36,7 @@ var logFile *os.File
 var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file")
 var sampleFile *os.File
 
-var msgType = flag.String("msgtype", "scm", "message type to receive: scm or idm")
+var msgType = flag.String("msgtype", "scm", "message type to receive: scm, idm or r900")
 var fastMag = flag.Bool("fastmag", false, "use faster alpha max + beta min magnitude approximation")
 
 var symbolLength = flag.Int("symbollength", 73, "symbol length in samples, see -help for valid lengths")

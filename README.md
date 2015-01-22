@@ -4,7 +4,7 @@ Utilities often use "smart meters" to optimize their residential meter reading i
 This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
 [![Build Status](http://img.shields.io/travis/bemasher/rtlamr.svg?style=flat)](https://travis-ci.org/bemasher/rtlamr)
-[![AGPL License](http://img.shields.io/badge/license-AGPL-blue.svg?style=flat)](http://www.gnu.org/licenses/agpl-3.0.html)
+[![AGPLv3 License](http://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
 
 ### Requirements
  * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
@@ -32,7 +32,7 @@ Usage of rtlamr:
   -format=plain: format to write log messages in: plain, csv, json, xml or gob
   -gobunsafe=false: allow gob output to stdout
   -logfile=/dev/stdout: log statement dump file
-  -msgtype=scm: message type to receive: scm or idm
+  -msgtype=scm: message type to receive: scm, idm or r900
   -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution
@@ -40,7 +40,7 @@ Usage of rtlamr:
 
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
-  -centerfreq=920299072: center frequency to receive on
+  -centerfreq=100000000: center frequency to receive on
   -directsampling=false: enable/disable direct sampling
   -freqcorrection=0: frequency correction in ppm
   -gainbyindex=0: set gain by index
@@ -79,29 +79,33 @@ Check out the table of meters I've been compiling from various internet sources:
 
 If you've got a meter not on the list that you've successfully received messages from, you can submit this info via a form available at the link above.
 
+There's now experimental support for meters with R900 transmitters!
+
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
 
 ### License
-The source of this project is licensed under Affero GPL. According to [http://choosealicense.com/licenses/agpl/](http://choosealicense.com/licenses/agpl/) you may:
+The source of this project is licensed under Affero GPL v3.0. According to [http://choosealicense.com/licenses/agpl-3.0/](http://choosealicense.com/licenses/agpl-3.0/) you may:
 
 #### Required:
 
- * Source code must be made available when distributing the software. In the case of LGPL, the source for the library (and not the entire program) must be made available.
- * Include a copy of the license and copyright notice with the code.
- * Indicate significant changes made to the code.
+ * **Disclose Source:** Source code must be made available when distributing the software. In the case of LGPL, the source for the library (and not the entire program) must be made available.
+ * **License and copyright notice:** Include a copy of the license and copyright notice with the code.
+ * **Network Use is Distribution:** Users who interact with the software via network are given the right to receive a copy of the corresponding source code.
+ * **State Changes:** Indicate significant changes made to the code.
 
 #### Permitted:
 
- * This software and derivatives may be used for commercial purposes.
- * You may distribute this software.
- * This software may be modified.
- * You may use and modify the software without distributing it.
+ * **Commercial Use:** This software and derivatives may be used for commercial purposes.
+ * **Distribution:** You may distribute this software.
+ * **Modification:** This software may be modified.
+ * **Patent Grant:** This license provides an express grant of patent rights from the contributor to the recipient.
+ * **Private Use:** You may use and modify the software without distributing it.
 
 #### Forbidden:
 
- * Software is provided without warranty and the software author/license owner cannot be held liable for damages.
- * You may not grant a sublicense to modify and distribute this software to third parties not included in the license.
+ * **Hold Liable:** Software is provided without warranty and the software author/license owner cannot be held liable for damages.
+ * **Sublicensing:** You may not grant a sublicense to modify and distribute this software to third parties not included in the license.
 
 ### Feedback
 If you have any general questions or feedback leave a comment below. For bugs, feature suggestions and anything directly relating to the program itself, submit an issue in github.

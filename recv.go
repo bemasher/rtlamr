@@ -29,6 +29,7 @@ import (
 
 	"github.com/bemasher/rtlamr/idm"
 	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/r900"
 	"github.com/bemasher/rtlamr/scm"
 	"github.com/bemasher/rtltcp"
 )
@@ -46,13 +47,14 @@ func (rcvr *Receiver) NewReceiver() {
 		rcvr.p = scm.NewParser(*symbolLength, *fastMag)
 	case "idm":
 		rcvr.p = idm.NewParser(*symbolLength, *fastMag)
+	case "r900":
+		rcvr.p = r900.NewParser(*symbolLength, *fastMag)
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
 
 	if !*quiet {
 		rcvr.p.Cfg().Log()
-		log.Println("CRC:", rcvr.p)
 	}
 
 	// Connect to rtl_tcp server.
