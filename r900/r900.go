@@ -22,9 +22,9 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/bemasher/gf"
 	"github.com/bemasher/rtlamr/decode"
 	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/r900/gf"
 )
 
 const (
