@@ -22,8 +22,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/bemasher/rtlamr/r900/gf"
-
+	"github.com/bemasher/gf"
 	"github.com/bemasher/rtlamr/decode"
 	"github.com/bemasher/rtlamr/parse"
 )
@@ -172,39 +171,37 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 
 	preambleLength := p.Decoder.Cfg.PreambleLength
 	symbolLength := p.Decoder.Cfg.SymbolLength
+
+	symbols := make([]byte, 21)
 	zeros := make([]byte, 5)
 
 	seen := make(map[string]bool)
+
 	for _, preambleIdx := range indices {
 		if preambleIdx > p.Decoder.Cfg.BlockSize {
 			break
 		}
 
 		payloadIdx := preambleIdx + preambleLength
-		var (
-			symbol    string
-			bits      string
-			symbols   [21]byte
-			badSymbol bool
-			symbolIdx int
-		)
+		var digits string
 		for idx := 0; idx < PayloadSymbols*4*p.Decoder.Cfg.SymbolLength; idx += symbolLength * 4 {
 			qIdx := payloadIdx + idx
 
-			symbol += strconv.FormatInt(int64(p.quantized[qIdx]), 10)
-			if len(symbol) > 1 {
-				n, _ := strconv.ParseInt(symbol, 6, 64)
-				symbol = ""
+			digits += strconv.Itoa(int(p.quantized[qIdx]))
+		}
 
-				bits += fmt.Sprintf("%05b", n)
-
-				if n > 31 {
-					badSymbol = true
-					break
-				}
-				symbols[symbolIdx] = byte(n)
-				symbolIdx++
+		var (
+			bits      string
+			badSymbol bool
+		)
+		for idx := 0; idx < len(digits); idx += 2 {
+			symbol, _ := strconv.ParseInt(digits[idx:idx+2], 6, 32)
+			if symbol > 31 {
+				badSymbol = true
+				break
 			}
+			symbols[idx>>1] = byte(symbol)
+			bits += fmt.Sprintf("%05b", symbol)
 		}
 
 		if badSymbol || seen[bits] {
