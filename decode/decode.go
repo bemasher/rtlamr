@@ -17,6 +17,7 @@
 package decode
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"math"
@@ -101,9 +102,10 @@ func NewDecoder(cfg PacketConfig, fastMag bool) (d Decoder) {
 	d.slices = make([][]byte, d.Cfg.SymbolLength2)
 	flat := make([]byte, d.Cfg.BlockSize2-(d.Cfg.BlockSize2%d.Cfg.SymbolLength2))
 
+	symbolsPerBlock := d.Cfg.BlockSize2 / d.Cfg.SymbolLength2
 	for symbolOffset := range d.slices {
-		lower := symbolOffset * (d.Cfg.BlockSize2 / d.Cfg.SymbolLength2)
-		upper := (symbolOffset + 1) * (d.Cfg.BlockSize2 / d.Cfg.SymbolLength2)
+		lower := symbolOffset * symbolsPerBlock
+		upper := (symbolOffset + 1) * symbolsPerBlock
 		d.slices[symbolOffset] = flat[lower:upper]
 	}
 
@@ -250,16 +252,10 @@ func (d Decoder) Pack(input []byte, slices [][]byte) {
 // preamble is found at. Indexes are absolute in the unsliced quantized
 // buffer.
 func (d Decoder) Search(slices [][]byte, preamble []byte) (indexes []int) {
+	preambleLength := len(preamble)
 	for symbolOffset, slice := range slices {
-		for symbolIdx := range slice[:len(slice)-len(preamble)] {
-			var result uint8
-			for bitIdx, bit := range preamble {
-				result |= bit ^ slice[symbolIdx+bitIdx]
-				if result != 0 {
-					break
-				}
-			}
-			if result == 0 {
+		for symbolIdx := range slice[:len(slice)-preambleLength] {
+			if bytes.Equal(preamble, slice[symbolIdx:][:preambleLength]) {
 				indexes = append(indexes, symbolIdx*d.Cfg.SymbolLength2+symbolOffset)
 			}
 		}
