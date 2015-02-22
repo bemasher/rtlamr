@@ -168,9 +168,8 @@ func NewSqrtMagLUT() (lut MagLUT) {
 
 // Calculates complex magnitude on given IQ stream writing result to output.
 func (lut MagLUT) Execute(input []byte, output []float64) {
-	for idx := range output {
-		lutIdx := idx << 1
-		output[idx] = math.Sqrt(lut[input[lutIdx]] + lut[input[lutIdx+1]])
+	for idx := 0; idx < len(input); idx += 2 {
+		output[idx>>1] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
 	}
 }
 
@@ -193,14 +192,13 @@ func (lut AlphaMaxBetaMinLUT) Execute(input []byte, output []float64) {
 		ß = 0.392699081699
 	)
 
-	for idx := range output {
-		lutIdx := idx << 1
-		i := lut[input[lutIdx]]
-		q := lut[input[lutIdx+1]]
+	for idx := 0; idx < len(input); idx += 2 {
+		i := lut[input[idx]]
+		q := lut[input[idx+1]]
 		if i > q {
-			output[idx] = α*i + ß*q
+			output[idx>>1] = α*i + ß*q
 		} else {
-			output[idx] = α*q + ß*i
+			output[idx>>1] = α*q + ß*i
 		}
 	}
 }
