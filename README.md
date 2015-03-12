@@ -84,6 +84,19 @@ There's now experimental support for meters with R900 transmitters!
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
 
+### Use Cases
+These are a few examples of ways this tool could be used:
+
+**Ethical**
+ * Track down stray appliances.
+ * Track power generated vs. power consumed.
+ * Find a water leak with rtlamr rather than from your bill.
+ * Optimize your thermostat to reduce energy consumption.
+ * Mass collection for research purposes. (_Please_ anonymize your data.)
+
+**Unethical**
+ * Using data collected to determine living patterns of specific persons with the intent to act on this data, particularly without express permission to do so.
+
 ### License
 The source of this project is licensed under Affero GPL v3.0. According to [http://choosealicense.com/licenses/agpl-3.0/](http://choosealicense.com/licenses/agpl-3.0/) you may:
 
