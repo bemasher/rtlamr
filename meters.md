@@ -2,11 +2,9 @@ Want to help make this information more accurate? If you have a meter not listed
 
 Submit your meter: https://docs.google.com/forms/d/1WPhliiE7tnbTKa-WDQ9Bf7UIf27qPMqX0IarxFGWGKY/viewform?usp=send_form
 
-According to a [marketing document](http://marketing.itron.com/campaign/ItronSCMPlus_FAQMay2012.pdf) by Itron the following commodities have these ert types:
-
- * Electric: 04, 07, 08
- * Gas: 12
- * Water: 11
+ * Electric: 04, 05, 07, 08
+ * Gas: 02, 09, 12
+ * Water: 11, 13
 
 | URL                      | Model Name     | Commodity | ERT Type | Lower (MHz) | Upper (MHz) |
 |:------------------------ | --------------:| --------- | --------:| -----------:| -----------:|
@@ -31,6 +29,7 @@ According to a [marketing document](http://marketing.itron.com/campaign/ItronSCM
 | http://fcc.io/SK9R300S-2 | R300S2         | Electric  | 8        | 909.3       | 918.4       |
 |                          | 40G            | Gas       | 2        |             |             |
 | http://fcc.io/EO9100G    | 100G           | Gas       | 12       | 903.0       | 928.0       |
+| http://fcc.io/100GDLAN   | 100GDLAN       | Gas       | 12       | 908.0       | 926.8       |
 | http://fcc.io/EWQ100T    | 100T           | Gas       | 9        | 903.0       | 926.9       |
 | http://fcc.io/EO960W     | 60W            | Water     | 13       | 910.0       | 919.8       |
 | http://fcc.io/EO980WI    | 80W-i          | Water     | 13       | 910.0       | 920.0       |
