@@ -106,8 +106,6 @@ func NewDecoder(cfg PacketConfig, decimation int, fastMag bool) (d Decoder) {
 
 	d.Decimation = decimation
 	d.DecCfg = d.Cfg.Decimate(d.Decimation)
-	fmt.Printf("%+v\n", d.Cfg)
-	fmt.Printf("%+v\n", d.DecCfg)
 
 	// Allocate necessary buffers.
 	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
