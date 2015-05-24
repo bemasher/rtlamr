@@ -20,6 +20,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -111,6 +112,19 @@ func (rcvr *Receiver) Run() {
 		tLimit = time.After(*timeLimit)
 	}
 
+	in, out := io.Pipe()
+
+	go func() {
+		tcpBlock := make([]byte, 16384)
+		for {
+			n, err := rcvr.Read(tcpBlock)
+			if err != nil {
+				return
+			}
+			out.Write(tcpBlock[:n])
+		}
+	}()
+
 	block := make([]byte, rcvr.p.Cfg().BlockSize2)
 
 	start := time.Now()
@@ -124,7 +138,7 @@ func (rcvr *Receiver) Run() {
 			return
 		default:
 			// Read new sample block.
-			_, err := rcvr.Read(block)
+			_, err := in.Read(block)
 			if err != nil {
 				log.Fatal("Error reading samples: ", err)
 			}
