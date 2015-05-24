@@ -32,26 +32,10 @@ const (
 )
 
 func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
-	cfg.DataRate = 32768
-
 	cfg.CenterFreq = 912380000
-
-	cfg.SymbolLength = symbolLength
-	cfg.SymbolLength2 = cfg.SymbolLength << 1
-
-	cfg.SampleRate = cfg.DataRate * cfg.SymbolLength
-
+	cfg.DataRate = 32768
 	cfg.PreambleSymbols = 32
 	cfg.PacketSymbols = 116
-
-	cfg.PreambleLength = cfg.PreambleSymbols * cfg.SymbolLength2
-	cfg.PacketLength = cfg.PacketSymbols * cfg.SymbolLength2
-
-	cfg.BlockSize = decode.NextPowerOf2(cfg.PreambleLength)
-	cfg.BlockSize2 = cfg.BlockSize << 1
-
-	cfg.BufferLength = cfg.PacketLength + cfg.BlockSize
-
 	cfg.Preamble = "00000000000000001110010101100100"
 
 	return
@@ -67,8 +51,8 @@ type Parser struct {
 	quantized []byte
 }
 
-func NewParser(symbolLength int, fastMag bool) (p Parser) {
-	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), fastMag)
+func NewParser(symbolLength, decimation int, fastMag bool) (p Parser) {
+	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), 1, fastMag)
 
 	// GF of order 32, polynomial 37, generator 2.
 	p.field = gf.NewField(32, 37, 2)

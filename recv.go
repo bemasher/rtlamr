@@ -44,11 +44,11 @@ type Receiver struct {
 func (rcvr *Receiver) NewReceiver() {
 	switch strings.ToLower(*msgType) {
 	case "scm":
-		rcvr.p = scm.NewParser(*symbolLength, *fastMag)
+		rcvr.p = scm.NewParser(*symbolLength, *decimation, *fastMag)
 	case "idm":
-		rcvr.p = idm.NewParser(*symbolLength, *fastMag)
+		rcvr.p = idm.NewParser(*symbolLength, *decimation, *fastMag)
 	case "r900":
-		rcvr.p = r900.NewParser(*symbolLength, *fastMag)
+		rcvr.p = r900.NewParser(*symbolLength, *decimation, *fastMag)
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
