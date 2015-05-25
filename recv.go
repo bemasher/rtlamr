@@ -138,7 +138,7 @@ func (rcvr *Receiver) Run() {
 			return
 		default:
 			// Read new sample block.
-			_, err := in.Read(block)
+			_, err := io.ReadFull(in, block)
 			if err != nil {
 				log.Fatal("Error reading samples: ", err)
 			}
