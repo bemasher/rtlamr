@@ -109,11 +109,11 @@ func NewDecoder(cfg PacketConfig, decimation int, fastMag bool) (d Decoder) {
 
 	// Allocate necessary buffers.
 	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
-	d.Signal = make([]float64, d.Cfg.BufferLength)
+	d.Signal = make([]float64, d.DecCfg.BufferLength)
 	d.Filtered = make([]float64, d.DecCfg.BufferLength)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
 
-	d.csum = make([]float64, (d.Cfg.BlockSize + d.Cfg.SymbolLength2 + 1))
+	d.csum = make([]float64, (d.DecCfg.BlockSize + d.DecCfg.SymbolLength2 + 1))
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
 	if fastMag {
@@ -154,18 +154,18 @@ func NewDecoder(cfg PacketConfig, decimation int, fastMag bool) (d Decoder) {
 func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
 	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
-	copy(d.Signal, d.Signal[d.Cfg.BlockSize:])
+	copy(d.Signal, d.Signal[d.DecCfg.BlockSize:])
 	copy(d.Filtered, d.Filtered[d.DecCfg.BlockSize:])
 	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
 	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
 	iqBlock := d.IQ[d.Cfg.PacketLength<<1:]
-	signalBlock := d.Signal[d.Cfg.PacketLength:]
+	signalBlock := d.Signal[d.DecCfg.PacketLength:]
 
 	// Compute the magnitude of the new block.
 	d.demod.Execute(iqBlock, signalBlock)
 
-	signalBlock = d.Signal[d.Cfg.PacketLength-d.Cfg.SymbolLength2:]
+	signalBlock = d.Signal[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:]
 	filterBlock := d.Filtered[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:]
 
 	// Perform matched filter on new block.
@@ -202,8 +202,13 @@ func NewSqrtMagLUT() (lut MagLUT) {
 
 // Calculates complex magnitude on given IQ stream writing result to output.
 func (lut MagLUT) Execute(input []byte, output []float64) {
-	for idx := 0; idx < len(input); idx += 2 {
-		output[idx>>1] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
+	decIdx := 0
+	dec := (len(input) / len(output))
+
+	for idx := 0; decIdx < len(output); idx += dec {
+		// fmt.Println(idx, idx/dec, len(input), len(output))
+		output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
+		decIdx++
 	}
 }
 
@@ -249,11 +254,11 @@ func (d Decoder) Filter(input, output []float64) {
 	}
 
 	// Filter result is difference of summation of lower and upper symbols.
-	lower := d.csum[d.Cfg.SymbolLength:]
-	upper := d.csum[d.Cfg.SymbolLength2:]
-	n := len(input) - d.Cfg.SymbolLength2
-	for idx := 0; idx < n; idx += d.Decimation {
-		output[idx/d.Decimation] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
+	lower := d.csum[d.DecCfg.SymbolLength:]
+	upper := d.csum[d.DecCfg.SymbolLength2:]
+	n := len(input) - d.DecCfg.SymbolLength2
+	for idx := 0; idx < n; idx++ {
+		output[idx] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
 	}
 
 	return
