@@ -206,7 +206,6 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 	dec := (len(input) / len(output))
 
 	for idx := 0; decIdx < len(output); idx += dec {
-		// fmt.Println(idx, idx/dec, len(input), len(output))
 		output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
 		decIdx++
 	}
@@ -231,14 +230,18 @@ func (lut AlphaMaxBetaMinLUT) Execute(input []byte, output []float64) {
 		ß = 0.392699081699
 	)
 
-	for idx := 0; idx < len(input); idx += 2 {
+	decIdx := 0
+	dec := (len(input) / len(output))
+
+	for idx := 0; decIdx < len(output); idx += dec {
 		i := lut[input[idx]]
 		q := lut[input[idx+1]]
 		if i > q {
-			output[idx>>1] = α*i + ß*q
+			output[decIdx] = α*i + ß*q
 		} else {
-			output[idx>>1] = α*q + ß*i
+			output[decIdx] = α*q + ß*i
 		}
+		decIdx++
 	}
 }
 
