@@ -68,7 +68,7 @@ $ rtlamr
 If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp` with an address accessible by the system running the receiver.
 
 ### Messages
-Currently both SCM (Standard Consumption Message) and IDM (Interval Data Message) packets can be decoded but are mutually exclusive, you cannot receive both simultaneously. See [Wikipedia: Encoder Receiver Transmitter](http://en.wikipedia.org/wiki/Encoder_receiver_transmitter) for more details on packet structure.
+Currently both SCM (Standard Consumption Message) and IDM (Interval Data Message) packets can be decoded but are mutually exclusive, you cannot receive both simultaneously. See [RTLAMR: Protocol](http://bemasher.github.io/rtlamr/protocol.html) for more details on packet structure.
 
 ### Sensitivity
 Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~300 different meters and intermittently from another ~600 meters. These figures are calculated from the number of messages received during a 25 minute window. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
