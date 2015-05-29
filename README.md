@@ -25,6 +25,7 @@ Available command-line flags are as follows:
 ```
 Usage of rtlamr:
   -cpuprofile=: write cpu profile to this file
+  -decimation=1: integer decimation factor, keep every nth sample
   -duration=0: time to run for, 0 for infinite, ex. 1h5m10s
   -fastmag=false: use faster alpha max + beta min magnitude approximation
   -filterid=: display only messages matching an id in a comma-separated list of ids.
@@ -36,7 +37,7 @@ Usage of rtlamr:
   -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution
-  -symbollength=73: symbol length in samples, see -help for valid lengths
+  -symbollength=72: symbol length in samples, see -help for valid lengths
 
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
