@@ -70,6 +70,8 @@ If you want to run the spectrum server on a different machine than the receiver 
 ### Messages
 Currently both SCM (Standard Consumption Message) and IDM (Interval Data Message) packets can be decoded but are mutually exclusive, you cannot receive both simultaneously. See [RTLAMR: Protocol](http://bemasher.github.io/rtlamr/protocol.html) for more details on packet structure.
 
+There's now experimental support for meters with R900 transmitters!
+
 ### Sensitivity
 Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~300 different meters and intermittently from another ~600 meters. These figures are calculated from the number of messages received during a 25 minute window. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
 
@@ -79,8 +81,6 @@ Currently the only tested meter is the Itron C1SR. However, the protocol is desi
 Check out the table of meters I've been compiling from various internet sources: [ERT Compatible Meters](https://github.com/bemasher/rtlamr/blob/master/meters.md)
 
 If you've got a meter not on the list that you've successfully received messages from, you can submit this info via a form available at the link above.
-
-There's now experimental support for meters with R900 transmitters!
 
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.
