@@ -113,7 +113,7 @@ func NewDecoder(cfg PacketConfig, decimation int, fastMag bool) (d Decoder) {
 	d.Filtered = make([]float64, d.DecCfg.BufferLength)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
 
-	d.csum = make([]float64, (d.DecCfg.BlockSize + d.DecCfg.SymbolLength2 + 1))
+	d.csum = make([]float64, (d.DecCfg.PacketLength - d.DecCfg.SymbolLength2 + 1))
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
 	if fastMag {
