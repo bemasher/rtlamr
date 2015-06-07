@@ -42,6 +42,7 @@ type Parser interface {
 	Parse([]int) []Message
 	Dec() decode.Decoder
 	Cfg() decode.PacketConfig
+	Log()
 }
 
 type Message interface {

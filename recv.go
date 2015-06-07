@@ -55,7 +55,7 @@ func (rcvr *Receiver) NewReceiver() {
 	}
 
 	if !*quiet {
-		rcvr.p.Cfg().Log()
+		rcvr.p.Log()
 	}
 
 	// Connect to rtl_tcp server.

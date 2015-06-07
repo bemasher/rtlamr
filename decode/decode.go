@@ -46,6 +46,7 @@ func (cfg PacketConfig) Decimate(decimation int) PacketConfig {
 	cfg.SymbolLength /= decimation
 	cfg.SymbolLength2 /= decimation
 	cfg.SampleRate /= decimation
+	cfg.DataRate /= decimation
 
 	cfg.PreambleLength /= decimation
 	cfg.PacketLength /= decimation
@@ -55,17 +56,35 @@ func (cfg PacketConfig) Decimate(decimation int) PacketConfig {
 	return cfg
 }
 
-func (cfg PacketConfig) Log() {
-	log.Println("BlockSize:", cfg.BlockSize)
-	log.Println("CenterFreq:", cfg.CenterFreq)
-	log.Println("SampleRate:", cfg.SampleRate)
-	log.Println("DataRate:", cfg.DataRate)
-	log.Println("SymbolLength:", cfg.SymbolLength)
-	log.Println("PreambleSymbols:", cfg.PreambleSymbols)
-	log.Println("PreambleLength:", cfg.PreambleLength)
-	log.Println("PacketSymbols:", cfg.PacketSymbols)
-	log.Println("PacketLength:", cfg.PacketLength)
-	log.Println("Preamble:", cfg.Preamble)
+func (d Decoder) Log() {
+	if d.Decimation != 1 {
+		log.Printf("BlockSize: %d|%d\n", d.Cfg.BlockSize, d.DecCfg.BlockSize)
+		log.Println("CenterFreq:", d.Cfg.CenterFreq)
+		log.Printf("SampleRate: %d|%d\n", d.Cfg.SampleRate, d.DecCfg.SampleRate)
+		log.Printf("DataRate: %d|%d\n", d.Cfg.DataRate, d.DecCfg.DataRate)
+		log.Printf("SymbolLength: %d|%d\n", d.Cfg.SymbolLength, d.DecCfg.SymbolLength)
+		log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
+		log.Printf("PreambleLength: %d|%d\n", d.Cfg.PreambleLength, d.DecCfg.PreambleLength)
+		log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
+		log.Printf("PacketLength: %d|%d\n", d.Cfg.PacketLength, d.DecCfg.PacketLength)
+		log.Println("Preamble:", d.Cfg.Preamble)
+
+		if d.Cfg.SymbolLength%d.Decimation != 0 {
+			log.Println("Warning: decimation factor gives non-integer symbol length, sensitivity may be poor")
+		}
+
+		return
+	}
+
+	log.Println("CenterFreq:", d.Cfg.CenterFreq)
+	log.Println("SampleRate:", d.Cfg.SampleRate)
+	log.Println("DataRate:", d.Cfg.DataRate)
+	log.Println("SymbolLength:", d.Cfg.SymbolLength)
+	log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
+	log.Println("PreambleLength:", d.Cfg.PreambleLength)
+	log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
+	log.Println("PacketLength:", d.Cfg.PacketLength)
+	log.Println("Preamble:", d.Cfg.Preamble)
 }
 
 // Decoder contains buffers and radio configuration.
