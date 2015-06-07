@@ -70,7 +70,11 @@ func (d Decoder) Log() {
 		log.Println("Preamble:", d.Cfg.Preamble)
 
 		if d.Cfg.SymbolLength%d.Decimation != 0 {
-			log.Println("Warning: decimation factor gives non-integer symbol length, sensitivity may be poor")
+			log.Println("Warning: decimated symbol length is non-integral, sensitivity may be poor")
+		}
+
+		if d.DecCfg.SymbolLength < 3 {
+			log.Fatal("Error: illegal decimation factor, choose a smaller factor")
 		}
 
 		return
