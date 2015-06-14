@@ -83,7 +83,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 		data := parse.NewDataFromBytes(pkt)
 
 		// If the packet is too short, bail.
-		if l := len(data.Bytes); l < 12 {
+		if l := len(data.Bytes); l != 12 {
 			continue
 		}
 
@@ -92,21 +92,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 			continue
 		}
 
-		ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 26)
-		erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 4)
-		tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 2)
-		tamperenc, _ := strconv.ParseUint(data.Bits[30:32], 2, 2)
-		consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 24)
-		checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
-
-		var scm SCM
-
-		scm.ID = uint32(ertid)
-		scm.Type = uint8(erttype)
-		scm.TamperPhy = uint8(tamperphy)
-		scm.TamperEnc = uint8(tamperenc)
-		scm.Consumption = uint32(consumption)
-		scm.Checksum = uint16(checksum)
+		scm := NewSCM(data)
 
 		// If the meter id is 0, bail.
 		if scm.ID == 0 {
@@ -127,6 +113,24 @@ type SCM struct {
 	TamperEnc   uint8  `xml:",attr"`
 	Consumption uint32 `xml:",attr"`
 	Checksum    uint16 `xml:",attr"`
+}
+
+func NewSCM(data parse.Data) (scm SCM) {
+	ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 26)
+	erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 4)
+	tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 2)
+	tamperenc, _ := strconv.ParseUint(data.Bits[30:32], 2, 2)
+	consumption, _ := strconv.ParseUint(data.Bits[32:56], 2, 24)
+	checksum, _ := strconv.ParseUint(data.Bits[80:96], 2, 16)
+
+	scm.ID = uint32(ertid)
+	scm.Type = uint8(erttype)
+	scm.TamperPhy = uint8(tamperphy)
+	scm.TamperEnc = uint8(tamperenc)
+	scm.Consumption = uint32(consumption)
+	scm.Checksum = uint16(checksum)
+
+	return
 }
 
 func (scm SCM) MsgType() string {

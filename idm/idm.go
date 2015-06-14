@@ -71,6 +71,41 @@ func NewParser(symbolLength int, fastMag bool) (p Parser) {
 	return
 }
 
+func (p Parser) Parse(indices []int) (msgs []parse.Message) {
+	seen := make(map[string]bool)
+
+	for _, pkt := range p.Decoder.Slice(indices) {
+		s := string(pkt)
+		if seen[s] {
+			continue
+		}
+		seen[s] = true
+
+		data := parse.NewDataFromBytes(pkt)
+
+		// If the packet is too short, bail.
+		if l := len(data.Bytes); l != 92 {
+			continue
+		}
+
+		// If the checksum fails, bail.
+		if residue := p.Checksum(data.Bytes[4:92]); residue != p.Residue {
+			continue
+		}
+
+		idm := NewIDM(data)
+
+		// If the meter id is 0, bail.
+		if idm.ERTSerialNumber == 0 {
+			continue
+		}
+
+		msgs = append(msgs, idm)
+	}
+
+	return
+}
+
 // Standard Consumption Message
 type IDM struct {
 	Preamble                         uint32 // Training and Frame sync.
@@ -90,6 +125,35 @@ type IDM struct {
 	TransmitTimeOffset               uint16
 	SerialNumberCRC                  uint16
 	PacketCRC                        uint16
+}
+
+func NewIDM(data parse.Data) (idm IDM) {
+	idm.Preamble = binary.BigEndian.Uint32(data.Bytes[0:4])
+	idm.PacketTypeID = data.Bytes[4]
+	idm.PacketLength = data.Bytes[5]
+	idm.HammingCode = data.Bytes[6]
+	idm.ApplicationVersion = data.Bytes[7]
+	idm.ERTType = data.Bytes[8] & 0x0F
+	idm.ERTSerialNumber = binary.BigEndian.Uint32(data.Bytes[9:13])
+	idm.ConsumptionIntervalCount = data.Bytes[13]
+	idm.ModuleProgrammingState = data.Bytes[14]
+	idm.TamperCounters = data.Bytes[15:21]
+	idm.AsynchronousCounters = binary.BigEndian.Uint16(data.Bytes[21:23])
+	idm.PowerOutageFlags = data.Bytes[23:29]
+	idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
+
+	offset := 264
+	for idx := range idm.DifferentialConsumptionIntervals {
+		interval, _ := strconv.ParseUint(data.Bits[offset:offset+9], 2, 9)
+		idm.DifferentialConsumptionIntervals[idx] = uint16(interval)
+		offset += 9
+	}
+
+	idm.TransmitTimeOffset = binary.BigEndian.Uint16(data.Bytes[86:88])
+	idm.SerialNumberCRC = binary.BigEndian.Uint16(data.Bytes[88:90])
+	idm.PacketCRC = binary.BigEndian.Uint16(data.Bytes[90:92])
+
+	return
 }
 
 type Interval [47]uint16
@@ -159,60 +223,6 @@ func (idm IDM) Record() (r []string) {
 	r = append(r, fmt.Sprintf("%d", idm.TransmitTimeOffset))
 	r = append(r, fmt.Sprintf("0x%04X", idm.SerialNumberCRC))
 	r = append(r, fmt.Sprintf("0x%04X", idm.PacketCRC))
-
-	return
-}
-
-func (p Parser) Parse(indices []int) (msgs []parse.Message) {
-	seen := make(map[string]bool)
-
-	for _, pkt := range p.Decoder.Slice(indices) {
-		s := string(pkt)
-		if seen[s] {
-			continue
-		}
-		seen[s] = true
-
-		data := parse.NewDataFromBytes(pkt)
-
-		// If the checksum fails, bail.
-		if residue := p.Checksum(data.Bytes[4:92]); residue != p.Residue {
-			continue
-		}
-
-		var idm IDM
-		idm.Preamble = binary.BigEndian.Uint32(data.Bytes[0:4])
-		idm.PacketTypeID = data.Bytes[4]
-		idm.PacketLength = data.Bytes[5]
-		idm.HammingCode = data.Bytes[6]
-		idm.ApplicationVersion = data.Bytes[7]
-		idm.ERTType = data.Bytes[8] & 0x0F
-		idm.ERTSerialNumber = binary.BigEndian.Uint32(data.Bytes[9:13])
-		idm.ConsumptionIntervalCount = data.Bytes[13]
-		idm.ModuleProgrammingState = data.Bytes[14]
-		idm.TamperCounters = data.Bytes[15:21]
-		idm.AsynchronousCounters = binary.BigEndian.Uint16(data.Bytes[21:23])
-		idm.PowerOutageFlags = data.Bytes[23:29]
-		idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
-
-		offset := 264
-		for idx := range idm.DifferentialConsumptionIntervals {
-			interval, _ := strconv.ParseUint(data.Bits[offset:offset+9], 2, 9)
-			idm.DifferentialConsumptionIntervals[idx] = uint16(interval)
-			offset += 9
-		}
-
-		idm.TransmitTimeOffset = binary.BigEndian.Uint16(data.Bytes[86:88])
-		idm.SerialNumberCRC = binary.BigEndian.Uint16(data.Bytes[88:90])
-		idm.PacketCRC = binary.BigEndian.Uint16(data.Bytes[90:92])
-
-		// If the meter id is 0, bail.
-		if idm.ERTSerialNumber == 0 {
-			continue
-		}
-
-		msgs = append(msgs, idm)
-	}
 
 	return
 }
