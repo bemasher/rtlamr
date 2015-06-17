@@ -25,6 +25,7 @@ Available command-line flags are as follows:
 ```
 Usage of rtlamr:
   -cpuprofile=: write cpu profile to this file
+  -decimation=1: integer decimation factor, keep every nth sample
   -duration=0: time to run for, 0 for infinite, ex. 1h5m10s
   -fastmag=false: use faster alpha max + beta min magnitude approximation
   -filterid=: display only messages matching an id in a comma-separated list of ids.
@@ -36,7 +37,7 @@ Usage of rtlamr:
   -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution
-  -symbollength=73: symbol length in samples, see -help for valid lengths
+  -symbollength=72: symbol length in samples, see -help for valid lengths
 
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
@@ -67,7 +68,9 @@ $ rtlamr
 If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp` with an address accessible by the system running the receiver.
 
 ### Messages
-Currently both SCM (Standard Consumption Message) and IDM (Interval Data Message) packets can be decoded but are mutually exclusive, you cannot receive both simultaneously. See [Wikipedia: Encoder Receiver Transmitter](http://en.wikipedia.org/wiki/Encoder_receiver_transmitter) for more details on packet structure.
+Currently both SCM (Standard Consumption Message) and IDM (Interval Data Message) packets can be decoded but are mutually exclusive, you cannot receive both simultaneously. See [RTLAMR: Protocol](http://bemasher.github.io/rtlamr/protocol.html) for more details on packet structure.
+
+There's now experimental support for meters with R900 transmitters!
 
 ### Sensitivity
 Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~300 different meters and intermittently from another ~600 meters. These figures are calculated from the number of messages received during a 25 minute window. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
@@ -78,8 +81,6 @@ Currently the only tested meter is the Itron C1SR. However, the protocol is desi
 Check out the table of meters I've been compiling from various internet sources: [ERT Compatible Meters](https://github.com/bemasher/rtlamr/blob/master/meters.md)
 
 If you've got a meter not on the list that you've successfully received messages from, you can submit this info via a form available at the link above.
-
-There's now experimental support for meters with R900 transmitters!
 
 ### Ethics
 _Do not use this for nefarious purposes._ If you do, I don't want to know about it, I am not and will not be responsible for your lack of common decency and/or foresight. However, if you find a clever non-evil use for this, by all means, share.

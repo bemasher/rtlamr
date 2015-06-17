@@ -28,27 +28,13 @@ import (
 )
 
 func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
-	cfg.DataRate = 32768
-
 	cfg.CenterFreq = 912600155
-
+	cfg.DataRate = 32768
 	cfg.SymbolLength = symbolLength
-	cfg.SymbolLength2 = cfg.SymbolLength << 1
-
-	cfg.SampleRate = cfg.DataRate * cfg.SymbolLength
-
 	cfg.PreambleSymbols = 32
 	cfg.PacketSymbols = 92 * 8
-
-	cfg.PreambleLength = cfg.PreambleSymbols * cfg.SymbolLength2
-	cfg.PacketLength = cfg.PacketSymbols * cfg.SymbolLength2
-
-	cfg.BlockSize = decode.NextPowerOf2(cfg.PreambleLength)
-	cfg.BlockSize2 = cfg.BlockSize << 1
-
-	cfg.BufferLength = cfg.PacketLength + cfg.BlockSize
-
 	cfg.Preamble = "01010101010101010001011010100011"
+
 	return
 }
 
@@ -65,8 +51,8 @@ func (p Parser) Cfg() decode.PacketConfig {
 	return p.Decoder.Cfg
 }
 
-func NewParser(symbolLength int, fastMag bool) (p Parser) {
-	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), fastMag)
+func NewParser(symbolLength, decimation int, fastMag bool) (p Parser) {
+	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation, fastMag)
 	p.CRC = crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
 	return
 }
@@ -157,10 +143,6 @@ func NewIDM(data parse.Data) (idm IDM) {
 }
 
 type Interval [47]uint16
-
-// func (interval Interval) MarshalText() (text []byte, err error) {
-// 	return []byte(fmt.Sprintf("%+v", interval)), nil
-// }
 
 func (interval Interval) Record() (r []string) {
 	for _, val := range interval {

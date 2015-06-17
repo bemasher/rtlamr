@@ -39,7 +39,9 @@ var sampleFile *os.File
 var msgType = flag.String("msgtype", "scm", "message type to receive: scm, idm or r900")
 var fastMag = flag.Bool("fastmag", false, "use faster alpha max + beta min magnitude approximation")
 
-var symbolLength = flag.Int("symbollength", 73, "symbol length in samples, see -help for valid lengths")
+var symbolLength = flag.Int("symbollength", 72, "symbol length in samples, see -help for valid lengths")
+
+var decimation = flag.Int("decimation", 1, "integer decimation factor, keep every nth sample")
 
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
 var meterID UintMap
@@ -64,6 +66,7 @@ func RegisterFlags() {
 		"samplefile":   true,
 		"msgtype":      true,
 		"symbollength": true,
+		"decimation":   true,
 		"duration":     true,
 		"filterid":     true,
 		"filtertype":   true,
