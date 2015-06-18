@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bemasher/rtlamr/idm"
+	"github.com/bemasher/rtlamr/nim"
 	"github.com/bemasher/rtlamr/parse"
 	"github.com/bemasher/rtlamr/r900"
 	"github.com/bemasher/rtlamr/scm"
@@ -50,6 +51,8 @@ func (rcvr *Receiver) NewReceiver() {
 		rcvr.p = idm.NewParser(*symbolLength, *decimation, *fastMag)
 	case "r900":
 		rcvr.p = r900.NewParser(*symbolLength, *decimation, *fastMag)
+	case "nim":
+		rcvr.p = nim.NewParser(*symbolLength, *decimation, *fastMag)
 	default:
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
