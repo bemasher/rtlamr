@@ -222,7 +222,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 		r900.Unkn3 = uint8(unkn3)
 		r900.Leak = uint8(leak)
 		r900.LeakNow = uint8(leaknow)
-		copy(r900.checksum[:], symbols[:16])
+		copy(r900.checksum[:], symbols[16:])
 
 		msgs = append(msgs, r900)
 	}
