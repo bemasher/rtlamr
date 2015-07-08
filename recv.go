@@ -157,7 +157,7 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 				if *unique {
-					if lastValue[uint(pkt.MeterID())] == pkt.MeterValue() {
+					if val, ok := lastValue[uint(pkt.MeterID())]; ok && val == pkt.MeterValue() {
 						continue
 					}
 					lastValue[uint(pkt.MeterID())] = pkt.MeterValue()
