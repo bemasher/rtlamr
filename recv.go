@@ -36,6 +36,7 @@ import (
 )
 
 var rcvr Receiver
+var lastValue map[uint]uint32
 
 type Receiver struct {
 	rtltcp.SDR
@@ -126,6 +127,7 @@ func (rcvr *Receiver) Run() {
 	}()
 
 	block := make([]byte, rcvr.p.Cfg().BlockSize2)
+	lastValue = make(map[uint]uint32)
 
 	start := time.Now()
 	for {
@@ -153,6 +155,12 @@ func (rcvr *Receiver) Run() {
 
 				if len(meterType) > 0 && !meterType[uint(pkt.MeterType())] {
 					continue
+				}
+				if *unique {
+					if lastValue[uint(pkt.MeterID())] == pkt.MeterValue() {
+						continue
+					}
+					lastValue[uint(pkt.MeterID())] = pkt.MeterValue()
 				}
 
 				var msg parse.LogMessage

@@ -46,6 +46,7 @@ var decimation = flag.Int("decimation", 1, "integer decimation factor, keep ever
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
 var meterID UintMap
 var meterType UintMap
+var unique = flag.Bool("unique", false, "do not print duplicate values from each meter")
 
 var encoder Encoder
 var format = flag.String("format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
@@ -73,6 +74,7 @@ func RegisterFlags() {
 		"format":       true,
 		"gobunsafe":    true,
 		"quiet":        true,
+		"unique":       true,
 		"single":       true,
 		"cpuprofile":   true,
 		"fastmag":      true,
