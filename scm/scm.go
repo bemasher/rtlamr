@@ -17,6 +17,7 @@
 package scm
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 
@@ -97,7 +98,7 @@ type SCM struct {
 	TamperPhy   uint8  `xml:",attr"`
 	TamperEnc   uint8  `xml:",attr"`
 	Consumption uint32 `xml:",attr"`
-	Checksum    uint16 `xml:",attr"`
+	ChecksumVal uint16 `xml:"Checksum,attr"`
 }
 
 func NewSCM(data parse.Data) (scm SCM) {
@@ -113,7 +114,7 @@ func NewSCM(data parse.Data) (scm SCM) {
 	scm.TamperPhy = uint8(tamperphy)
 	scm.TamperEnc = uint8(tamperenc)
 	scm.Consumption = uint32(consumption)
-	scm.Checksum = uint16(checksum)
+	scm.ChecksumVal = uint16(checksum)
 
 	return
 }
@@ -130,13 +131,15 @@ func (scm SCM) MeterType() uint8 {
 	return scm.Type
 }
 
-func (scm SCM) MeterValue() uint32 {
-	return scm.Consumption
+func (scm SCM) Checksum() []byte {
+	checksum := make([]byte, 2)
+	binary.BigEndian.PutUint16(checksum, scm.ChecksumVal)
+	return checksum
 }
 
 func (scm SCM) String() string {
 	return fmt.Sprintf("{ID:%8d Type:%2d Tamper:{Phy:%02X Enc:%02X} Consumption:%8d CRC:0x%04X}",
-		scm.ID, scm.Type, scm.TamperPhy, scm.TamperEnc, scm.Consumption, scm.Checksum,
+		scm.ID, scm.Type, scm.TamperPhy, scm.TamperEnc, scm.Consumption, scm.ChecksumVal,
 	)
 }
 
@@ -146,7 +149,7 @@ func (scm SCM) Record() (r []string) {
 	r = append(r, "0x"+strconv.FormatUint(uint64(scm.TamperPhy), 16))
 	r = append(r, "0x"+strconv.FormatUint(uint64(scm.TamperEnc), 16))
 	r = append(r, strconv.FormatUint(uint64(scm.Consumption), 10))
-	r = append(r, "0x"+strconv.FormatUint(uint64(scm.Checksum), 16))
+	r = append(r, "0x"+strconv.FormatUint(uint64(scm.ChecksumVal), 16))
 
 	return
 }

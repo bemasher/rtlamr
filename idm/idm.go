@@ -163,9 +163,10 @@ func (idm IDM) MeterType() uint8 {
 	return idm.ERTType
 }
 
-func (idm IDM) MeterValue() uint32 {
-	// don't know yet
-	return 0
+func (idm IDM) Checksum() []byte {
+	checksum := make([]byte, 2)
+	binary.BigEndian.PutUint16(checksum, idm.PacketCRC)
+	return checksum
 }
 
 func (idm IDM) String() string {

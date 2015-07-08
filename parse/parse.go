@@ -50,7 +50,7 @@ type Message interface {
 	MsgType() string
 	MeterID() uint32
 	MeterType() uint8
-	MeterValue() uint32
+	Checksum() []byte
 }
 
 type LogMessage struct {
