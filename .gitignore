@@ -3,3 +3,5 @@ data
 scm/Makefile
 release.7z
 *.diff
+desktop.ini
+*~

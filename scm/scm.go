@@ -130,6 +130,10 @@ func (scm SCM) MeterType() uint8 {
 	return scm.Type
 }
 
+func (scm SCM) MeterValue() uint32 {
+	return scm.Consumption
+}
+
 func (scm SCM) String() string {
 	return fmt.Sprintf("{ID:%8d Type:%2d Tamper:{Phy:%02X Enc:%02X} Consumption:%8d CRC:0x%04X}",
 		scm.ID, scm.Type, scm.TamperPhy, scm.TamperEnc, scm.Consumption, scm.Checksum,

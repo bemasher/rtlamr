@@ -253,6 +253,10 @@ func (r900 R900) MeterType() uint8 {
 	return r900.Unkn1
 }
 
+func (r900 R900) MeterValue() uint32 {
+	return r900.Consumption
+}
+
 func (r900 R900) String() string {
 	return fmt.Sprintf("{ID:%10d Unkn1:0x%02X NoUse:%2d BackFlow:%1d Consumption:%8d Unkn3:0x%02X Leak:%2d LeakNow:%1d}",
 		r900.ID,
