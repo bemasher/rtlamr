@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -36,7 +37,6 @@ import (
 )
 
 var rcvr Receiver
-var lastValue map[uint]uint32
 
 type Receiver struct {
 	rtltcp.SDR
@@ -127,7 +127,7 @@ func (rcvr *Receiver) Run() {
 	}()
 
 	block := make([]byte, rcvr.p.Cfg().BlockSize2)
-	lastValue = make(map[uint]uint32)
+	checksumHistory := make(map[uint][]byte)
 
 	start := time.Now()
 	for {
@@ -157,10 +157,15 @@ func (rcvr *Receiver) Run() {
 					continue
 				}
 				if *unique {
-					if val, ok := lastValue[uint(pkt.MeterID())]; ok && val == pkt.MeterValue() {
+					checksum := pkt.Checksum()
+					mid := uint(pkt.MeterID())
+
+					if val, ok := checksumHistory[mid]; ok && bytes.Compare(val, checksum) == 0 {
 						continue
 					}
-					lastValue[uint(pkt.MeterID())] = pkt.MeterValue()
+
+					checksumHistory[mid] = make([]byte, len(checksum))
+					copy(checksumHistory[mid], checksum)
 				}
 
 				var msg parse.LogMessage
