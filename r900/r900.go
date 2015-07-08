@@ -222,6 +222,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 		r900.Unkn3 = uint8(unkn3)
 		r900.Leak = uint8(leak)
 		r900.LeakNow = uint8(leaknow)
+		copy(r900.checksum[:], symbols[16:])
 
 		msgs = append(msgs, r900)
 	}
@@ -238,7 +239,7 @@ type R900 struct {
 	Unkn3       uint8  `xml:",attr"` // 2 bits
 	Leak        uint8  `xml:",attr"` // 4 bits, day bins of leak
 	LeakNow     uint8  `xml:",attr"` // 2 bits, leak past 24h hi/lo
-
+	checksum    [5]byte
 }
 
 func (r900 R900) MsgType() string {
@@ -253,8 +254,8 @@ func (r900 R900) MeterType() uint8 {
 	return r900.Unkn1
 }
 
-func (r900 R900) MeterValue() uint32 {
-	return r900.Consumption
+func (r900 R900) Checksum() []byte {
+	return r900.checksum[:]
 }
 
 func (r900 R900) String() string {
