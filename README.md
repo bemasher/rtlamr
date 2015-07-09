@@ -38,6 +38,7 @@ Usage of rtlamr:
   -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution
   -symbollength=72: symbol length in samples, see -help for valid lengths
+  -unique=false: suppress duplicate messages from each meter
 
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
