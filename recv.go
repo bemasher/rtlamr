@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -40,7 +39,8 @@ var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
-	p parse.Parser
+	p  parse.Parser
+	fc parse.FilterChain
 }
 
 func (rcvr *Receiver) NewReceiver() {
@@ -82,8 +82,17 @@ func (rcvr *Receiver) NewReceiver() {
 			sampleRateFlagSet = true
 		case "gainbyindex", "tunergainmode", "tunergain", "agcmode":
 			gainFlagSet = true
+		case "unique":
+			rcvr.fc.Add(NewUniqueFilter())
+		case "filterid":
+			rcvr.fc.Add(MeterIDFilter(meterID))
+		case "filtertype":
+			rcvr.fc.Add(MeterTypeFilter(meterType))
+		default:
+			fmt.Println(f.Name)
 		}
 	})
+	fmt.Printf("%+v\n", rcvr.fc)
 
 	// Set some parameters for listening.
 	if centerfreqFlagSet {
@@ -127,7 +136,6 @@ func (rcvr *Receiver) Run() {
 	}()
 
 	block := make([]byte, rcvr.p.Cfg().BlockSize2)
-	checksumHistory := make(map[uint][]byte)
 
 	start := time.Now()
 	for {
@@ -149,23 +157,8 @@ func (rcvr *Receiver) Run() {
 			indices := rcvr.p.Dec().Decode(block)
 
 			for _, pkt := range rcvr.p.Parse(indices) {
-				if len(meterID) > 0 && !meterID[uint(pkt.MeterID())] {
+				if !rcvr.fc.Match(pkt) {
 					continue
-				}
-
-				if len(meterType) > 0 && !meterType[uint(pkt.MeterType())] {
-					continue
-				}
-				if *unique {
-					checksum := pkt.Checksum()
-					mid := uint(pkt.MeterID())
-
-					if val, ok := checksumHistory[mid]; ok && bytes.Compare(val, checksum) == 0 {
-						continue
-					}
-
-					checksumHistory[mid] = make([]byte, len(checksum))
-					copy(checksumHistory[mid], checksum)
 				}
 
 				var msg parse.LogMessage

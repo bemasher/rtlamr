@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
@@ -28,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/bemasher/rtlamr/csv"
+	"github.com/bemasher/rtlamr/parse"
 )
 
 var logFilename = flag.String("logfile", "/dev/stdout", "log statement dump file")
@@ -45,6 +47,7 @@ var decimation = flag.Int("decimation", 1, "integer decimation factor, keep ever
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
 var meterID UintMap
 var meterType UintMap
+
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
 var encoder Encoder
@@ -166,4 +169,35 @@ func (m UintMap) Set(value string) error {
 	}
 
 	return nil
+}
+
+type MeterIDFilter UintMap
+
+func (m MeterIDFilter) Filter(msg parse.Message) bool {
+	return m[uint(msg.MeterID())]
+}
+
+type MeterTypeFilter UintMap
+
+func (m MeterTypeFilter) Filter(msg parse.Message) bool {
+	return m[uint(msg.MeterType())]
+}
+
+type UniqueFilter map[uint][]byte
+
+func NewUniqueFilter() UniqueFilter {
+	return make(UniqueFilter)
+}
+
+func (uf UniqueFilter) Filter(msg parse.Message) bool {
+	checksum := msg.Checksum()
+	mid := uint(msg.MeterID())
+
+	if val, ok := uf[mid]; ok && bytes.Compare(val, checksum) == 0 {
+		return false
+	}
+
+	uf[mid] = make([]byte, len(checksum))
+	copy(uf[mid], checksum)
+	return true
 }
