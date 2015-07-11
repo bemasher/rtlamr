@@ -27,7 +27,6 @@ Usage of rtlamr:
   -cpuprofile=: write cpu profile to this file
   -decimation=1: integer decimation factor, keep every nth sample
   -duration=0: time to run for, 0 for infinite, ex. 1h5m10s
-  -fastmag=false: use faster alpha max + beta min magnitude approximation
   -filterid=: display only messages matching an id in a comma-separated list of ids.
   -filtertype=: display only messages matching a type in a comma-separated list of types.
   -format=plain: format to write log messages in: plain, csv, json, xml or gob
