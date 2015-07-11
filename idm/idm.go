@@ -51,8 +51,8 @@ func (p Parser) Cfg() decode.PacketConfig {
 	return p.Decoder.Cfg
 }
 
-func NewParser(symbolLength, decimation int, fastMag bool) (p Parser) {
-	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation, fastMag)
+func NewParser(symbolLength, decimation int) (p Parser) {
+	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation)
 	p.CRC = crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
 	return
 }

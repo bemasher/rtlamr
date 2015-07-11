@@ -113,7 +113,7 @@ type Decoder struct {
 }
 
 // Create a new decoder with the given packet configuration.
-func NewDecoder(cfg PacketConfig, decimation int, fastMag bool) (d Decoder) {
+func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.Cfg = cfg
 
 	d.Cfg.SymbolLength2 = d.Cfg.SymbolLength << 1
@@ -139,11 +139,7 @@ func NewDecoder(cfg PacketConfig, decimation int, fastMag bool) (d Decoder) {
 	d.csum = make([]float64, (d.DecCfg.PacketLength - d.DecCfg.SymbolLength2 + 1))
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	if fastMag {
-		d.demod = NewAlphaMaxBetaMinLUT()
-	} else {
-		d.demod = NewSqrtMagLUT()
-	}
+	d.demod = NewSqrtMagLUT()
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
 	d.preamble = make([]byte, len(d.Cfg.Preamble))
@@ -230,40 +226,6 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 
 	for idx := 0; decIdx < len(output); idx += dec {
 		output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
-		decIdx++
-	}
-}
-
-// Alpha*Max + Beta*Min Magnitude Approximation Lookup Table.
-type AlphaMaxBetaMinLUT []float64
-
-// Pre-computes absolute values with most common DC offset for rtl-sdr dongles.
-func NewAlphaMaxBetaMinLUT() (lut AlphaMaxBetaMinLUT) {
-	lut = make([]float64, 0x100)
-	for idx := range lut {
-		lut[idx] = math.Abs(127.4 - float64(idx))
-	}
-	return
-}
-
-// Calculates complex magnitude on given IQ stream writing result to output.
-func (lut AlphaMaxBetaMinLUT) Execute(input []byte, output []float64) {
-	const (
-		α = 0.948059448969
-		ß = 0.392699081699
-	)
-
-	decIdx := 0
-	dec := (len(input) / len(output))
-
-	for idx := 0; decIdx < len(output); idx += dec {
-		i := lut[input[idx]]
-		q := lut[input[idx+1]]
-		if i > q {
-			output[decIdx] = α*i + ß*q
-		} else {
-			output[decIdx] = α*q + ß*i
-		}
 		decIdx++
 	}
 }
