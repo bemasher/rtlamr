@@ -88,8 +88,6 @@ func (rcvr *Receiver) NewReceiver() {
 			rcvr.fc.Add(meterID)
 		case "filtertype":
 			rcvr.fc.Add(meterType)
-		default:
-			fmt.Println(f.Name)
 		}
 	})
 
