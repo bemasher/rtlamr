@@ -78,9 +78,9 @@ func (msg LogMessage) Record() (r []string) {
 	return r
 }
 
-type FilterChain []Filter
+type FilterChain []MessageFilter
 
-func (fc *FilterChain) Add(filter Filter) {
+func (fc *FilterChain) Add(filter MessageFilter) {
 	*fc = append(*fc, filter)
 }
 
@@ -90,7 +90,7 @@ func (fc FilterChain) Match(msg Message) bool {
 	}
 
 	for _, filter := range fc {
-		if !filter.Filter(msg) {
+		if !filter.MessageFilter(msg) {
 			return false
 		}
 	}
@@ -98,6 +98,6 @@ func (fc FilterChain) Match(msg Message) bool {
 	return true
 }
 
-type Filter interface {
+type MessageFilter interface {
 	Filter(Message) bool
 }

@@ -45,8 +45,8 @@ var symbolLength = flag.Int("symbollength", 72, "symbol length in samples, see -
 var decimation = flag.Int("decimation", 1, "integer decimation factor, keep every nth sample")
 
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
-var meterID UintMap
-var meterType UintMap
+var meterID MeterIDFilter
+var meterType MeterTypeFilter
 
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
@@ -58,8 +58,8 @@ var quiet = flag.Bool("quiet", false, "suppress printing state information at st
 var single = flag.Bool("single", false, "one shot execution")
 
 func RegisterFlags() {
-	meterID = make(UintMap)
-	meterType = make(UintMap)
+	meterID = MeterIDFilter{make(UintMap)}
+	meterType = MeterTypeFilter{make(UintMap)}
 
 	flag.Var(meterID, "filterid", "display only messages matching an id in a comma-separated list of ids.")
 	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
@@ -171,16 +171,20 @@ func (m UintMap) Set(value string) error {
 	return nil
 }
 
-type MeterIDFilter UintMap
-
-func (m MeterIDFilter) Filter(msg parse.Message) bool {
-	return m[uint(msg.MeterID())]
+type MeterIDFilter struct {
+	UintMap
 }
 
-type MeterTypeFilter UintMap
+func (m MeterIDFilter) Filter(msg parse.Message) bool {
+	return m.UintMap[uint(msg.MeterID())]
+}
+
+type MeterTypeFilter struct {
+	UintMap
+}
 
 func (m MeterTypeFilter) Filter(msg parse.Message) bool {
-	return m[uint(msg.MeterType())]
+	return m.UintMap[uint(msg.MeterType())]
 }
 
 type UniqueFilter map[uint][]byte

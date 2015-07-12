@@ -85,9 +85,9 @@ func (rcvr *Receiver) NewReceiver() {
 		case "unique":
 			rcvr.fc.Add(NewUniqueFilter())
 		case "filterid":
-			rcvr.fc.Add(MeterIDFilter(meterID))
+			rcvr.fc.Add(meterID)
 		case "filtertype":
-			rcvr.fc.Add(MeterTypeFilter(meterType))
+			rcvr.fc.Add(meterType)
 		default:
 			fmt.Println(f.Name)
 		}
