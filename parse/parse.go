@@ -90,7 +90,7 @@ func (fc FilterChain) Match(msg Message) bool {
 	}
 
 	for _, filter := range fc {
-		if !filter.MessageFilter(msg) {
+		if !filter.Filter(msg) {
 			return false
 		}
 	}
