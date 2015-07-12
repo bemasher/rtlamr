@@ -92,7 +92,6 @@ func (rcvr *Receiver) NewReceiver() {
 			fmt.Println(f.Name)
 		}
 	})
-	fmt.Printf("%+v\n", rcvr.fc)
 
 	// Set some parameters for listening.
 	if centerfreqFlagSet {
