@@ -124,7 +124,7 @@ func HandleFlags() {
 	*format = strings.ToLower(*format)
 	switch *format {
 	case "plain":
-		break
+		encoder = PlainEncoder{*sampleFilename, logFile}
 	case "csv":
 		encoder = csv.NewEncoder(logFile)
 	case "json":
@@ -204,4 +204,18 @@ func (uf UniqueFilter) Filter(msg parse.Message) bool {
 	uf[mid] = make([]byte, len(checksum))
 	copy(uf[mid], checksum)
 	return true
+}
+
+type PlainEncoder struct {
+	sampleFilename string
+	logFile        *os.File
+}
+
+func (pe PlainEncoder) Encode(msg interface{}) (err error) {
+	if pe.sampleFilename == os.DevNull {
+		_, err = fmt.Fprintln(pe.logFile, msg.(parse.LogMessage).StringNoOffset())
+	} else {
+		_, err = fmt.Fprintln(pe.logFile, msg.(parse.LogMessage))
+	}
+	return
 }

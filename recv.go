@@ -167,24 +167,15 @@ func (rcvr *Receiver) Run() {
 				msg.Length = rcvr.p.Cfg().BufferLength << 1
 				msg.Message = pkt
 
-				if encoder == nil {
-					// A nil encoder is just plain-text output.
-					if *sampleFilename == os.DevNull {
-						fmt.Fprintln(logFile, msg.StringNoOffset())
-					} else {
-						fmt.Fprintln(logFile, msg)
-					}
-				} else {
-					err = encoder.Encode(msg)
-					if err != nil {
-						log.Fatal("Error encoding message: ", err)
-					}
+				err = encoder.Encode(msg)
+				if err != nil {
+					log.Fatal("Error encoding message: ", err)
+				}
 
-					// The XML encoder doesn't write new lines after each
-					// element, add them.
-					if _, ok := encoder.(*xml.Encoder); ok {
-						fmt.Fprintln(logFile)
-					}
+				// The XML encoder doesn't write new lines after each
+				// element, add them.
+				if _, ok := encoder.(*xml.Encoder); ok {
+					fmt.Fprintln(logFile)
 				}
 
 				pktFound = true
