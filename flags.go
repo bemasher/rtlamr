@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
@@ -28,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/bemasher/rtlamr/csv"
+	"github.com/bemasher/rtlamr/parse"
 )
 
 var logFilename = flag.String("logfile", "/dev/stdout", "log statement dump file")
@@ -43,8 +45,9 @@ var symbolLength = flag.Int("symbollength", 72, "symbol length in samples, see -
 var decimation = flag.Int("decimation", 1, "integer decimation factor, keep every nth sample")
 
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
-var meterID UintMap
-var meterType UintMap
+var meterID MeterIDFilter
+var meterType MeterTypeFilter
+
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
 var encoder Encoder
@@ -55,8 +58,8 @@ var quiet = flag.Bool("quiet", false, "suppress printing state information at st
 var single = flag.Bool("single", false, "one shot execution")
 
 func RegisterFlags() {
-	meterID = make(UintMap)
-	meterType = make(UintMap)
+	meterID = MeterIDFilter{make(UintMap)}
+	meterType = MeterTypeFilter{make(UintMap)}
 
 	flag.Var(meterID, "filterid", "display only messages matching an id in a comma-separated list of ids.")
 	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
@@ -121,7 +124,7 @@ func HandleFlags() {
 	*format = strings.ToLower(*format)
 	switch *format {
 	case "plain":
-		break
+		encoder = PlainEncoder{*sampleFilename, logFile}
 	case "csv":
 		encoder = csv.NewEncoder(logFile)
 	case "json":
@@ -166,4 +169,53 @@ func (m UintMap) Set(value string) error {
 	}
 
 	return nil
+}
+
+type MeterIDFilter struct {
+	UintMap
+}
+
+func (m MeterIDFilter) Filter(msg parse.Message) bool {
+	return m.UintMap[uint(msg.MeterID())]
+}
+
+type MeterTypeFilter struct {
+	UintMap
+}
+
+func (m MeterTypeFilter) Filter(msg parse.Message) bool {
+	return m.UintMap[uint(msg.MeterType())]
+}
+
+type UniqueFilter map[uint][]byte
+
+func NewUniqueFilter() UniqueFilter {
+	return make(UniqueFilter)
+}
+
+func (uf UniqueFilter) Filter(msg parse.Message) bool {
+	checksum := msg.Checksum()
+	mid := uint(msg.MeterID())
+
+	if val, ok := uf[mid]; ok && bytes.Compare(val, checksum) == 0 {
+		return false
+	}
+
+	uf[mid] = make([]byte, len(checksum))
+	copy(uf[mid], checksum)
+	return true
+}
+
+type PlainEncoder struct {
+	sampleFilename string
+	logFile        *os.File
+}
+
+func (pe PlainEncoder) Encode(msg interface{}) (err error) {
+	if pe.sampleFilename == os.DevNull {
+		_, err = fmt.Fprintln(pe.logFile, msg.(parse.LogMessage).StringNoOffset())
+	} else {
+		_, err = fmt.Fprintln(pe.logFile, msg.(parse.LogMessage))
+	}
+	return
 }
