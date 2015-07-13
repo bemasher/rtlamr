@@ -4,7 +4,6 @@ Utilities often use "smart meters" to optimize their residential meter reading i
 This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
 [![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master&style=flat)](https://travis-ci.org/bemasher/rtlamr)
-[![Build Status](http://img.shields.io/travis/bemasher/rtlamr.svg?style=flat)](https://travis-ci.org/bemasher/rtlamr)
 [![AGPLv3 License](http://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
 
 ### Requirements
