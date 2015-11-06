@@ -264,6 +264,12 @@ func Quantize(input []float64, output []byte) {
 // Packs quantized signal into slices such that the first rank represents
 // sample offsets and the second represents the value of each symbol from the
 // given offset.
+//
+// Transforms:
+// <--Sym1--><--Sym2--><--Sym3--><--Sym4--><--Sym5--><--Sym6--><--Sym7--><--Sym8-->
+// <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
+// to:
+// <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
 func (d Decoder) Pack(input []byte, slices [][]byte) {
 	for symbolOffset, slice := range slices {
 		for symbolIdx := range slice {
