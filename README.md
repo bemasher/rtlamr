@@ -35,19 +35,19 @@ Usage of rtlamr:
   -msgtype=scm: message type to receive: scm, idm or r900
   -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
-  -single=false: one shot execution
+  -single=false: one shot execution, if used with -filterid, will wait for exactly one packet from each meter id
   -symbollength=72: symbol length in samples, see -help for valid lengths
   -unique=false: suppress duplicate messages from each meter
 
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
-  -centerfreq=100000000: center frequency to receive on
+  -centerfreq=100M: center frequency to receive on
   -directsampling=false: enable/disable direct sampling
   -freqcorrection=0: frequency correction in ppm
   -gainbyindex=0: set gain by index
   -offsettuning=false: enable/disable offset tuning
   -rtlxtalfreq=0: set rtl xtal frequency
-  -samplerate=2400000: sample rate
+  -samplerate=2.4M: sample rate
   -server=127.0.0.1:1234: address or hostname of rtl_tcp instance
   -testmode=false: enable/disable test mode
   -tunergain=0: set tuner gain in dB

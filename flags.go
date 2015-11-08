@@ -40,7 +40,7 @@ var sampleFile *os.File
 
 var msgType = flag.String("msgtype", "scm", "message type to receive: scm, idm or r900")
 
-var symbolLength = flag.Int("symbollength", 72, "symbol length in samples, see -help for valid lengths")
+var symbolLength = flag.Int("symbollength", 72, "symbol length in samples")
 
 var decimation = flag.Int("decimation", 1, "integer decimation factor, keep every nth sample")
 
@@ -55,7 +55,7 @@ var format = flag.String("format", "plain", "format to write log messages in: pl
 var gobUnsafe = flag.Bool("gobunsafe", false, "allow gob output to stdout")
 
 var quiet = flag.Bool("quiet", false, "suppress printing state information at startup")
-var single = flag.Bool("single", false, "one shot execution")
+var single = flag.Bool("single", false, "one shot execution, if used with -filterid, will wait for exactly one packet from each meter id")
 
 func RegisterFlags() {
 	meterID = MeterIDFilter{make(UintMap)}

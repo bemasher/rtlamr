@@ -177,7 +177,11 @@ func (rcvr *Receiver) Run() {
 
 				pktFound = true
 				if *single {
-					break
+					if len(meterID.UintMap) == 0 {
+						break
+					} else {
+						delete(meterID.UintMap, uint(pkt.MeterID()))
+					}
 				}
 			}
 
@@ -188,7 +192,7 @@ func (rcvr *Receiver) Run() {
 						log.Fatal("Error writing raw samples to file:", err)
 					}
 				}
-				if *single {
+				if *single && len(meterID.UintMap) == 0 {
 					return
 				}
 			}
