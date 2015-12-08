@@ -26,6 +26,7 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bemasher/rtlamr/idm"
@@ -40,6 +41,7 @@ var rcvr Receiver
 type Receiver struct {
 	rtltcp.SDR
 	p  parse.Parser
+	q  parse.Parser
 	fc parse.FilterChain
 }
 
@@ -49,6 +51,9 @@ func (rcvr *Receiver) NewReceiver() {
 		rcvr.p = scm.NewParser(*symbolLength, *decimation)
 	case "idm":
 		rcvr.p = idm.NewParser(*symbolLength, *decimation)
+	case "scm+idm":
+		rcvr.p = idm.NewParser(*symbolLength, *decimation)
+		rcvr.q = scm.NewParser(*symbolLength, *decimation)
 	case "r900":
 		rcvr.p = r900.NewParser(*symbolLength, *decimation)
 	default:
@@ -57,6 +62,9 @@ func (rcvr *Receiver) NewReceiver() {
 
 	if !*quiet {
 		rcvr.p.Log()
+		if(rcvr.q != nil) {
+			rcvr.q.Log()
+		}
 	}
 
 	// Connect to rtl_tcp server.
@@ -109,17 +117,8 @@ func (rcvr *Receiver) NewReceiver() {
 }
 
 func (rcvr *Receiver) Run() {
-	// Setup signal channel for interruption.
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Kill, os.Interrupt)
-
-	// Setup time limit channel
-	tLimit := make(<-chan time.Time, 1)
-	if *timeLimit != 0 {
-		tLimit = time.After(*timeLimit)
-	}
-
 	in, out := io.Pipe()
+	in2, out2 := io.Pipe()
 
 	go func() {
 		tcpBlock := make([]byte, 16384)
@@ -129,75 +128,100 @@ func (rcvr *Receiver) Run() {
 				return
 			}
 			out.Write(tcpBlock[:n])
+			if(rcvr.q != nil) {
+				out2.Write(tcpBlock[:n])
+			}
 		}
 	}()
 
-	block := make([]byte, rcvr.p.Cfg().BlockSize2)
-
+	var wg sync.WaitGroup
 	start := time.Now()
-	for {
-		// Exit on interrupt or time limit, otherwise receive.
-		select {
-		case <-sigint:
-			return
-		case <-tLimit:
-			fmt.Println("Time Limit Reached:", time.Since(start))
-			return
-		default:
-			// Read new sample block.
-			_, err := io.ReadFull(in, block)
-			if err != nil {
-				log.Fatal("Error reading samples: ", err)
-			}
+	looper := func(p parse.Parser, fc parse.FilterChain, in io.Reader) {
+		// Setup signal channel for interruption.
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Kill, os.Interrupt)
 
-			pktFound := false
-			indices := rcvr.p.Dec().Decode(block)
+		// Setup time limit channel
+		tLimit := make(<-chan time.Time, 1)
+		if *timeLimit != 0 {
+			tLimit = time.After(*timeLimit)
+		}
 
-			for _, pkt := range rcvr.p.Parse(indices) {
-				if !rcvr.fc.Match(pkt) {
-					continue
-				}
-
-				var msg parse.LogMessage
-				msg.Time = time.Now()
-				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-				msg.Length = rcvr.p.Cfg().BufferLength << 1
-				msg.Message = pkt
-
-				err = encoder.Encode(msg)
+		block := make([]byte, p.Cfg().BlockSize2)
+		for {
+			// Exit on interrupt or time limit, otherwise receive.
+			select {
+			case <-sigint:
+				return
+			case <-tLimit:
+				fmt.Println("Time Limit Reached:", time.Since(start))
+				return
+			default:
+				// Read new sample block.
+				_, err := io.ReadFull(in, block)
 				if err != nil {
-					log.Fatal("Error encoding message: ", err)
+					log.Fatal("Error reading samples: ", err)
 				}
 
-				// The XML encoder doesn't write new lines after each
-				// element, add them.
-				if _, ok := encoder.(*xml.Encoder); ok {
-					fmt.Fprintln(logFile)
-				}
+				pktFound := false
+				indices := p.Dec().Decode(block)
 
-				pktFound = true
-				if *single {
-					if len(meterID.UintMap) == 0 {
-						break
-					} else {
-						delete(meterID.UintMap, uint(pkt.MeterID()))
+				for _, pkt := range p.Parse(indices) {
+					if !fc.Match(pkt) {
+						continue
 					}
-				}
-			}
 
-			if pktFound {
-				if *sampleFilename != os.DevNull {
-					_, err = sampleFile.Write(rcvr.p.Dec().IQ)
+					var msg parse.LogMessage
+					msg.Time = time.Now()
+					msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+					msg.Length = p.Cfg().BufferLength << 1
+					msg.Message = pkt
+
+					err = encoder.Encode(msg)
 					if err != nil {
-						log.Fatal("Error writing raw samples to file:", err)
+						log.Fatal("Error encoding message: ", err)
+					}
+
+					// The XML encoder doesn't write new lines after each
+					// element, add them.
+					if _, ok := encoder.(*xml.Encoder); ok {
+						fmt.Fprintln(logFile)
+					}
+
+					pktFound = true
+					if *single {
+						if len(meterID.UintMap) == 0 {
+							break
+						} else {
+							delete(meterID.UintMap, uint(pkt.MeterID()))
+						}
 					}
 				}
-				if *single && len(meterID.UintMap) == 0 {
-					return
+
+				if pktFound {
+					if *sampleFilename != os.DevNull {
+						_, err = sampleFile.Write(p.Dec().IQ)
+						if err != nil {
+							log.Fatal("Error writing raw samples to file:", err)
+						}
+					}
+					if *single && len(meterID.UintMap) == 0 {
+						return
+					}
 				}
 			}
 		}
 	}
+
+	wg.Add(1);
+	go looper(rcvr.p, rcvr.fc, in);
+	if(rcvr.q != nil) {
+		wg.Add(1);
+		go looper(rcvr.q, rcvr.fc, in2);
+	}
+
+	wg.Wait();
+
 }
 
 func init() {
