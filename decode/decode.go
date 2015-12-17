@@ -17,7 +17,6 @@
 package decode
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"math"
@@ -109,6 +108,8 @@ type Decoder struct {
 	preamble []byte
 	slices   [][]byte
 
+	preambleFinder *byteFinder
+
 	pkt []byte
 }
 
@@ -162,6 +163,8 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 		d.slices[symbolOffset] = flat[lower:upper]
 	}
 
+	d.preambleFinder = makeByteFinder(d.preamble)
+
 	// Signal up to the final stage is 1-bit per byte. Allocate a buffer to
 	// store packed version 8-bits per byte.
 	d.pkt = make([]byte, (d.DecCfg.PacketSymbols+7)>>3)
@@ -194,10 +197,10 @@ func (d Decoder) Decode(input []byte) []int {
 	Quantize(filterBlock, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
-	d.Pack(d.Quantized[:d.DecCfg.BlockSize2], d.slices)
+	d.Pack(d.Quantized[:d.DecCfg.BlockSize2])
 
 	// Return a list of indexes the preamble exists at.
-	return d.Search(d.slices, d.preamble)
+	return d.Search()
 }
 
 // A Demodulator knows how to demodulate an array of uint8 IQ samples into an
@@ -270,8 +273,8 @@ func Quantize(input []float64, output []byte) {
 // <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
 // to:
 // <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
-func (d Decoder) Pack(input []byte, slices [][]byte) {
-	for symbolOffset, slice := range slices {
+func (d *Decoder) Pack(input []byte) {
+	for symbolOffset, slice := range d.slices {
 		for symbolIdx := range slice {
 			slice[symbolIdx] = input[symbolIdx*d.DecCfg.SymbolLength2+symbolOffset]
 		}
@@ -283,12 +286,17 @@ func (d Decoder) Pack(input []byte, slices [][]byte) {
 // For each sample offset look for the preamble. Return a list of indexes the
 // preamble is found at. Indexes are absolute in the unsliced quantized
 // buffer.
-func (d Decoder) Search(slices [][]byte, preamble []byte) (indexes []int) {
-	preambleLength := len(preamble)
-	for symbolOffset, slice := range slices {
-		for symbolIdx := range slice[:len(slice)-preambleLength] {
-			if bytes.Equal(preamble, slice[symbolIdx:][:preambleLength]) {
-				indexes = append(indexes, symbolIdx*d.DecCfg.SymbolLength2+symbolOffset)
+func (d *Decoder) Search() (indexes []int) {
+	for symbolOffset, slice := range d.slices {
+		offset := 0
+		idx := 0
+		for {
+			idx = d.preambleFinder.next(slice[offset:])
+			if idx != -1 {
+				indexes = append(indexes, (offset+idx)*d.Cfg.SymbolLength2+symbolOffset)
+				offset += idx + 1
+			} else {
+				break
 			}
 		}
 	}
