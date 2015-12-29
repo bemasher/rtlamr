@@ -58,10 +58,6 @@ func (rcvr *Receiver) NewReceiver() {
 		log.Fatalf("Invalid message type: %q\n", *msgType)
 	}
 
-	if !*quiet {
-		rcvr.p.Log()
-	}
-
 	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(nil); err != nil {
 		log.Fatal(err)
@@ -69,20 +65,15 @@ func (rcvr *Receiver) NewReceiver() {
 
 	rcvr.HandleFlags()
 
-	// Tell the user how many gain settings were reported by rtl_tcp.
-	if !*quiet {
-		log.Println("GainCount:", rcvr.SDR.Info.GainCount)
-	}
+	cfg := rcvr.p.Cfg()
 
-	centerfreqFlagSet := false
-	sampleRateFlagSet := false
 	gainFlagSet := false
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "centerfreq":
-			centerfreqFlagSet = true
+			cfg.CenterFreq = uint32(rcvr.Flags.CenterFreq)
 		case "samplerate":
-			sampleRateFlagSet = true
+			cfg.SampleRate = int(rcvr.Flags.SampleRate)
 		case "gainbyindex", "tunergainmode", "tunergain", "agcmode":
 			gainFlagSet = true
 		case "unique":
@@ -94,18 +85,20 @@ func (rcvr *Receiver) NewReceiver() {
 		}
 	})
 
-	// Set some parameters for listening.
-	if centerfreqFlagSet {
-		rcvr.SetCenterFreq(uint32(rcvr.Flags.CenterFreq))
-	} else {
-		rcvr.SetCenterFreq(rcvr.p.Cfg().CenterFreq)
-	}
+	rcvr.SetCenterFreq(cfg.CenterFreq)
+	rcvr.SetSampleRate(uint32(cfg.SampleRate))
 
-	if !sampleRateFlagSet {
-		rcvr.SetSampleRate(uint32(rcvr.p.Cfg().SampleRate))
-	}
 	if !gainFlagSet {
 		rcvr.SetGainMode(true)
+	}
+
+	if !*quiet {
+		rcvr.p.Log()
+	}
+
+	// Tell the user how many gain settings were reported by rtl_tcp.
+	if !*quiet {
+		log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 	}
 
 	return

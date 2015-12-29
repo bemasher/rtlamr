@@ -47,14 +47,15 @@ func (p Parser) Dec() decode.Decoder {
 	return p.Decoder
 }
 
-func (p Parser) Cfg() decode.PacketConfig {
-	return p.Decoder.Cfg
+func (p *Parser) Cfg() *decode.PacketConfig {
+	return &p.Decoder.Cfg
 }
 
-func NewParser(symbolLength, decimation int) (p Parser) {
-	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation)
-	p.CRC = crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
-	return
+func NewParser(symbolLength, decimation int) (p *Parser) {
+	return &Parser{
+		decode.NewDecoder(NewPacketConfig(symbolLength), decimation),
+		crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
+	}
 }
 
 func (p Parser) Parse(indices []int) (msgs []parse.Message) {

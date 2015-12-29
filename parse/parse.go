@@ -41,7 +41,7 @@ func NewDataFromBits(data string) (d Data) {
 type Parser interface {
 	Parse([]int) []Message
 	Dec() decode.Decoder
-	Cfg() decode.PacketConfig
+	Cfg() *decode.PacketConfig
 	Log()
 }
 

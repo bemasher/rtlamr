@@ -52,7 +52,9 @@ type Parser struct {
 	quantized []byte
 }
 
-func NewParser(symbolLength, decimation int) (p Parser) {
+func NewParser(symbolLength, decimation int) (p *Parser) {
+	p = new(Parser)
+
 	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation)
 
 	// GF of order 32, polynomial 37, generator 2.
@@ -69,8 +71,8 @@ func (p Parser) Dec() decode.Decoder {
 	return p.Decoder
 }
 
-func (p Parser) Cfg() decode.PacketConfig {
-	return p.Decoder.Cfg
+func (p *Parser) Cfg() *decode.PacketConfig {
+	return &p.Decoder.Cfg
 }
 
 // Perform matched filtering.
