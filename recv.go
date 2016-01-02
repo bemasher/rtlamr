@@ -25,15 +25,15 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
-	"strings"
 	"time"
 
-	"github.com/bemasher/rtlamr/idm"
 	"github.com/bemasher/rtlamr/parse"
-	"github.com/bemasher/rtlamr/r900"
-	"github.com/bemasher/rtlamr/scm"
-	"github.com/bemasher/rtlamr/scmplus"
 	"github.com/bemasher/rtltcp"
+
+	_ "github.com/bemasher/rtlamr/idm"
+	_ "github.com/bemasher/rtlamr/r900"
+	_ "github.com/bemasher/rtlamr/scm"
+	_ "github.com/bemasher/rtlamr/scmplus"
 )
 
 var rcvr Receiver
@@ -45,17 +45,9 @@ type Receiver struct {
 }
 
 func (rcvr *Receiver) NewReceiver() {
-	switch strings.ToLower(*msgType) {
-	case "scm":
-		rcvr.p = scm.NewParser(*symbolLength, *decimation)
-	case "idm":
-		rcvr.p = idm.NewParser(*symbolLength, *decimation)
-	case "r900":
-		rcvr.p = r900.NewParser(*symbolLength, *decimation)
-	case "scm+":
-		rcvr.p = scmplus.NewParser(*symbolLength, *decimation)
-	default:
-		log.Fatalf("Invalid message type: %q\n", *msgType)
+	var err error
+	if rcvr.p, err = parse.NewParser(*msgType, *symbolLength, *decimation); err != nil {
+		log.Fatal(err)
 	}
 
 	// Connect to rtl_tcp server.

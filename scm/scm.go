@@ -26,6 +26,10 @@ import (
 	"github.com/bemasher/rtlamr/parse"
 )
 
+func init() {
+	parse.Register("scm", NewParser)
+}
+
 func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	cfg.CenterFreq = 912600155
 	cfg.DataRate = 32768
@@ -42,7 +46,7 @@ type Parser struct {
 	crc.CRC
 }
 
-func NewParser(symbolLength, decimation int) (p *Parser) {
+func NewParser(symbolLength, decimation int) (p parse.Parser) {
 	return &Parser{
 		decode.NewDecoder(NewPacketConfig(symbolLength), decimation),
 		crc.NewCRC("BCH", 0, 0x6F63, 0),

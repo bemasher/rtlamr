@@ -3,6 +3,7 @@ package parse
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/bemasher/rtlamr/decode"
@@ -13,6 +14,37 @@ import (
 const (
 	TimeFormat = "2006-01-02T15:04:05.000"
 )
+
+var (
+	parserMutex sync.Mutex
+	parsers     = make(map[string]NewParserFunc)
+)
+
+type NewParserFunc func(symbolLength, decimation int) Parser
+
+func Register(name string, parserFn NewParserFunc) {
+	parserMutex.Lock()
+	defer parserMutex.Unlock()
+
+	if parserFn == nil {
+		panic("parser: new parser func is nil")
+	}
+	if _, dup := parsers[name]; dup {
+		panic(fmt.Sprintf("parser: parser already registered (%s)", name))
+	}
+	parsers[name] = parserFn
+}
+
+func NewParser(name string, symbolLength, decimation int) (Parser, error) {
+	parserMutex.Lock()
+	defer parserMutex.Unlock()
+
+	if parserFn, exists := parsers[name]; exists {
+		return parserFn(symbolLength, decimation), nil
+	} else {
+		return nil, fmt.Errorf("invalid message type: %q\n", name)
+	}
+}
 
 type Data struct {
 	Bits  string

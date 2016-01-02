@@ -31,6 +31,10 @@ const (
 	PayloadSymbols = 42
 )
 
+func init() {
+	parse.Register("r900", NewParser)
+}
+
 func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
 	cfg.CenterFreq = 912380000
 	cfg.DataRate = 32768
@@ -52,8 +56,8 @@ type Parser struct {
 	quantized []byte
 }
 
-func NewParser(symbolLength, decimation int) (p *Parser) {
-	p = new(Parser)
+func NewParser(symbolLength, decimation int) parse.Parser {
+	p := new(Parser)
 
 	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation)
 
@@ -64,7 +68,7 @@ func NewParser(symbolLength, decimation int) (p *Parser) {
 	p.filtered = make([][3]float64, p.Decoder.DecCfg.BufferLength)
 	p.quantized = make([]byte, p.Decoder.DecCfg.BufferLength)
 
-	return
+	return p
 }
 
 func (p Parser) Dec() decode.Decoder {
