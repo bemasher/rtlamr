@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/bemasher/rtlamr/parse"
@@ -46,7 +47,7 @@ type Receiver struct {
 
 func (rcvr *Receiver) NewReceiver() {
 	var err error
-	if rcvr.p, err = parse.NewParser(*msgType, *symbolLength, *decimation); err != nil {
+	if rcvr.p, err = parse.NewParser(strings.ToLower(*msgType), *symbolLength, *decimation); err != nil {
 		log.Fatal(err)
 	}
 
