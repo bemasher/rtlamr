@@ -24,7 +24,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -193,13 +192,28 @@ func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 }
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to this file")
+var (
+	buildDate  string // date -u '+%Y-%m-%d'
+	commitHash string // git rev-parse HEAD
+)
 
 func main() {
 	rcvr.RegisterFlags()
 	RegisterFlags()
 
 	flag.Parse()
+	if *version {
+		if buildDate == "" || commitHash == "" {
+			fmt.Println("Built from source.")
+			fmt.Println("Build Date: Unknown")
+			fmt.Println("Commit:     Unknown")
+		} else {
+			fmt.Println("Build Date:", buildDate)
+			fmt.Println("Commit:    ", commitHash)
+		}
+		os.Exit(0)
+	}
+
 	HandleFlags()
 
 	rcvr.NewReceiver()
@@ -207,15 +221,6 @@ func main() {
 	defer logFile.Close()
 	defer sampleFile.Close()
 	defer rcvr.Close()
-
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
 
 	rcvr.Run()
 }

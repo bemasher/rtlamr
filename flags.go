@@ -57,6 +57,8 @@ var gobUnsafe = flag.Bool("gobunsafe", false, "allow gob output to stdout")
 var quiet = flag.Bool("quiet", false, "suppress printing state information at startup")
 var single = flag.Bool("single", false, "one shot execution, if used with -filterid, will wait for exactly one packet from each meter id")
 
+var version = flag.Bool("version", false, "display build date and commit hash")
+
 func RegisterFlags() {
 	meterID = MeterIDFilter{make(UintMap)}
 	meterType = MeterTypeFilter{make(UintMap)}
@@ -80,6 +82,7 @@ func RegisterFlags() {
 		"single":       true,
 		"cpuprofile":   true,
 		"fastmag":      true,
+		"version":      true,
 	}
 
 	printDefaults := func(validFlags map[string]bool, inclusion bool) {
