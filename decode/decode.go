@@ -293,7 +293,7 @@ func (d *Decoder) Search() (indexes []int) {
 		for {
 			idx = d.preambleFinder.next(slice[offset:])
 			if idx != -1 {
-				indexes = append(indexes, (offset+idx)*d.Cfg.SymbolLength2+symbolOffset)
+				indexes = append(indexes, (offset+idx)*d.DecCfg.SymbolLength2+symbolOffset)
 				offset += idx + 1
 			} else {
 				break
