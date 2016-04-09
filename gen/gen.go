@@ -2,6 +2,7 @@ package gen
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math"
 )
 
@@ -90,4 +91,24 @@ func CmplxOscillatorU8(samples int, freq float64, samplerate float64) []uint8 {
 	}
 
 	return signal
+}
+
+func CmplxOscillatorF64(samples int, freq float64, samplerate float64) []float64 {
+	signal := make([]float64, samples<<1)
+
+	for idx := 0; idx < len(signal); idx += 2 {
+		signal[idx], signal[idx+1] = math.Sincos(2 * math.Pi * float64(idx) * freq / samplerate)
+	}
+
+	return signal
+}
+
+func F64toU8(f64 []float64, u8 []byte) {
+	if len(f64) != len(u8) {
+		panic(fmt.Errorf("arrays must have same dimensions: %d != %d", len(f64), len(u8)))
+	}
+
+	for idx, val := range f64 {
+		u8[idx] = uint8(val*127.5 + 127.5)
+	}
 }
