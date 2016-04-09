@@ -133,8 +133,8 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 
 	// Allocate necessary buffers.
 	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
-	d.Signal = make([]float64, d.DecCfg.BufferLength)
-	d.Filtered = make([]float64, d.DecCfg.BufferLength)
+	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
+	d.Filtered = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
 
 	d.csum = make([]float64, (d.DecCfg.PacketLength - d.DecCfg.SymbolLength2 + 1))
@@ -181,20 +181,14 @@ func (d Decoder) Decode(input []byte) []int {
 	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
 	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
-	iqBlock := d.IQ[d.Cfg.PacketLength<<1:]
-	signalBlock := d.Signal[d.DecCfg.PacketLength:]
-
 	// Compute the magnitude of the new block.
-	d.demod.Execute(iqBlock, signalBlock)
-
-	signalBlock = d.Signal[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:]
-	filterBlock := d.Filtered[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:]
+	d.demod.Execute(d.IQ[d.Cfg.PacketLength<<1:], d.Signal[d.DecCfg.SymbolLength2:])
 
 	// Perform matched filter on new block.
-	d.Filter(signalBlock, filterBlock)
+	d.Filter(d.Signal, d.Filtered)
 
 	// Perform bit-decision on new block.
-	Quantize(filterBlock, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
+	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
 	d.Pack(d.Quantized[:d.DecCfg.BlockSize2])
