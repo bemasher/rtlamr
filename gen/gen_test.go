@@ -3,16 +3,15 @@ package gen
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log"
 	"math"
 	"math/rand"
 	"os"
-	"os/signal"
+	"strconv"
+	"strings"
 	"testing"
 
-	"github.com/bemasher/hackrf"
 	"github.com/bemasher/rtlamr/crc"
 	"github.com/bemasher/rtlamr/parse"
 
@@ -37,7 +36,6 @@ func TestNewRandSCM(t *testing.T) {
 		if checksum != 0 {
 			t.Fatalf("Failed checksum: %04X\n", checksum)
 		}
-		t.Logf("%02X %04X\n", scm, checksum)
 	}
 }
 
@@ -66,6 +64,7 @@ func TestUpsample(t *testing.T) {
 }
 
 func TestCmplxOscillatorS8(t *testing.T) {
+	t.SkipNow()
 	signalFile, err := os.Create("cmplxs8.bin")
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +78,8 @@ func TestCmplxOscillatorS8(t *testing.T) {
 }
 
 func TestCmplxOscillatorU8(t *testing.T) {
+	t.SkipNow()
+
 	signalFile, err := os.Create("cmplxu8.bin")
 	if err != nil {
 		t.Fatal(err)
@@ -91,84 +92,18 @@ func TestCmplxOscillatorU8(t *testing.T) {
 	}
 }
 
-func TestHackRF(t *testing.T) {
-	channels := []uint64{
-		909586111, 909782679, 909979247, 910175815, 911224178, 911420746, // 0
-		911617314, 911813882, 912010451, 912207019, 912403587, 912600155, // 6
-		912796723, 912993291, 913189859, 913386427, 913582995, 913779563, // 12
-		913976132, 915024495, 915221063, 915417631, 915614199, 915810767, // 18
-		916007335, 916203903, 916400471, 916597040, 916793608, 916990176, // 24
-		917186744, 917383312, 917579880, 917776448, 918824811, 919021379, // 30
-		919217947, 919414516, 919611084, 919807652, 920004220, 920200788, // 36
-		920397356, 920593924, 920790492, 920987060, 921183628, 921380197, // 42
-		921576765, 921773333, // 44
-	}
-
-	err := hackrf.Init()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer hackrf.Exit()
-
-	var dev hackrf.HackRF
-	err = dev.Open()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dev.Close()
-
-	dev.SetAmp(false)
-	dev.SetTXVGAGain(0)
-
-	samplerate := float64(16000000)
-	dev.SetSampleRate(samplerate)
-
-	center := channels[24]
-	dev.SetFreq(center)
-
-	in, out := io.Pipe()
-	lut := NewManchesterLUT()
-	sig := make(chan os.Signal)
-	signal.Notify(sig, os.Interrupt, os.Kill)
-
-	go func() {
-		err := dev.StartTX(func(buf []int8) int {
-			binary.Read(in, binary.BigEndian, buf)
-
-			return 0
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	for {
-		select {
-		case <-sig:
-			log.Printf("SIGINT: Exiting...")
-			dev.StopTX()
-			break
-		default:
-			scm, _ := NewRandSCM()
-			log.Printf("%02X\n", scm)
-			manchester := lut.Encode(scm)
-			bits := UnpackBits(manchester)
-			bits = Upsample(bits, 488)
-
-			channelIdx := rand.Intn(len(channels))
-			freq := float64(center) - float64(channels[channelIdx])
-			carrier := CmplxOscillatorS8(len(bits), freq, samplerate)
-
-			for idx := range carrier {
-				carrier[idx] *= int8(bits[idx>>1])
-			}
-
-			binary.Write(out, binary.BigEndian, carrier)
-		}
-	}
+type TestData struct {
+	FileSections [][]int64
+	Packets      []Packet
 }
 
-func TestGenerate(t *testing.T) {
+type Packet struct {
+	Data      []byte
+	Freq      float64
+	Amplitude float64
+}
+
+func TestSCMGenerate(t *testing.T) {
 	p, err := parse.NewParser("scm", 72, 1)
 	if err != nil {
 		t.Fatal(err)
@@ -183,62 +118,40 @@ func TestGenerate(t *testing.T) {
 	}
 	defer outFile.Close()
 
-	noisedB := -40.0
+	noisedB := -35.0
 	noiseAmp := math.Pow(10, noisedB/20)
 
 	var block []byte
 
 	noise := make([]byte, cfg.BlockSize<<3)
 
-	for sigdB := -50.0; sigdB < 0.0; sigdB += 5.0 {
-		sigAmp := math.Pow(10, sigdB/20)
+	for _, pkt := range testData.Packets {
+		manchester := lut.Encode(pkt.Data)
+		bits := UnpackBits(manchester)
+		bits = Upsample(bits, 72)
 
-		startOffset, _ := outFile.Seek(0, os.SEEK_CUR)
-		for idx := 0; idx < 32; idx++ {
-			scm, _ := NewRandSCM()
-			// t.Logf("%02X\n", scm)
-			manchester := lut.Encode(scm)
-			bits := UnpackBits(manchester)
-			bits = Upsample(bits, 72)
-
-			carrier := CmplxOscillatorF64(len(bits), 100e3, float64(cfg.SampleRate))
-			for idx := range carrier {
-				carrier[idx] *= float64(bits[idx>>1]) * sigAmp
-				carrier[idx] += rand.NormFloat64() * noiseAmp
-			}
-
-			if len(block) != len(carrier) {
-				block = make([]byte, len(carrier))
-			}
-			F64toU8(carrier, block)
-
-			outFile.Write(block)
-
-			for idx := range noise {
-				noise[idx] = byte(rand.NormFloat64()*noiseAmp*127.5 + 127.5)
-			}
-
-			outFile.Write(noise)
+		carrier := CmplxOscillatorF64(len(bits), pkt.Freq, float64(cfg.SampleRate))
+		for idx := range carrier {
+			carrier[idx] *= float64(bits[idx>>1]) * pkt.Amplitude
+			carrier[idx] += (rand.Float64() - 0.5) * 2.0 * noiseAmp
 		}
-		stopOffset, _ := outFile.Seek(0, os.SEEK_CUR)
-		t.Logf("%#v\n", []int64{startOffset, stopOffset})
+
+		if len(block) != len(carrier) {
+			block = make([]byte, len(carrier))
+		}
+		F64toU8(carrier, block)
+
+		outFile.Write(block)
+
+		for idx := range noise {
+			noise[idx] = byte((rand.Float64()-0.5)*2.0*noiseAmp*127.5 + 127.5)
+		}
+
+		outFile.Write(noise)
 	}
 }
 
-func TestDecimate(t *testing.T) {
-	sections := [][]int64{
-		{0, 1933312},
-		{1933312, 3866624},
-		{3866624, 5799936},
-		{5799936, 7733248},
-		{7733248, 9666560},
-		{9666560, 11599872},
-		{11599872, 13533184},
-		{13533184, 15466496},
-		{15466496, 17399808},
-		{17399808, 19333120},
-	}
-
+func TestSCMDecode(t *testing.T) {
 	inFile, err := os.Open("generated.bin")
 	if err != nil {
 		t.Fatal(err)
@@ -248,11 +161,10 @@ func TestDecimate(t *testing.T) {
 	factors := []int{1, 2, 3, 4, 6, 8, 9, 12, 18}
 	results := make([][]int, len(factors))
 	for factor := range results {
-		results[factor] = make([]int, len(sections))
+		results[factor] = make([]int, len(testData.FileSections))
 	}
 
 	for factorIdx, factor := range factors {
-		t.Log(factor)
 		p, err := parse.NewParser("scm", 72, factor)
 		if err != nil {
 			t.Fatal(err)
@@ -261,7 +173,7 @@ func TestDecimate(t *testing.T) {
 		cfg := p.Cfg()
 
 		block := make([]byte, cfg.BlockSize2)
-		for sectionIdx, section := range sections {
+		for sectionIdx, section := range testData.FileSections {
 			r := io.NewSectionReader(inFile, section[0], section[1]-section[0])
 
 			for {
@@ -279,11 +191,11 @@ func TestDecimate(t *testing.T) {
 		}
 	}
 
-	for factorIdx, factor := range results {
-		fmt.Print(factors[factorIdx], ",")
+	for _, factor := range results {
+		var row []string
 		for _, count := range factor {
-			fmt.Printf("%d,", count)
+			row = append(row, strconv.Itoa(count))
 		}
-		fmt.Println()
+		t.Log(strings.Join(row, ","))
 	}
 }
