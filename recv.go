@@ -32,6 +32,7 @@ import (
 
 	_ "github.com/bemasher/rtlamr/idm"
 	_ "github.com/bemasher/rtlamr/r900"
+	_ "github.com/bemasher/rtlamr/r900bcd"
 	_ "github.com/bemasher/rtlamr/scm"
 	_ "github.com/bemasher/rtlamr/scmplus"
 )
