@@ -4,9 +4,13 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math"
+
+	"github.com/bemasher/rtlamr/crc"
 )
 
 func NewRandSCM() (pkt []byte, err error) {
+	bch := crc.NewCRC("BCH", 0, 0x6F63, 0)
+
 	pkt = make([]byte, 12)
 	_, err = rand.Read(pkt)
 	if err != nil {

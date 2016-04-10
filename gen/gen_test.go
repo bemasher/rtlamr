@@ -18,14 +18,13 @@ import (
 	_ "github.com/bemasher/rtlamr/scm"
 )
 
-var bch crc.CRC
-
 func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	bch = crc.NewCRC("BCH", 0, 0x6F63, 0)
 }
 
 func TestNewRandSCM(t *testing.T) {
+	bch := crc.NewCRC("BCH", 0, 0x6F63, 0)
+
 	for i := 0; i < 512; i++ {
 		scm, err := NewRandSCM()
 		if err != nil {
