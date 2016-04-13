@@ -91,108 +91,108 @@ func TestCmplxOscillatorU8(t *testing.T) {
 	}
 }
 
-type TestData struct {
-	FileSections [][]int64
-	Packets      []Packet
+type TestCase struct {
+	*io.PipeReader
+	Data           []byte
+	SignalLevelIdx int
+	DecimationIdx  int
 }
 
-type Packet struct {
-	Data      []byte
-	Freq      float64
-	Amplitude float64
-}
-
-func TestSCMGenerate(t *testing.T) {
-	p, err := parse.NewParser("scm", 72, 1)
+func TestSCM(t *testing.T) {
+	genParser, err := parse.NewParser("scm", 72, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cfg := p.Cfg()
+	cfg := genParser.Cfg()
 	lut := NewManchesterLUT()
-
-	outFile, err := os.Create("generated.bin")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer outFile.Close()
 
 	noisedB := -35.0
 	noiseAmp := math.Pow(10, noisedB/20)
 
-	var block []byte
+	testCases := make(chan TestCase)
 
-	noise := make([]byte, cfg.BlockSize<<3)
+	signalLevels := []float64{-40, -35, -30, -25, -20, -15, -10, -5, 0}
+	decimationFactors := []int{1, 2, 3, 4, 6, 8, 9, 12, 18}
 
-	for _, pkt := range testData.Packets {
-		manchester := lut.Encode(pkt.Data)
-		bits := UnpackBits(manchester)
-		bits = Upsample(bits, 72)
+	go func() {
+		var block []byte
+		noise := make([]byte, cfg.BlockSize2<<1)
 
-		carrier := CmplxOscillatorF64(len(bits), pkt.Freq, float64(cfg.SampleRate))
-		for idx := range carrier {
-			carrier[idx] *= float64(bits[idx>>1]) * pkt.Amplitude
-			carrier[idx] += (rand.Float64() - 0.5) * 2.0 * noiseAmp
+		for signalLevelIdx, signalLevel := range signalLevels {
+			for decimationIdx, _ := range decimationFactors {
+				for idx := 0; idx < 32; idx++ {
+					r, w := io.Pipe()
+
+					scm, _ := NewRandSCM()
+					testCases <- TestCase{r, scm, signalLevelIdx, decimationIdx}
+
+					manchester := lut.Encode(scm)
+					bits := Upsample(UnpackBits(manchester), 72<<1)
+
+					freq := rand.Float64() - 0.5*float64(cfg.SampleRate)
+					carrier := CmplxOscillatorF64(len(bits)>>1, freq, float64(cfg.SampleRate))
+
+					signalAmplitude := math.Pow(10, signalLevel/20)
+					for idx := range carrier {
+						carrier[idx] *= float64(bits[idx]) * signalAmplitude
+						carrier[idx] += (rand.Float64() - 0.5) * 2.0 * noiseAmp
+					}
+
+					if len(block) != len(carrier) {
+						block = make([]byte, len(carrier))
+					}
+					F64toU8(carrier, block)
+
+					w.Write(block)
+					for idx := range noise {
+						noise[idx] = byte((rand.Float64()-0.5)*2.0*noiseAmp*127.5 + 127.5)
+					}
+					w.Write(noise)
+					w.Close()
+				}
+			}
 		}
+		close(testCases)
+	}()
 
-		if len(block) != len(carrier) {
-			block = make([]byte, len(carrier))
-		}
-		F64toU8(carrier, block)
-
-		outFile.Write(block)
-
-		for idx := range noise {
-			noise[idx] = byte((rand.Float64()-0.5)*2.0*noiseAmp*127.5 + 127.5)
-		}
-
-		outFile.Write(noise)
-	}
-}
-
-func TestSCMDecode(t *testing.T) {
-	inFile, err := os.Open("generated.bin")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer inFile.Close()
-
-	factors := []int{1, 2, 3, 4, 6, 8, 9, 12, 18}
-	results := make([][]int, len(factors))
-	for factor := range results {
-		results[factor] = make([]int, len(testData.FileSections))
+	results := make([][]int, len(decimationFactors))
+	for idx := range results {
+		results[idx] = make([]int, len(signalLevels))
 	}
 
-	for factorIdx, factor := range factors {
-		p, err := parse.NewParser("scm", 72, factor)
+	for testCase := range testCases {
+		p, err := parse.NewParser("scm", 72, decimationFactors[testCase.DecimationIdx])
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		cfg := p.Cfg()
-
 		block := make([]byte, cfg.BlockSize2)
-		for sectionIdx, section := range testData.FileSections {
-			r := io.NewSectionReader(inFile, section[0], section[1]-section[0])
 
-			for {
-				_, err := r.Read(block)
-				indices := p.Dec().Decode(block)
-				for _, msg := range p.Parse(indices) {
-					_ = msg
-					results[factorIdx][sectionIdx]++
-				}
+		for {
+			_, err := testCase.Read(block)
+			indices := p.Dec().Decode(block)
+			for _ = range p.Parse(indices) {
+				// t.Logf("%02X %02X %d %0.0f\n",
+				// 	testCase.Data[10:],
+				// 	msg.Checksum(),
+				// 	decimationFactors[testCase.DecimationIdx],
+				// 	signalLevels[testCase.SignalLevelIdx],
+				// )
+				results[testCase.DecimationIdx][testCase.SignalLevelIdx]++
+			}
 
-				if err == io.EOF {
-					break
-				}
+			if err == io.EOF {
+				testCase.Close()
+				break
 			}
 		}
 	}
 
-	for _, factor := range results {
+	for idx := range results {
 		var row []string
-		for _, count := range factor {
+		for _, count := range results[idx] {
 			row = append(row, strconv.Itoa(count))
 		}
 		t.Log(strings.Join(row, ","))
