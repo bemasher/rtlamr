@@ -107,7 +107,7 @@ func TestSCM(t *testing.T) {
 	cfg := genParser.Cfg()
 	lut := NewManchesterLUT()
 
-	noisedB := -35.0
+	noisedB := -30.0
 	noiseAmp := math.Pow(10, noisedB/20)
 
 	testCases := make(chan TestCase)
@@ -121,7 +121,7 @@ func TestSCM(t *testing.T) {
 
 		for signalLevelIdx, signalLevel := range signalLevels {
 			for decimationIdx, _ := range decimationFactors {
-				for idx := 0; idx < 32; idx++ {
+				for idx := 0; idx < 64; idx++ {
 					r, w := io.Pipe()
 
 					scm, _ := NewRandSCM()
