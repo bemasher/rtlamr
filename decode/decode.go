@@ -222,7 +222,6 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 	dec := (len(input) / len(output))
 
 	for idx := 0; decIdx < len(output); idx += dec {
-		// output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
 		output[decIdx] = lut[input[idx]] + lut[input[idx+1]]
 		decIdx++
 	}
