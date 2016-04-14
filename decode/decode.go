@@ -140,7 +140,7 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.csum = make([]float64, (d.DecCfg.PacketLength - d.DecCfg.SymbolLength2 + 1))
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	d.demod = NewSqrtMagLUT()
+	d.demod = NewMagLUT()
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
 	d.preamble = make([]byte, len(d.Cfg.Preamble))
@@ -207,10 +207,10 @@ type Demodulator interface {
 type MagLUT []float64
 
 // Pre-computes normalized squares with most common DC offset for rtl-sdr dongles.
-func NewSqrtMagLUT() (lut MagLUT) {
+func NewMagLUT() (lut MagLUT) {
 	lut = make([]float64, 0x100)
 	for idx := range lut {
-		lut[idx] = 127.4 - float64(idx)
+		lut[idx] = (127.5 - float64(idx)) / 127.5
 		lut[idx] *= lut[idx]
 	}
 	return
@@ -222,7 +222,8 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 	dec := (len(input) / len(output))
 
 	for idx := 0; decIdx < len(output); idx += dec {
-		output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
+		// output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
+		output[decIdx] = lut[input[idx]] + lut[input[idx+1]]
 		decIdx++
 	}
 }
