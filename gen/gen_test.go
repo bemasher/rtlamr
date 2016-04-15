@@ -121,7 +121,7 @@ func TestSCM(t *testing.T) {
 
 		for signalLevelIdx, signalLevel := range signalLevels {
 			for decimationIdx, _ := range decimationFactors {
-				for idx := 0; idx < 64; idx++ {
+				for idx := 0; idx < 24; idx++ {
 					r, w := io.Pipe()
 
 					scm, _ := NewRandSCM()
@@ -174,12 +174,6 @@ func TestSCM(t *testing.T) {
 			_, err := testCase.Read(block)
 			indices := p.Dec().Decode(block)
 			for _ = range p.Parse(indices) {
-				// t.Logf("%02X %02X %d %0.0f\n",
-				// 	testCase.Data[10:],
-				// 	msg.Checksum(),
-				// 	decimationFactors[testCase.DecimationIdx],
-				// 	signalLevels[testCase.SignalLevelIdx],
-				// )
 				results[testCase.DecimationIdx][testCase.SignalLevelIdx]++
 			}
 
