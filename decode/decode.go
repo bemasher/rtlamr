@@ -143,7 +143,7 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.demod = NewMagLUT()
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
-	d.preamble = make([]byte, len(d.Cfg.Preamble))
+	d.preamble = make([]byte, d.Cfg.PreambleSymbols)
 	for idx := range d.Cfg.Preamble {
 		if d.Cfg.Preamble[idx] == '1' {
 			d.preamble[idx] = 1
@@ -151,16 +151,12 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	}
 
 	// Slice quantized sample buffer to make searching for the preamble more
-	// memory local. Pre-allocate a flat buffer so memory is contiguous and
-	// assign slices to the buffer.
+	// memory local.
 	d.slices = make([][]byte, d.DecCfg.SymbolLength2)
-	flat := make([]byte, d.DecCfg.BlockSize2-(d.DecCfg.BlockSize2%d.DecCfg.SymbolLength2))
 
-	symbolsPerBlock := d.DecCfg.BlockSize2 / d.DecCfg.SymbolLength2
+	symbolsPerBlock := d.DecCfg.BlockSize/d.DecCfg.SymbolLength2 + d.DecCfg.PreambleSymbols
 	for symbolOffset := range d.slices {
-		lower := symbolOffset * symbolsPerBlock
-		upper := (symbolOffset + 1) * symbolsPerBlock
-		d.slices[symbolOffset] = flat[lower:upper]
+		d.slices[symbolOffset] = make([]byte, symbolsPerBlock)
 	}
 
 	d.preambleFinder = makeByteFinder(d.preamble)
@@ -191,7 +187,7 @@ func (d Decoder) Decode(input []byte) []int {
 	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
-	d.Pack(d.Quantized[:d.DecCfg.BlockSize2])
+	d.Pack(d.Quantized)
 
 	// Return a list of indexes the preamble exists at.
 	return d.Search()
