@@ -134,10 +134,10 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	// Allocate necessary buffers.
 	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
 	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
-	d.Filtered = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
+	d.Filtered = make([]float64, d.DecCfg.BlockSize)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
 
-	d.csum = make([]float64, (d.DecCfg.PacketLength - d.DecCfg.SymbolLength2 + 1))
+	d.csum = make([]float64, len(d.Signal)+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
 	d.demod = NewMagLUT()
@@ -173,7 +173,6 @@ func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
 	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
 	copy(d.Signal, d.Signal[d.DecCfg.BlockSize:])
-	copy(d.Filtered, d.Filtered[d.DecCfg.BlockSize:])
 	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
 	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
@@ -187,7 +186,7 @@ func (d Decoder) Decode(input []byte) []int {
 	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
-	d.Pack(d.Quantized)
+	d.Transpose(d.Quantized)
 
 	// Return a list of indexes the preamble exists at.
 	return d.Search()
@@ -254,7 +253,7 @@ func Quantize(input []float64, output []byte) {
 	return
 }
 
-// Packs quantized signal into slices such that the first rank represents
+// Transpose quantized signal into slices such that the first rank represents
 // sample offsets and the second represents the value of each symbol from the
 // given offset.
 //
@@ -263,7 +262,7 @@ func Quantize(input []float64, output []byte) {
 // <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
 // to:
 // <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
-func (d *Decoder) Pack(input []byte) {
+func (d *Decoder) Transpose(input []byte) {
 	for symbolOffset, slice := range d.slices {
 		for symbolIdx := range slice {
 			slice[symbolIdx] = input[symbolIdx*d.DecCfg.SymbolLength2+symbolOffset]
