@@ -98,7 +98,7 @@ type TestCase struct {
 	DecimationIdx  int
 }
 
-func TestSCM(t *testing.T) {
+func TestGenerateSCM(t *testing.T) {
 	genParser, err := parse.NewParser("scm", 72, 1)
 	if err != nil {
 		t.Fatal(err)
