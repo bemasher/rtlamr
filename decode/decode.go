@@ -97,7 +97,6 @@ type Decoder struct {
 	Decimation int
 	DecCfg     PacketConfig
 
-	IQ        []byte
 	Signal    []float64
 	Filtered  []float64
 	Quantized []byte
@@ -132,7 +131,6 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.DecCfg = d.Cfg.Decimate(d.Decimation)
 
 	// Allocate necessary buffers.
-	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
 	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
 	d.Filtered = make([]float64, d.DecCfg.BlockSize)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
@@ -171,13 +169,11 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 // Decode accepts a sample block and performs various DSP techniques to extract a packet.
 func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
-	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
 	copy(d.Signal, d.Signal[d.DecCfg.BlockSize:])
 	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
-	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
 	// Compute the magnitude of the new block.
-	d.demod.Execute(d.IQ[d.Cfg.PacketLength<<1:], d.Signal[d.DecCfg.SymbolLength2:])
+	d.demod.Execute(input, d.Signal[d.DecCfg.SymbolLength2:])
 
 	// Perform matched filter on new block.
 	d.Filter(d.Signal, d.Filtered)
