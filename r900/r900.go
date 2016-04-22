@@ -51,6 +51,7 @@ type Parser struct {
 	field *gf.Field
 	rsBuf [31]byte
 
+	signal    []float64
 	csum      []float64
 	filtered  [][3]float64
 	quantized []byte
@@ -64,6 +65,7 @@ func NewParser(symbolLength, decimation int) parse.Parser {
 	// GF of order 32, polynomial 37, generator 2.
 	p.field = gf.NewField(32, 37, 2)
 
+	p.signal = make([]float64, p.Decoder.DecCfg.BufferLength)
 	p.csum = make([]float64, p.Decoder.DecCfg.BufferLength+1)
 	p.filtered = make([][3]float64, p.Decoder.DecCfg.BufferLength)
 	p.quantized = make([]byte, p.Decoder.DecCfg.BufferLength)
@@ -95,7 +97,7 @@ func (p Parser) Filter() {
 	// indices of the cumulative sum.
 
 	var sum float64
-	for idx, v := range p.Decoder.Signal {
+	for idx, v := range p.signal {
 		sum += v
 		p.csum[idx+1] = sum
 	}
@@ -110,12 +112,14 @@ func (p Parser) Filter() {
 
 	// This is basically unreadable because of a lot of algebraic
 	// simplification but is necessary for efficiency.
-	for idx := 0; idx < p.Decoder.DecCfg.BufferLength-p.Decoder.DecCfg.SymbolLength*4; idx++ {
+
+	cfg := p.Decoder.DecCfg
+	for idx := 0; idx < cfg.BufferLength-cfg.SymbolLength*4; idx++ {
 		c0 := p.csum[idx]
-		c1 := p.csum[idx+p.Decoder.DecCfg.SymbolLength] * 2
-		c2 := p.csum[idx+p.Decoder.DecCfg.SymbolLength*2] * 2
-		c3 := p.csum[idx+p.Decoder.DecCfg.SymbolLength*3] * 2
-		c4 := p.csum[idx+p.Decoder.DecCfg.SymbolLength*4]
+		c1 := p.csum[idx+cfg.SymbolLength] * 2
+		c2 := p.csum[idx+cfg.SymbolLength*2] * 2
+		c3 := p.csum[idx+cfg.SymbolLength*3] * 2
+		c4 := p.csum[idx+cfg.SymbolLength*4]
 
 		p.filtered[idx][0] = c2 - c4 - c0           // 1100
 		p.filtered[idx][1] = c1 - c2 + c3 - c4 - c0 // 1010
@@ -157,11 +161,15 @@ func (p Parser) Quantize() {
 
 // Given a list of indices the preamble exists at, decode and parse a message.
 func (p Parser) Parse(indices []int) (msgs []parse.Message) {
+	cfg := p.Decoder.DecCfg
+	copy(p.signal, p.signal[cfg.BlockSize:])
+	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength2:])
+
 	p.Filter()
 	p.Quantize()
 
-	preambleLength := p.Decoder.DecCfg.PreambleLength
-	symbolLength := p.Decoder.DecCfg.SymbolLength
+	preambleLength := cfg.PreambleLength
+	symbolLength := cfg.SymbolLength
 
 	symbols := make([]byte, 21)
 	zeros := make([]byte, 5)
@@ -169,13 +177,13 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 	seen := make(map[string]bool)
 
 	for _, preambleIdx := range indices {
-		if preambleIdx > p.Decoder.DecCfg.BlockSize {
+		if preambleIdx > cfg.BlockSize {
 			break
 		}
 
 		payloadIdx := preambleIdx + preambleLength
 		var digits string
-		for idx := 0; idx < PayloadSymbols*4*p.Decoder.DecCfg.SymbolLength; idx += symbolLength * 4 {
+		for idx := 0; idx < PayloadSymbols*4*cfg.SymbolLength; idx += symbolLength * 4 {
 			qIdx := payloadIdx + idx
 
 			digits += strconv.Itoa(int(p.quantized[qIdx]))

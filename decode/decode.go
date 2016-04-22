@@ -97,7 +97,6 @@ type Decoder struct {
 	Decimation int
 	DecCfg     PacketConfig
 
-	IQ        []byte
 	Signal    []float64
 	Filtered  []float64
 	Quantized []byte
@@ -132,18 +131,17 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.DecCfg = d.Cfg.Decimate(d.Decimation)
 
 	// Allocate necessary buffers.
-	d.IQ = make([]byte, d.Cfg.BufferLength<<1)
 	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
-	d.Filtered = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
+	d.Filtered = make([]float64, d.DecCfg.BlockSize)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
 
-	d.csum = make([]float64, (d.DecCfg.PacketLength - d.DecCfg.SymbolLength2 + 1))
+	d.csum = make([]float64, len(d.Signal)+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	d.demod = NewSqrtMagLUT()
+	d.demod = NewMagLUT()
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
-	d.preamble = make([]byte, len(d.Cfg.Preamble))
+	d.preamble = make([]byte, d.Cfg.PreambleSymbols)
 	for idx := range d.Cfg.Preamble {
 		if d.Cfg.Preamble[idx] == '1' {
 			d.preamble[idx] = 1
@@ -151,16 +149,12 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	}
 
 	// Slice quantized sample buffer to make searching for the preamble more
-	// memory local. Pre-allocate a flat buffer so memory is contiguous and
-	// assign slices to the buffer.
+	// memory local.
 	d.slices = make([][]byte, d.DecCfg.SymbolLength2)
-	flat := make([]byte, d.DecCfg.BlockSize2-(d.DecCfg.BlockSize2%d.DecCfg.SymbolLength2))
 
-	symbolsPerBlock := d.DecCfg.BlockSize2 / d.DecCfg.SymbolLength2
+	symbolsPerBlock := d.DecCfg.BlockSize/d.DecCfg.SymbolLength2 + d.DecCfg.PreambleSymbols
 	for symbolOffset := range d.slices {
-		lower := symbolOffset * symbolsPerBlock
-		upper := (symbolOffset + 1) * symbolsPerBlock
-		d.slices[symbolOffset] = flat[lower:upper]
+		d.slices[symbolOffset] = make([]byte, symbolsPerBlock)
 	}
 
 	d.preambleFinder = makeByteFinder(d.preamble)
@@ -175,14 +169,11 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 // Decode accepts a sample block and performs various DSP techniques to extract a packet.
 func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
-	copy(d.IQ, d.IQ[d.Cfg.BlockSize<<1:])
 	copy(d.Signal, d.Signal[d.DecCfg.BlockSize:])
-	copy(d.Filtered, d.Filtered[d.DecCfg.BlockSize:])
 	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
-	copy(d.IQ[d.Cfg.PacketLength<<1:], input[:])
 
 	// Compute the magnitude of the new block.
-	d.demod.Execute(d.IQ[d.Cfg.PacketLength<<1:], d.Signal[d.DecCfg.SymbolLength2:])
+	d.demod.Execute(input, d.Signal[d.DecCfg.SymbolLength2:])
 
 	// Perform matched filter on new block.
 	d.Filter(d.Signal, d.Filtered)
@@ -191,7 +182,7 @@ func (d Decoder) Decode(input []byte) []int {
 	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
 
 	// Pack the quantized signal into slices for searching.
-	d.Pack(d.Quantized[:d.DecCfg.BlockSize2])
+	d.Transpose(d.Quantized)
 
 	// Return a list of indexes the preamble exists at.
 	return d.Search()
@@ -207,10 +198,10 @@ type Demodulator interface {
 type MagLUT []float64
 
 // Pre-computes normalized squares with most common DC offset for rtl-sdr dongles.
-func NewSqrtMagLUT() (lut MagLUT) {
+func NewMagLUT() (lut MagLUT) {
 	lut = make([]float64, 0x100)
 	for idx := range lut {
-		lut[idx] = 127.4 - float64(idx)
+		lut[idx] = (127.5 - float64(idx)) / 127.5
 		lut[idx] *= lut[idx]
 	}
 	return
@@ -222,7 +213,7 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 	dec := (len(input) / len(output))
 
 	for idx := 0; decIdx < len(output); idx += dec {
-		output[decIdx] = math.Sqrt(lut[input[idx]] + lut[input[idx+1]])
+		output[decIdx] = lut[input[idx]] + lut[input[idx+1]]
 		decIdx++
 	}
 }
@@ -258,7 +249,7 @@ func Quantize(input []float64, output []byte) {
 	return
 }
 
-// Packs quantized signal into slices such that the first rank represents
+// Transpose quantized signal into slices such that the first rank represents
 // sample offsets and the second represents the value of each symbol from the
 // given offset.
 //
@@ -267,7 +258,7 @@ func Quantize(input []float64, output []byte) {
 // <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
 // to:
 // <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
-func (d *Decoder) Pack(input []byte) {
+func (d *Decoder) Transpose(input []byte) {
 	for symbolOffset, slice := range d.slices {
 		for symbolIdx := range slice {
 			slice[symbolIdx] = input[symbolIdx*d.DecCfg.SymbolLength2+symbolOffset]

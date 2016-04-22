@@ -17,10 +17,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -122,6 +124,7 @@ func (rcvr *Receiver) Run() {
 	}()
 
 	block := make([]byte, rcvr.p.Cfg().BlockSize2)
+	sampleBuf := new(bytes.Buffer)
 
 	start := time.Now()
 	for {
@@ -139,6 +142,15 @@ func (rcvr *Receiver) Run() {
 				log.Fatal("Error reading samples: ", err)
 			}
 
+			// If dumping samples, discard the oldest block from the buffer if
+			// it's full and write the new block to it.
+			if *sampleFilename != os.DevNull {
+				if sampleBuf.Len() > rcvr.p.Cfg().BufferLength<<1 {
+					io.CopyN(ioutil.Discard, sampleBuf, int64(len(block)))
+				}
+				sampleBuf.Write(block)
+			}
+
 			pktFound := false
 			indices := rcvr.p.Dec().Decode(block)
 
@@ -150,7 +162,7 @@ func (rcvr *Receiver) Run() {
 				var msg parse.LogMessage
 				msg.Time = time.Now()
 				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-				msg.Length = rcvr.p.Cfg().BufferLength << 1
+				msg.Length = sampleBuf.Len()
 				msg.Message = pkt
 
 				err = encoder.Encode(msg)
@@ -176,7 +188,7 @@ func (rcvr *Receiver) Run() {
 
 			if pktFound {
 				if *sampleFilename != os.DevNull {
-					_, err = sampleFile.Write(rcvr.p.Dec().IQ)
+					_, err = sampleFile.Write(sampleBuf.Bytes())
 					if err != nil {
 						log.Fatal("Error writing raw samples to file:", err)
 					}
