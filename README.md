@@ -31,7 +31,7 @@ Usage of rtlamr:
   -format=plain: format to write log messages in: plain, csv, json, xml or gob
   -gobunsafe=false: allow gob output to stdout
   -logfile=/dev/stdout: log statement dump file
-  -msgtype=scm: message type to receive: scm, idm, r900 or scm+
+  -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
   -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution, if used with -filterid, will wait for exactly one packet from each meter id
@@ -53,7 +53,6 @@ rtltcp specific:
   -tunergain=0: set tuner gain in dB
   -tunergainmode=false: enable/disable tuner gain
   -tunerxtalfreq=0: set tuner xtal frequency
-
 ```
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:

@@ -38,7 +38,7 @@ var logFile *os.File
 var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file")
 var sampleFile *os.File
 
-var msgType = flag.String("msgtype", "scm", "message type to receive: scm, idm, r900 or scm+")
+var msgType = flag.String("msgtype", "scm", "message type to receive: scm, scm+, idm, r900 and r900bcd")
 
 var symbolLength = flag.Int("symbollength", 72, "symbol length in samples")
 
