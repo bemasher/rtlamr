@@ -33,7 +33,7 @@ Usage of rtlamr:
   -logfile=/dev/stdout: log statement dump file
   -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
   -quiet=false: suppress printing state information at startup
-  -samplefile=NUL: raw signal dump file
+  -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution, if used with -filterid, will wait for exactly one packet from each meter id
   -symbollength=72: symbol length in samples
   -unique=false: suppress duplicate messages from each meter
