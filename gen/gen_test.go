@@ -130,7 +130,7 @@ func TestGenerateSCM(t *testing.T) {
 					manchester := lut.Encode(scm)
 					bits := Upsample(UnpackBits(manchester), 72<<1)
 
-					freq := rand.Float64() - 0.5*float64(cfg.SampleRate)
+					freq := (rand.Float64() - 0.5) * float64(cfg.SampleRate)
 					carrier := CmplxOscillatorF64(len(bits)>>1, freq, float64(cfg.SampleRate))
 
 					signalAmplitude := math.Pow(10, signalLevel/20)
