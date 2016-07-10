@@ -82,7 +82,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 		scm := NewSCM(data)
 
 		// If the meter id is 0, bail.
-		if scm.EndpointID == 0 {
+		if scm.EndpointID == 0 || scm.ProtocolID != 0x1E {
 			continue
 		}
 
