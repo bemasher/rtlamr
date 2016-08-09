@@ -179,7 +179,7 @@ func (d Decoder) Decode(input []byte) []int {
 	d.Filter(d.Signal, d.Filtered)
 
 	// Perform bit-decision on new block.
-	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength-d.DecCfg.SymbolLength2:])
+	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength:])
 
 	// Pack the quantized signal into slices for searching.
 	d.Transpose(d.Quantized)
@@ -232,9 +232,8 @@ func (d Decoder) Filter(input, output []float64) {
 	// Filter result is difference of summation of lower and upper symbols.
 	lower := d.csum[d.DecCfg.SymbolLength:]
 	upper := d.csum[d.DecCfg.SymbolLength2:]
-	n := len(input) - d.DecCfg.SymbolLength2
-	for idx := 0; idx < n; idx++ {
-		output[idx] = (lower[idx] - d.csum[idx]) - (upper[idx] - lower[idx])
+	for idx, l := range lower[:len(output)] {
+		output[idx] = (l - d.csum[idx]) - (upper[idx] - l)
 	}
 
 	return
@@ -242,8 +241,16 @@ func (d Decoder) Filter(input, output []float64) {
 
 // Bit-value is determined by the sign of each sample after filtering.
 func Quantize(input []float64, output []byte) {
+	// Should optimize out to memclr operation.
+	for idx := range output {
+		output[idx] = 0
+	}
+
+	// Only set necessary bits. Previous method set all bits regardless of value.
 	for idx, val := range input {
-		output[idx] = byte(math.Float64bits(val)>>63) ^ 0x01
+		if val > 0 {
+			output[idx] = 1
+		}
 	}
 
 	return
