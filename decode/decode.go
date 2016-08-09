@@ -26,9 +26,9 @@ import (
 type PacketConfig struct {
 	DataRate int
 
-	BlockSize, BlockSize2       int
-	SymbolLength, SymbolLength2 int
-	SampleRate                  int
+	BlockSize, BlockSize2    int
+	ChipLength, SymbolLength int
+	SampleRate               int
 
 	PreambleSymbols, PacketSymbols int
 	PreambleLength, PacketLength   int
@@ -42,8 +42,8 @@ type PacketConfig struct {
 func (cfg PacketConfig) Decimate(decimation int) PacketConfig {
 	cfg.BlockSize /= decimation
 	cfg.BlockSize2 /= decimation
+	cfg.ChipLength /= decimation
 	cfg.SymbolLength /= decimation
-	cfg.SymbolLength2 /= decimation
 	cfg.SampleRate /= decimation
 	cfg.DataRate /= decimation
 
@@ -61,18 +61,18 @@ func (d Decoder) Log() {
 		log.Println("CenterFreq:", d.Cfg.CenterFreq)
 		log.Printf("SampleRate: %d|%d\n", d.Cfg.SampleRate, d.DecCfg.SampleRate)
 		log.Printf("DataRate: %d|%d\n", d.Cfg.DataRate, d.DecCfg.DataRate)
-		log.Printf("SymbolLength: %d|%d\n", d.Cfg.SymbolLength, d.DecCfg.SymbolLength)
+		log.Printf("ChipLength: %d|%d\n", d.Cfg.ChipLength, d.DecCfg.ChipLength)
 		log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
 		log.Printf("PreambleLength: %d|%d\n", d.Cfg.PreambleLength, d.DecCfg.PreambleLength)
 		log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
 		log.Printf("PacketLength: %d|%d\n", d.Cfg.PacketLength, d.DecCfg.PacketLength)
 		log.Println("Preamble:", d.Cfg.Preamble)
 
-		if d.Cfg.SymbolLength%d.Decimation != 0 {
+		if d.Cfg.ChipLength%d.Decimation != 0 {
 			log.Println("Warning: decimated symbol length is non-integral, sensitivity may be poor")
 		}
 
-		if d.DecCfg.SymbolLength < 3 {
+		if d.DecCfg.ChipLength < 3 {
 			log.Fatal("Error: illegal decimation factor, choose a smaller factor")
 		}
 
@@ -82,7 +82,7 @@ func (d Decoder) Log() {
 	log.Println("CenterFreq:", d.Cfg.CenterFreq)
 	log.Println("SampleRate:", d.Cfg.SampleRate)
 	log.Println("DataRate:", d.Cfg.DataRate)
-	log.Println("SymbolLength:", d.Cfg.SymbolLength)
+	log.Println("ChipLength:", d.Cfg.ChipLength)
 	log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
 	log.Println("PreambleLength:", d.Cfg.PreambleLength)
 	log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
@@ -116,11 +116,11 @@ type Decoder struct {
 func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.Cfg = cfg
 
-	d.Cfg.SymbolLength2 = d.Cfg.SymbolLength << 1
-	d.Cfg.SampleRate = d.Cfg.DataRate * d.Cfg.SymbolLength
+	d.Cfg.SymbolLength = d.Cfg.ChipLength << 1
+	d.Cfg.SampleRate = d.Cfg.DataRate * d.Cfg.ChipLength
 
-	d.Cfg.PreambleLength = d.Cfg.PreambleSymbols * d.Cfg.SymbolLength2
-	d.Cfg.PacketLength = d.Cfg.PacketSymbols * d.Cfg.SymbolLength2
+	d.Cfg.PreambleLength = d.Cfg.PreambleSymbols * d.Cfg.SymbolLength
+	d.Cfg.PacketLength = d.Cfg.PacketSymbols * d.Cfg.SymbolLength
 
 	d.Cfg.BlockSize = NextPowerOf2(d.Cfg.PreambleLength)
 	d.Cfg.BlockSize2 = d.Cfg.BlockSize << 1
@@ -131,7 +131,7 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.DecCfg = d.Cfg.Decimate(d.Decimation)
 
 	// Allocate necessary buffers.
-	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength2)
+	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength)
 	d.Filtered = make([]float64, d.DecCfg.BlockSize)
 	d.Quantized = make([]byte, d.DecCfg.BufferLength)
 
@@ -150,9 +150,9 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 
 	// Slice quantized sample buffer to make searching for the preamble more
 	// memory local.
-	d.slices = make([][]byte, d.DecCfg.SymbolLength2)
+	d.slices = make([][]byte, d.DecCfg.SymbolLength)
 
-	symbolsPerBlock := d.DecCfg.BlockSize/d.DecCfg.SymbolLength2 + d.DecCfg.PreambleSymbols
+	symbolsPerBlock := d.DecCfg.BlockSize/d.DecCfg.SymbolLength + d.DecCfg.PreambleSymbols
 	for symbolOffset := range d.slices {
 		d.slices[symbolOffset] = make([]byte, symbolsPerBlock)
 	}
@@ -173,7 +173,7 @@ func (d Decoder) Decode(input []byte) []int {
 	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
 
 	// Compute the magnitude of the new block.
-	d.demod.Execute(input, d.Signal[d.DecCfg.SymbolLength2:])
+	d.demod.Execute(input, d.Signal[d.DecCfg.SymbolLength:])
 
 	// Perform matched filter on new block.
 	d.Filter(d.Signal, d.Filtered)
@@ -230,8 +230,8 @@ func (d Decoder) Filter(input, output []float64) {
 	}
 
 	// Filter result is difference of summation of lower and upper symbols.
-	lower := d.csum[d.DecCfg.SymbolLength:]
-	upper := d.csum[d.DecCfg.SymbolLength2:]
+	lower := d.csum[d.DecCfg.ChipLength:]
+	upper := d.csum[d.DecCfg.SymbolLength:]
 	for idx, l := range lower[:len(output)] {
 		output[idx] = (l - d.csum[idx]) - (upper[idx] - l)
 	}
@@ -268,7 +268,7 @@ func Quantize(input []float64, output []byte) {
 func (d *Decoder) Transpose(input []byte) {
 	for symbolOffset, slice := range d.slices {
 		for symbolIdx := range slice {
-			slice[symbolIdx] = input[symbolIdx*d.DecCfg.SymbolLength2+symbolOffset]
+			slice[symbolIdx] = input[symbolIdx*d.DecCfg.SymbolLength+symbolOffset]
 		}
 	}
 
@@ -285,7 +285,7 @@ func (d *Decoder) Search() (indexes []int) {
 		for {
 			idx = d.preambleFinder.next(slice[offset:])
 			if idx != -1 {
-				indexes = append(indexes, (offset+idx)*d.DecCfg.SymbolLength2+symbolOffset)
+				indexes = append(indexes, (offset+idx)*d.DecCfg.SymbolLength+symbolOffset)
 				offset += idx + 1
 			} else {
 				break
@@ -315,7 +315,7 @@ func (d Decoder) Slice(indices []int) (pkts [][]byte) {
 		// Packet is 1 bit per byte, pack to 8-bits per byte.
 		for pIdx := 0; pIdx < d.DecCfg.PacketSymbols; pIdx++ {
 			d.pkt[pIdx>>3] <<= 1
-			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.DecCfg.SymbolLength2)]
+			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.DecCfg.SymbolLength)]
 		}
 
 		// Store the packet in the seen map and append to the packet list.

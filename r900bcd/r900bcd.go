@@ -31,8 +31,8 @@ type Parser struct {
 	parse.Parser
 }
 
-func NewParser(symbolLength, decimation int) parse.Parser {
-	return Parser{r900.NewParser(symbolLength, decimation)}
+func NewParser(ChipLength, decimation int) parse.Parser {
+	return Parser{r900.NewParser(ChipLength, decimation)}
 }
 
 // Parse messages using r900 parser and convert consumption from BCD to int.

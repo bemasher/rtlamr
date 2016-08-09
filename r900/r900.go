@@ -35,10 +35,10 @@ func init() {
 	parse.Register("r900", NewParser)
 }
 
-func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
+func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
 	cfg.CenterFreq = 912380000
 	cfg.DataRate = 32768
-	cfg.SymbolLength = symbolLength
+	cfg.ChipLength = chipLength
 	cfg.PreambleSymbols = 32
 	cfg.PacketSymbols = 116
 	cfg.Preamble = "00000000000000001110010101100100"
@@ -57,10 +57,10 @@ type Parser struct {
 	quantized []byte
 }
 
-func NewParser(symbolLength, decimation int) parse.Parser {
+func NewParser(chipLength, decimation int) parse.Parser {
 	p := new(Parser)
 
-	p.Decoder = decode.NewDecoder(NewPacketConfig(symbolLength), decimation)
+	p.Decoder = decode.NewDecoder(NewPacketConfig(chipLength), decimation)
 
 	// GF of order 32, polynomial 37, generator 2.
 	p.field = gf.NewField(32, 37, 2)
@@ -114,12 +114,12 @@ func (p Parser) Filter() {
 	// simplification but is necessary for efficiency.
 
 	cfg := p.Decoder.DecCfg
-	for idx := 0; idx < cfg.BufferLength-cfg.SymbolLength*4; idx++ {
+	for idx := 0; idx < cfg.BufferLength-cfg.ChipLength*4; idx++ {
 		c0 := p.csum[idx]
-		c1 := p.csum[idx+cfg.SymbolLength] * 2
-		c2 := p.csum[idx+cfg.SymbolLength*2] * 2
-		c3 := p.csum[idx+cfg.SymbolLength*3] * 2
-		c4 := p.csum[idx+cfg.SymbolLength*4]
+		c1 := p.csum[idx+cfg.ChipLength] * 2
+		c2 := p.csum[idx+cfg.ChipLength*2] * 2
+		c3 := p.csum[idx+cfg.ChipLength*3] * 2
+		c4 := p.csum[idx+cfg.ChipLength*4]
 
 		p.filtered[idx][0] = c2 - c4 - c0           // 1100
 		p.filtered[idx][1] = c1 - c2 + c3 - c4 - c0 // 1010
@@ -163,13 +163,13 @@ func (p Parser) Quantize() {
 func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 	cfg := p.Decoder.DecCfg
 	copy(p.signal, p.signal[cfg.BlockSize:])
-	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength2:])
+	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength:])
 
 	p.Filter()
 	p.Quantize()
 
 	preambleLength := cfg.PreambleLength
-	symbolLength := cfg.SymbolLength
+	chipLength := cfg.ChipLength
 
 	symbols := make([]byte, 21)
 	zeros := make([]byte, 5)
@@ -183,7 +183,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 
 		payloadIdx := preambleIdx + preambleLength
 		var digits string
-		for idx := 0; idx < PayloadSymbols*4*cfg.SymbolLength; idx += symbolLength * 4 {
+		for idx := 0; idx < PayloadSymbols*4*cfg.ChipLength; idx += chipLength * 4 {
 			qIdx := payloadIdx + idx
 
 			digits += strconv.Itoa(int(p.quantized[qIdx]))

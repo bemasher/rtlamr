@@ -30,10 +30,10 @@ func init() {
 	parse.Register("scm", NewParser)
 }
 
-func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
+func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
 	cfg.CenterFreq = 912600155
 	cfg.DataRate = 32768
-	cfg.SymbolLength = symbolLength
+	cfg.ChipLength = chipLength
 	cfg.PreambleSymbols = 21
 	cfg.PacketSymbols = 96
 	cfg.Preamble = "111110010101001100000"
@@ -46,9 +46,9 @@ type Parser struct {
 	crc.CRC
 }
 
-func NewParser(symbolLength, decimation int) (p parse.Parser) {
+func NewParser(chipLength, decimation int) (p parse.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(symbolLength), decimation),
+		decode.NewDecoder(NewPacketConfig(chipLength), decimation),
 		crc.NewCRC("BCH", 0, 0x6F63, 0),
 	}
 }

@@ -31,10 +31,10 @@ func init() {
 	parse.Register("idm", NewParser)
 }
 
-func NewPacketConfig(symbolLength int) (cfg decode.PacketConfig) {
+func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
 	cfg.CenterFreq = 912600155
 	cfg.DataRate = 32768
-	cfg.SymbolLength = symbolLength
+	cfg.ChipLength = chipLength
 	cfg.PreambleSymbols = 32
 	cfg.PacketSymbols = 92 * 8
 	cfg.Preamble = "01010101010101010001011010100011"
@@ -55,9 +55,9 @@ func (p *Parser) Cfg() *decode.PacketConfig {
 	return &p.Decoder.Cfg
 }
 
-func NewParser(symbolLength, decimation int) (p parse.Parser) {
+func NewParser(chipLength, decimation int) (p parse.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(symbolLength), decimation),
+		decode.NewDecoder(NewPacketConfig(chipLength), decimation),
 		crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
 	}
 }
