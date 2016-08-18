@@ -25,18 +25,7 @@ The signal is made up of interleaved in-phase and quadrature samples, 8-bits per
 $$\vert z\vert = \sqrt{\Re(z)^2 + \Im(z)^2}$$
 </div>
 
-To meet performance requirements the magnitude computation has two implementations. The first uses a pre-computed lookup table which maps all possible 8-bit values to their floating-point squares. Calculating the magnitude using the lookup table then only involves two lookups, one addition and one square-root.
-
-The second implementation is an approximation known as Alpha-Max plus Beta-Min whose efficiency comes from eliminating the square root operation:
-
-<div>
-$$
-	\begin{aligned}
-		&\alpha = \frac{2\cos\frac{\pi}{8}}{1+cos\frac{\pi}{8}} \qquad \beta = \frac{2\sin\frac{\pi}{8}}{1+cos\frac{\pi}{8}} \\ \\
-		\vert z\vert \approx \,&\alpha\cdot\max(\Re(z),\Im(z)) + \beta\cdot\min(\Re(z),\Im(z))
-	\end{aligned}
-$$
-</div>
+To meet performance requirements the magnitude computation is done using a pre-computed lookup table which maps all possible 8-bit values to their floating-point squares. Calculating the magnitude using the lookup table then only involves two lookups, one addition and one square-root.
 
 ## Filtering
 ***
