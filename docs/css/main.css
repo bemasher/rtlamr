@@ -1,0 +1,25 @@
+body {
+	padding-top: 20px;
+	padding-bottom: 20px;
+}
+
+p {
+	text-align: justify;
+}
+
+.navbar {
+	margin-bottom: 20px;
+	border-radius: 4px;
+}
+
+.disqus {
+	margin-top: -10px;
+}
+
+.img-panel {
+	display: inline-block;
+}
+
+.img-panel .panel-footer {
+	text-align: left;
+}

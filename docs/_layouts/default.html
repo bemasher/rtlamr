@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+	{% include head.html %}
+
+	<body>
+		<div class="container">
+			{% include header.html %}
+
+			{{ content }}
+
+			{% if jekyll.environment != 'development' and page.permalink == '/' %}
+			<div class="panel panel-default">
+				<div class="panel-body disqus">
+					{% include disqus.html %}
+				</div>
+			</div>
+			{% endif %}
+		</div>
+	</body>
+</html>

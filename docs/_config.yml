@@ -1,0 +1,21 @@
+# Site settings
+title: rtlamr
+email: bemasher@gmail.com
+description: An rtl-sdr receiver for Itron ERT compatible smart meters operating in the 900MHz ISM band.
+
+baseurl: "/rtlamr"
+url: "http://smtorrent:4000"
+
+markdown: kramdown
+kramdown:
+  input: GFM
+highlighter: pygments
+
+github_username:  bemasher
+google_analytics_id: UA-3438582-2
+repository: https://github.com/bemasher/rtlamr
+
+gems:
+  - jekyll-redirect-from
+
+exclude: [src,assets/*.bin,assets/*.py]
