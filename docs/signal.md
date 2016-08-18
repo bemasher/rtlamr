@@ -28,39 +28,39 @@ To meet performance requirements the magnitude computation has two implementatio
 The second implementation is an approximation known as Alpha-Max plus Beta-Min whose efficiency comes from eliminating the square root operation:
 
 $$
-\begin{eqnarray*}
-	\alpha &=& \frac{2\cos\frac{\pi}{8}}{1+cos\frac{\pi}{8}} \qquad \beta = \frac{2\sin\frac{\pi}{8}}{1+cos\frac{\pi}{8}} \\ \\
-	\vert z\vert &\approx& \alpha\cdot\max(\Re(z),\Im(z)) + \beta\cdot\min(\Re(z),\Im(z))
-\end{eqnarray*}
+	\begin{aligned}
+		&\alpha = \frac{2\cos\frac{\pi}{8}}{1+cos\frac{\pi}{8}} \qquad \beta = \frac{2\sin\frac{\pi}{8}}{1+cos\frac{\pi}{8}} \\ \\
+		\vert z\vert \approx \,&\alpha\cdot\max(\Re(z),\Im(z)) + \beta\cdot\min(\Re(z),\Im(z))
+	\end{aligned}
 $$
 
 ## Filtering
 ***
 
-Filtering is required for later bit decision. The ideal filter kernel for a square-wave signal is known as a boxcar and is essentially a moving average. Due to the signal being manchester coded the ideal filter is a step function. Manchester coding mixes data with a clock signal to allow for synchronization and clock recovery while decoding as well as reducing any DC offset that would be present due to content of the data. The symbol length $N$ is determined by the sampling rate $F_s$ of the receiver and the data rate $R$ of the signal.
+Filtering is required for later bit decision. The ideal filter kernel for a square-wave signal is known as a boxcar and is essentially a moving average. Due to the signal being manchester coded the ideal filter is a step function. Manchester coding mixes data with a clock signal to allow for synchronization and clock recovery while decoding as well as reducing any DC offset that would be present due to content of the data. The symbol length [[N]] is determined by the sampling rate [[F_s]] of the receiver and the data rate [[R]] of the signal.
 
 $$N = \frac{F_s}{R}$$
 
 The maximum sample rate without any sample loss is between 2.4 and 2.56 MHz. To simplify decoding we determine the sample rate from integral symbol lengths. From librtlsdr, the sample rate must satisfy one of two conditions:
 
 $$
-	\begin{eqnarray}
-		225\textsf{kHz} \lt &F_s& \le 300\textsf{kHz} \\
-		900\textsf{kHz} \lt &F_s& \le 3.2\textsf{MHz} \\
-	\end{eqnarray}
+	\begin{aligned}
+		225\text{kHz} \lt \, &F_s \le 300\text{kHz} \\
+		900\text{kHz} \lt \, &F_s \le 3.2\text{MHz} \\
+	\end{aligned}
 $$
 
 From this we can determine all of the valid symbol lengths and their corresponding sample rates. More info [here](https://github.com/bemasher/rtlamr/blob/master/help.md). Filtering can be implemented efficiently by computing the cumulative sum of each sample block and calculating the difference between a pair of subtractions:
 
 $$
-	\begin{eqnarray}
-		\mathbf{M}_i &=& \sum_{j=i}^{i+N} \mathbf{S}_j - \mathbf{S}_{j+N} \\\\
-		&=& (\mathbf{C}_{i+N} - \mathbf{C}_i) - (\mathbf{C}_{i+2N} - \mathbf{C}_{i+N}) \\\\
-		&=& 2\mathbf{C}_{i+N}-\mathbf{C}_{i+2 N}-\mathbf{C}_i
-	\end{eqnarray}
+	\begin{aligned}
+		\mathbf{M}_i &= \sum_{j=i}^{i+N} \mathbf{S}_j - \mathbf{S}_{j+N} \\ \\
+		&= (\mathbf{C}_{i+N} - \mathbf{C}_i) - (\mathbf{C}_{i+2N} - \mathbf{C}_{i+N}) \\ \\
+		&= 2\mathbf{C}_{i+N}-\mathbf{C}_{i+2 N}-\mathbf{C}_i
+	\end{aligned}
 $$
 
-Where $\mathbf{M}$ is the filtered signal, $\mathbf{S}$ is the sample vector, $N$ is the symbol length and $\mathbf{C}$ is the cumulative or prefix sum of the signal.
+Where [[\mathbf{M}]] is the filtered signal, [[\mathbf{S}]] is the sample vector, [[N]] is the symbol length and [[\mathbf{C}]] is the cumulative or prefix sum of the signal.
 
 {% include image.html path="/assets/filter.png" caption="<strong>Top:</strong> Ideal filter kernel for Manchester coded signals. <strong>Bottom:</strong> Filtered signal. <strong>Note:</strong> Signal is truncated to show detail." %}
 
