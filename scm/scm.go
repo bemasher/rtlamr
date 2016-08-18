@@ -48,7 +48,7 @@ type Parser struct {
 
 func NewParser(chipLength, decimation int) (p parse.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(chipLength), decimation),
+		decode.NewDecoder(NewPacketConfig(chipLength), decode.NewMagLUT(), decimation),
 		crc.NewCRC("BCH", 0, 0x6F63, 0),
 	}
 }

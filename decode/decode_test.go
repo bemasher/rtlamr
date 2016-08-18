@@ -26,3 +26,35 @@ func BenchmarkDecode(b *testing.B) {
 		_ = d.Decode(block)
 	}
 }
+
+func BenchmarkMagLUT(b *testing.B) {
+	lut := NewMagLUT()
+
+	const BlockSize = 16384
+
+	in := make([]byte, BlockSize)
+	out := make([]float64, BlockSize>>1)
+
+	b.SetBytes(BlockSize >> 1)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		lut.Execute(in, out)
+	}
+}
+
+func BenchmarkFskLUT(b *testing.B) {
+	lut := NewFskLUT()
+
+	const BlockSize = 16384
+
+	in := make([]byte, BlockSize)
+	out := make([]float64, BlockSize>>1)
+
+	b.SetBytes(BlockSize >> 1)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		lut.Execute(in, out)
+	}
+}

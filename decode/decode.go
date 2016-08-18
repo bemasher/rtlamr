@@ -113,7 +113,7 @@ type Decoder struct {
 }
 
 // Create a new decoder with the given packet configuration.
-func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
+func NewDecoder(cfg PacketConfig, demod Demodulator, decimation int) (d Decoder) {
 	d.Cfg = cfg
 
 	d.Cfg.SymbolLength = d.Cfg.ChipLength << 1
@@ -138,7 +138,7 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.csum = make([]float64, len(d.Signal)+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	d.demod = NewMagLUT()
+	d.demod = demod
 
 	// Pre-calculate a byte-slice version of the preamble for searching.
 	d.preamble = make([]byte, d.Cfg.PreambleSymbols)
@@ -199,7 +199,7 @@ type MagLUT []float64
 
 // Pre-computes normalized squares with most common DC offset for rtl-sdr dongles.
 func NewMagLUT() (lut MagLUT) {
-	lut = make([]float64, 0x100)
+	lut = make([]float64, 256)
 	for idx := range lut {
 		lut[idx] = (127.5 - float64(idx)) / 127.5
 		lut[idx] *= lut[idx]
@@ -216,6 +216,39 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 		output[decIdx] = lut[input[idx]] + lut[input[idx+1]]
 		decIdx++
 	}
+}
+
+type FskLUT struct {
+	i0, q0 float64
+	lut    []float64
+}
+
+func NewFskLUT() *FskLUT {
+	var fsk FskLUT
+	fsk.lut = make([]float64, 256)
+	for idx := range fsk.lut {
+		fsk.lut[idx] = (127.5 - float64(idx)) / 127.5
+	}
+	return &fsk
+}
+
+// Frequency Demodulation
+// We avoid an expensive atan2 call by doing a little calculus:
+// atan(q/i) d/dt = -(i*q' - q*i') / (i^2 + q^2)
+func (fsk *FskLUT) Execute(in []byte, out []float64) {
+	i, q := fsk.i0, fsk.q0
+
+	outIdx := 0
+	for idx := 0; idx < len(in); idx += 2 {
+		ip, qp := fsk.lut[in[idx]], fsk.lut[in[idx+1]] // I(n'), R(n')
+
+		out[outIdx] = -(i*qp - q*ip) / (i*i + q*q)
+
+		i, q = ip, qp // next n = current n'
+		outIdx++
+	}
+
+	fsk.i0, fsk.q0 = i, q
 }
 
 // Matched filter for Manchester coded signals. Output signal's sign at each
