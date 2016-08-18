@@ -9,7 +9,7 @@ url: "http://smtorrent:4000"
 markdown: kramdown
 kramdown:
   input: GFM
-highlighter: pygments
+highlighter: rouge
 
 github_username:  bemasher
 google_analytics_id: UA-3438582-2
