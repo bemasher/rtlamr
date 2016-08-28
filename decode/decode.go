@@ -235,6 +235,13 @@ func NewFskLUT() *FskLUT {
 // Frequency Demodulation
 // We avoid an expensive atan2 call by doing a little calculus:
 // atan(q/i) d/dt = -(i*q' - q*i') / (i^2 + q^2)
+// \begin{aligned}
+//     \arctan\left(\frac{q}{i}\right) \frac{d}{dt} &= -\frac{i \cdot q' - q \cdot i'}{i^2 + q^2} \\ \\
+
+//     &= \frac{i_{n-1} \cdot (q_n - q_{n-1}) - q_{n-1} \cdot (i_n - i_{n-1})}{{i_{n-1}}^2 + {q_{n-1}}^2} \\ \\
+
+//     &= \frac{i_{n-1} \cdot q_n - q_{n-1} \cdot i_n}{{i_{n-1}}^2 + {q_{n-1}}^2}
+// \end{aligned}
 func (fsk *FskLUT) Execute(in []byte, out []float64) {
 	i, q := fsk.i0, fsk.q0
 
@@ -243,6 +250,22 @@ func (fsk *FskLUT) Execute(in []byte, out []float64) {
 		ip, qp := fsk.lut[in[idx]], fsk.lut[in[idx+1]] // I(n'), R(n')
 
 		out[outIdx] = -(i*qp - q*ip) / (i*i + q*q)
+
+		i, q = ip, qp // next n = current n'
+		outIdx++
+	}
+
+	fsk.i0, fsk.q0 = i, q
+}
+
+func (fsk *FskLUT) naiveExecute(in []byte, out []float64) {
+	i, q := fsk.i0, fsk.q0
+
+	outIdx := 0
+	for idx := 0; idx < len(in); idx += 2 {
+		ip, qp := fsk.lut[in[idx]], fsk.lut[in[idx+1]] // I(n'), R(n')
+
+		out[outIdx] = math.Atan2(q, i) - math.Atan2(qp, ip)
 
 		i, q = ip, qp // next n = current n'
 		outIdx++

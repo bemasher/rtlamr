@@ -1,6 +1,10 @@
 package decode
 
-import "testing"
+import (
+	"crypto/rand"
+	"reflect"
+	"testing"
+)
 
 func NewPacketConfig(chipLength int) (cfg PacketConfig) {
 	cfg.CenterFreq = 912600155
@@ -14,8 +18,25 @@ func NewPacketConfig(chipLength int) (cfg PacketConfig) {
 	return
 }
 
+func TestFskLUT(t *testing.T) {
+	fsk := NewFskLUT()
+	input := make([]byte, 4096)
+	rand.Read(input)
+
+	out0 := make([]float64, 2048)
+	out1 := make([]float64, 2048)
+
+	fsk.Execute(input, out0)
+	fsk.naiveExecute(input, out1)
+
+	if !reflect.DeepEqual(out0, out1) {
+		t.Logf("%+0.3f\n", out0[:8])
+		t.Logf("%+0.3f\n", out1[:8])
+	}
+}
+
 func BenchmarkDecode(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72), NewMagLUT(), 1)
 
 	block := make([]byte, d.DecCfg.BlockSize2)
 
