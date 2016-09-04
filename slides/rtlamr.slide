@@ -1,0 +1,213 @@
+Optimizing DSP Routines in Go
+
+27 August 2016
+Tags: rtlamr, smart meter, rtl-sdr, sdr
+
+Douglas Hall
+
+* Overview of SDR
+
+.html mathjax.html
+
+- SDR stands for Software Defined Radio
+- Traditionally hardware for radio communication was expensive and rigid.
+- General purpose computing became efficient enough to handle most aspects of radio communication in software with only a flexible radio front-end for hardware.
+
+* Communication Basics
+
+- Carrier waves are usually sinusoidal and are of the form:
+
+$$A\sin(2\pi ft+\phi)$$
+
+- $A$ is amplitude.
+- $f$ is frequency.
+- $\phi$ is phase.
+- Communicate by modulating one or some combination of these.
+
+* What is rtlamr?
+
+Utilities often use "smart meters" to optimize their residential meter reading infrastructure. Smart meters transmit consumption information in the various ISM bands allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. One protocol in particular: Encoder Receiver Transmitter by Itron is fairly straight forward to decode and operates in the 900MHz ISM band, well within the tunable range of inexpensive rtl-sdr dongles.
+
+This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
+
+* Structure of rtlamr
+
+.image figures/signal_flow.svg _ 960
+
+* Itron ERT
+
+Characteristics:
+
+- On-Off-Keyed, a kind of Amplitude Modulation.
+- Manchester coded.
+- Datarate is 16,384Hz.
+
+Two commonly used message types:
+
+- SCM: Standard Consumption Message, 12 bytes.
+- IDM: Interval Data Message, 92 bytes.
+
+* Signal Source
+
+- Use rtl_tcp instead of direct communication with dongle.
+- Allows control and signal acquisition over TCP connection.
+- Can cross-compile since we don't need cgo.
+- Received signal is stream of unsigned 8-bit integers.
+- Each sample has two components: in-phase or real and quadrature or imaginary.
+
+$$
+	((I_0,Q_0), (I_1,Q_1), (I_2,Q_2),\dotsc,(I_n,Q_n))
+$$
+
+* Amplitude Demodulation
+
+Amplitude is just the complex magnitude of the sample $z$:
+
+$$\vert z\vert = \sqrt{\Re(z)^2 + \Im(z)^2}$$
+
+.image figures/magnitude.svg 360 _
+.caption Top: Real component of complex signal. Bottom: Magnitude of complex signal.
+
+* Naive Approach
+
+.code implementation.go /MagNaive Start OMIT/,/MagNaive Stop OMIT/
+
+Problems:
+
+- Normalizing samples every time can be avoided.
+- Squaring components is expensive, can also be avoided.
+- math.Sqrt is expensive, but necessary.
+
+* Optimized Approach
+
+.code implementation.go /MagLUT Start OMIT/,/MagLUT Stop OMIT/
+
+* Performance Comparison
+
+Benchmark run on an Intel Core i7-3770k for a block of 8192 samples:
+
+	$ go test -v -run=^$ -bench=Mag
+	testing: warning: no tests to run
+	BenchmarkMagNaive-8         10000    143136 ns/op     57.23 MB/s    0 B/op    0 allocs/op
+	BenchmarkMagOpt-8           50000     29471 ns/op    277.97 MB/s    0 B/op    0 allocs/op
+	BenchmarkMagOptNoSqrt-8    100000     12683 ns/op    645.88 MB/s    0 B/op    0 allocs/op
+	PASS
+	ok      github.com/bemasher/rtlamr/slides       4.640s
+
+As above on an RPi2:
+
+	$ go test -v -run=^$ -bench=Mag
+	testing: warning: no tests to run
+	BenchmarkMagNaive-4          1000    1322634 ns/op     6.19 MB/s    0 B/op    0 allocs/op
+	BenchmarkMagOpt-4            2000     900784 ns/op     9.09 MB/s    0 B/op    0 allocs/op
+	BenchmarkMagOptNoSqrt-4      3000     579762 ns/op    14.13 MB/s    0 B/op    0 allocs/op
+	PASS
+	ok      github.com/bemasher/rtlamr/slides       5.180s
+
+If you're willing to sacrifice some receiver sensitivity, math.Sqrt can be omitted entirely.
+
+* Matched Filter
+
+- Implemented using a FIR filter.
+- Convolve a set of coefficients with a signal:
+
+$$
+\begin{align}
+ y[n] &= b_0 x[n] + b_1 x[n-1] + \cdots + b_N x[n-N] \\
+      &= \sum_{i=0}^{N} b_i\cdot x[n-i]
+\end{align}
+$$
+
+Manchester coding:
+
+- XOR data with a clock signal twice the rate of the data.
+- Removes DC offset due to long runs of 0's or 1's in data.
+- Data now represented in transitions.
+- Has some nice properties if we design our filter kernel properly.
+
+* Matched Filter (cont.)
+
+.image figures/filter.svg
+.caption Top: Ideal filter kernel for Manchester coded signals. Bottom: Filtered signal.
+
+* Naive Approach
+
+.code implementation.go /FilterNaive Start OMIT/,/FilterNaive Stop OMIT/
+
+Problems:
+
+- Each iteration of the main loop shares a majority of it's operations with adjacent iterations.
+
+* Optimized Approach
+
+- Compute the cummulative sum of the input.
+- Output is then the difference between a pair of subtractions.
+
+$$
+	\begin{aligned}
+		\mathbf{M}[i] &= \sum_{j=i}^{i+N} \mathbf{S}[j] - \mathbf{S}[j+N] \\ \\
+		&= \underbrace{(\mathbf{C}[i+N] - \mathbf{C}[i])}_{\text{1st Chip}} - \underbrace{(\mathbf{C}[i+2N] - \mathbf{C}[i+N])}_{\text{2nd Chip}}
+	\end{aligned}
+$$
+
+Where $\mathbf{M}$ is the filtered signal, $\mathbf{S}$ is the sample vector, $N$ is the chip length and $\mathbf{C}$ is the cumulative or prefix sum of the signal.
+
+* Optimized Approach (cont.)
+
+.code implementation.go /FilterOpt Start OMIT/,/FilterOpt Stop OMIT/
+
+* Performance Comparison
+
+Benchmark run on an Intel Core i7-3770k for a block of 8192 samples:
+
+	$ go test -v -run=^$ -bench=Filter
+	testing: warning: no tests to run
+	BenchmarkFilterNaive-8     1000    1696046 ns/op      9.66 MB/s    0 B/op    0 allocs/op
+	BenchmarkFilterOpt-8      30000      40048 ns/op    409.10 MB/s    0 B/op    0 allocs/op
+	PASS
+	ok      github.com/bemasher/rtlamr/slides       3.509s
+
+As above on an RPi2:
+
+	$ go test -v -run=^$ -bench=Filter
+	testing: warning: no tests to run
+	BenchmarkFilterNaive-4      50    31053284 ns/op     0.53 MB/s    0 B/op    0 allocs/op
+	BenchmarkFilterOpt-4      1000     1558506 ns/op    10.51 MB/s    0 B/op    0 allocs/op
+	PASS
+	ok      github.com/bemasher/rtlamr/slides 3.330s
+
+
+* Bit Decision
+
+- Quantize all samples to some bit-value.
+- Manchester coding encodes data with rising and falling edges.
+- Anything non-zero is an "edge".
+- Only need to pay attention to the sign bit.
+
+.image figures/quantized.svg _ 800
+.caption Blue: Filter output. Red: Bit Decision.
+
+* Naive Approach
+
+.code implementation.go /QuantizeNaive Start OMIT/,/QuantizeNaive Stop OMIT/
+
+Problems:
+
+- Really not much more we can do...
+
+* Preamble Search
+
+At this point we want to look for a preamble, but the preamble won't be contiguous in memory. We have something like:
+
+$$(B_{0,0},B_{0,1},B_{0,2},B_{0,3},B_{1,0},\dotsc,B_{s,o})$$
+
+Where $B$ is the bit-value of a sample, $s$ is the symbol and $o$ is the offset within the symbol.
+
+What we really need for searching is something like:
+
+$$(B_{0,0},B_{1,0},B_{2,0},B_{3,0},B_{0,1},B_{1,1},B_{2,1},\dotsc)$$
+
+The particulars of doing this aren't very interesting and there's not much to optimize so we'll skip it.
+
+* Preamble Search (cont.)
+
