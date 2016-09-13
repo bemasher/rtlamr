@@ -111,15 +111,14 @@ func RegisterFlags() {
 }
 
 func EnvVarFlags() {
-    var value string
-    var present bool
+	var value string
 
-    for f := range rtlamrFlags {
-        value,present = os.LookupEnv("RTLAMR_" + strings.ToUpper(f));
-        if present && 0<len(value) {
-            flag.Set(f, value)
-        }
-    }
+	for f := range rtlamrFlags {
+		value = os.Getenv("RTLAMR_" + strings.ToUpper(f));
+		if 0<len(value) {
+			flag.Set(f, value)
+		}
+	}
 }
 
 func HandleFlags() {
@@ -127,8 +126,8 @@ func HandleFlags() {
 
 	if *logFilename == "/dev/stdout" {
 		logFile = os.Stdout
-    } else if *logAppend {
-        logFile, err = os.OpenFile(*logFilename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	} else if *logAppend {
+		logFile, err = os.OpenFile(*logFilename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if err != nil {
 			log.Fatal("Error appending to log file:", err)
 		}
