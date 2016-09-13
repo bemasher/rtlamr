@@ -31,6 +31,7 @@ Usage of rtlamr:
   -format=plain: format to write log messages in: plain, csv, json, xml or gob
   -gobunsafe=false: allow gob output to stdout
   -logfile=/dev/stdout: log statement dump file
+  -logappend=false: append to, instead of replacing, logfile at startup
   -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
   -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
