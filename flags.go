@@ -48,6 +48,8 @@ var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, e
 var meterID MeterIDFilter
 var meterType MeterTypeFilter
 
+var logAppend = flag.Bool("logappend", false, "apppend to log file if it exists")
+
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
 var encoder Encoder
@@ -61,6 +63,7 @@ var version = flag.Bool("version", false, "display build date and commit hash")
 
 var rtlamrFlags = map[string]bool{
 	"logfile":      true,
+	"logappend":    true,
 	"samplefile":   true,
 	"msgtype":      true,
 	"symbollength": true,
@@ -124,6 +127,11 @@ func HandleFlags() {
 
 	if *logFilename == "/dev/stdout" {
 		logFile = os.Stdout
+    } else if *logAppend {
+        logFile, err = os.OpenFile(*logFilename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			log.Fatal("Error appending to log file:", err)
+		}
 	} else {
 		logFile, err = os.Create(*logFilename)
 		if err != nil {
