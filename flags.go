@@ -59,31 +59,32 @@ var single = flag.Bool("single", false, "one shot execution, if used with -filte
 
 var version = flag.Bool("version", false, "display build date and commit hash")
 
+var rtlamrFlags = map[string]bool{
+	"logfile":      true,
+	"samplefile":   true,
+	"msgtype":      true,
+	"symbollength": true,
+	"decimation":   true,
+	"duration":     true,
+	"filterid":     true,
+	"filtertype":   true,
+	"format":       true,
+	"gobunsafe":    true,
+	"quiet":        true,
+	"unique":       true,
+	"single":       true,
+	"cpuprofile":   true,
+	"fastmag":      true,
+	"version":      true,
+}
+
+
 func RegisterFlags() {
 	meterID = MeterIDFilter{make(UintMap)}
 	meterType = MeterTypeFilter{make(UintMap)}
 
 	flag.Var(meterID, "filterid", "display only messages matching an id in a comma-separated list of ids.")
 	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
-
-	rtlamrFlags := map[string]bool{
-		"logfile":      true,
-		"samplefile":   true,
-		"msgtype":      true,
-		"symbollength": true,
-		"decimation":   true,
-		"duration":     true,
-		"filterid":     true,
-		"filtertype":   true,
-		"format":       true,
-		"gobunsafe":    true,
-		"quiet":        true,
-		"unique":       true,
-		"single":       true,
-		"cpuprofile":   true,
-		"fastmag":      true,
-		"version":      true,
-	}
 
 	printDefaults := func(validFlags map[string]bool, inclusion bool) {
 		flag.CommandLine.VisitAll(func(f *flag.Flag) {
@@ -104,6 +105,18 @@ func RegisterFlags() {
 		fmt.Fprintln(os.Stderr, "rtltcp specific:")
 		printDefaults(rtlamrFlags, false)
 	}
+}
+
+func EnvVarFlags() {
+    var value string
+    var present bool
+
+    for f := range rtlamrFlags {
+        value,present = os.LookupEnv("RTLAMR_" + strings.ToUpper(f));
+        if present && 0<len(value) {
+            flag.Set(f, value)
+        }
+    }
 }
 
 func HandleFlags() {
