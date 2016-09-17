@@ -2,6 +2,7 @@
 Detailed usage information for the various flags of RTLAMR.
 
   - `logfile` writes log statements to the given file. Defaults to `/dev/stdout`.
+  - `logappend` append to, instead of replacing, logfile at startup (only valid when logfile is not /dev/stdout)
   - `samplefile` writes raw signal to the given file. Samples are interleaved 8-bit inphase and quadrature pairs. Fields Offset and Length are omitted in the plain log format if this option isn't used. Defaults to `/dev/null`.
   - `cpuprofile` writes pprof profiling information to the given filename. Useful for determining bottlenecks and performance of the program. Defaults to blank and writes no profiling information.
   - `duration` sets the amount of time to listen for before exiting. Defaults to 0 for infinite, [GoDoc: time.Duration](http://godoc.org/time#Duration)

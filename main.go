@@ -213,6 +213,7 @@ var (
 func main() {
 	rcvr.RegisterFlags()
 	RegisterFlags()
+	EnvVarFlags()
 
 	flag.Parse()
 	if *version {

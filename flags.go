@@ -48,6 +48,8 @@ var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, e
 var meterID MeterIDFilter
 var meterType MeterTypeFilter
 
+var logAppend = flag.Bool("logappend", false, "apppend to log file if it exists")
+
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
 var encoder Encoder
@@ -59,31 +61,33 @@ var single = flag.Bool("single", false, "one shot execution, if used with -filte
 
 var version = flag.Bool("version", false, "display build date and commit hash")
 
+var rtlamrFlags = map[string]bool{
+	"logfile":      true,
+	"logappend":    true,
+	"samplefile":   true,
+	"msgtype":      true,
+	"symbollength": true,
+	"decimation":   true,
+	"duration":     true,
+	"filterid":     true,
+	"filtertype":   true,
+	"format":       true,
+	"gobunsafe":    true,
+	"quiet":        true,
+	"unique":       true,
+	"single":       true,
+	"cpuprofile":   true,
+	"fastmag":      true,
+	"version":      true,
+}
+
+
 func RegisterFlags() {
 	meterID = MeterIDFilter{make(UintMap)}
 	meterType = MeterTypeFilter{make(UintMap)}
 
 	flag.Var(meterID, "filterid", "display only messages matching an id in a comma-separated list of ids.")
 	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
-
-	rtlamrFlags := map[string]bool{
-		"logfile":      true,
-		"samplefile":   true,
-		"msgtype":      true,
-		"symbollength": true,
-		"decimation":   true,
-		"duration":     true,
-		"filterid":     true,
-		"filtertype":   true,
-		"format":       true,
-		"gobunsafe":    true,
-		"quiet":        true,
-		"unique":       true,
-		"single":       true,
-		"cpuprofile":   true,
-		"fastmag":      true,
-		"version":      true,
-	}
 
 	printDefaults := func(validFlags map[string]bool, inclusion bool) {
 		flag.CommandLine.VisitAll(func(f *flag.Flag) {
@@ -106,11 +110,27 @@ func RegisterFlags() {
 	}
 }
 
+func EnvVarFlags() {
+	var value string
+
+	for f := range rtlamrFlags {
+		value = os.Getenv("RTLAMR_" + strings.ToUpper(f));
+		if 0<len(value) {
+			flag.Set(f, value)
+		}
+	}
+}
+
 func HandleFlags() {
 	var err error
 
 	if *logFilename == "/dev/stdout" {
 		logFile = os.Stdout
+	} else if *logAppend {
+		logFile, err = os.OpenFile(*logFilename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			log.Fatal("Error appending to log file:", err)
+		}
 	} else {
 		logFile, err = os.Create(*logFilename)
 		if err != nil {
