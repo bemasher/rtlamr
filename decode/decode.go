@@ -179,7 +179,7 @@ func (d Decoder) Decode(input []byte) []int {
 	d.Filter(d.Signal, d.Filtered)
 
 	// Perform bit-decision on new block.
-	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength:])
+	Quantize(d.Filtered[d.DecCfg.SymbolLength:], d.Quantized[d.DecCfg.PacketLength:])
 
 	// Pack the quantized signal into slices for searching.
 	d.Transpose(d.Quantized)
