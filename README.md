@@ -55,6 +55,24 @@ rtltcp specific:
   -tunerxtalfreq=0: set tuner xtal frequency
 ```
 
+Flag default values may be overridden via environment variables which are a flag's name in all-caps prefixed by `RTLAMR_`. Flags passed at time of execution will override any values set by environment variable.
+
+```bash
+rtlamr -h
+
+...
+  -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
+...
+```
+
+```bash
+RTLAMR_MSGTYPE=idm rtlamr -h
+
+...
+  -msgtype=idm: message type to receive: scm, scm+, idm, r900 and r900bcd
+...
+```
+
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
 ```bash

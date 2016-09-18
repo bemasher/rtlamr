@@ -92,7 +92,7 @@ func RegisterFlags() {
 			}
 
 			format := "  -%s=%s: %s\n"
-			fmt.Fprintf(os.Stderr, format, f.Name, f.DefValue, f.Usage)
+			fmt.Fprintf(os.Stderr, format, f.Name, f.Value, f.Usage)
 		})
 	}
 
@@ -104,6 +104,22 @@ func RegisterFlags() {
 		fmt.Fprintln(os.Stderr, "rtltcp specific:")
 		printDefaults(rtlamrFlags, false)
 	}
+}
+
+func EnvOverride() {
+	flag.VisitAll(func(f *flag.Flag) {
+		envName := "RTLAMR_" + strings.ToUpper(f.Name)
+		flagValue := os.Getenv(envName)
+		if flagValue != "" {
+			log.Printf("Environment variable %q overrides flag %q with %q\n", envName, f.Name, flagValue)
+			if err := flag.Set(f.Name, flagValue); err != nil {
+				log.Fatalf(
+					"Environment variable %q failed to override flag %q with value %q: %q\n",
+					envName, f.Name, flagValue, err,
+				)
+			}
+		}
+	})
 }
 
 func HandleFlags() {
