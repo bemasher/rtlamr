@@ -241,15 +241,13 @@ func (d Decoder) Filter(input, output []float64) {
 
 // Bit-value is determined by the sign of each sample after filtering.
 func Quantize(input []float64, output []byte) {
-	// Should optimize out to memclr operation.
-	for idx := range output {
-		output[idx] = 0
-	}
-
-	// Only set necessary bits. Previous method set all bits regardless of value.
+	// There's really not much we can optimize here as it depends pretty
+	// heavily on the content of the input, which is unbiased on average.
 	for idx, val := range input {
 		if val > 0 {
 			output[idx] = 1
+		} else {
+			output[idx] = 0
 		}
 	}
 
@@ -267,8 +265,11 @@ func Quantize(input []float64, output []byte) {
 // <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
 func (d *Decoder) Transpose(input []byte) {
 	for symbolOffset, slice := range d.slices {
+		symbolInInput := 0
+		offsetInput := input[symbolOffset:]
 		for symbolIdx := range slice {
-			slice[symbolIdx] = input[symbolIdx*d.DecCfg.SymbolLength+symbolOffset]
+			slice[symbolIdx] = offsetInput[symbolInInput]
+			symbolInInput += d.DecCfg.SymbolLength
 		}
 	}
 
