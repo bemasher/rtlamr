@@ -152,7 +152,7 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	// memory local.
 	d.slices = make([][]byte, d.DecCfg.SymbolLength)
 
-	symbolsPerBlock := d.DecCfg.BlockSize/d.DecCfg.SymbolLength + d.DecCfg.PreambleSymbols
+	symbolsPerBlock := (d.DecCfg.BlockSize + d.DecCfg.PreambleLength) / d.DecCfg.SymbolLength
 	for symbolOffset := range d.slices {
 		d.slices[symbolOffset] = make([]byte, symbolsPerBlock)
 	}
