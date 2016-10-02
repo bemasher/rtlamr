@@ -179,7 +179,7 @@ func (d Decoder) Decode(input []byte) []int {
 	d.Filter(d.Signal, d.Filtered)
 
 	// Perform bit-decision on new block.
-	Quantize(d.Filtered[d.DecCfg.SymbolLength:], d.Quantized[d.DecCfg.PacketLength:])
+	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength:])
 
 	// Pack the quantized signal into slices for searching.
 	d.Transpose(d.Quantized)
@@ -281,13 +281,13 @@ func (d *Decoder) Transpose(input []byte) {
 // buffer.
 func (d *Decoder) Search() (indexes []int) {
 	for symbolOffset, slice := range d.slices {
-		offset := 0
+		lastIdx := 0
 		idx := 0
 		for {
-			idx = d.preambleFinder.next(slice[offset:])
+			idx = d.preambleFinder.next(slice[lastIdx:])
 			if idx != -1 {
-				indexes = append(indexes, (offset+idx)*d.DecCfg.SymbolLength+symbolOffset)
-				offset += idx + 1
+				indexes = append(indexes, (lastIdx+idx)*d.DecCfg.SymbolLength+symbolOffset)
+				lastIdx += idx + 1
 			} else {
 				break
 			}

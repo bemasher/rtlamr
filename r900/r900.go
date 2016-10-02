@@ -181,7 +181,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 			break
 		}
 
-		payloadIdx := preambleIdx + preambleLength
+		payloadIdx := preambleIdx + preambleLength - p.Dec().DecCfg.SymbolLength
 		var digits string
 		for idx := 0; idx < PayloadSymbols*4*cfg.ChipLength; idx += chipLength * 4 {
 			qIdx := payloadIdx + idx
