@@ -1,16 +1,17 @@
----
-layout: page
-title: Readme
-index: 1
-permalink: /
----
+----
+-layout: page
+-title: Readme
+-index: 1
+-permalink: /
+----
 
 ### Purpose
 Utilities often use "smart meters" to optimize their residential meter reading infrastructure. Smart meters transmit consumption information in the various ISM bands allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. One protocol in particular: Encoder Receiver Transmitter by Itron is fairly straight forward to decode and operates in the 900MHz ISM band, well within the tunable range of inexpensive rtl-sdr dongles.
 
 This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
-[![Build Status](http://img.shields.io/travis/bemasher/rtlamr.svg?style=flat)](https://travis-ci.org/bemasher/rtlamr) [![AGPLv3 License](http://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
+[![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master&style=flat)](https://travis-ci.org/bemasher/rtlamr)
+[![AGPLv3 License](http://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
 
 ### Requirements
  * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
@@ -30,35 +31,49 @@ Available command-line flags are as follows:
 
 ```
 Usage of rtlamr:
-  -cpuprofile=: write cpu profile to this file
   -decimation=1: integer decimation factor, keep every nth sample
-  -duration=0: time to run for, 0 for infinite, ex. 1h5m10s
-  -fastmag=false: use faster alpha max + beta min magnitude approximation
+  -duration=0s: time to run for, 0 for infinite, ex. 1h5m10s
   -filterid=: display only messages matching an id in a comma-separated list of ids.
   -filtertype=: display only messages matching a type in a comma-separated list of types.
-  -format=plain: format to write log messages in: plain, csv, json, xml or gob
-  -gobunsafe=false: allow gob output to stdout
-  -logfile=/dev/stdout: log statement dump file
-  -msgtype=scm: message type to receive: scm, idm or r900
-  -quiet=false: suppress printing state information at startup
+  -format=plain: format to write log messages in: plain, csv, json, or xml
+  -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
   -samplefile=/dev/null: raw signal dump file
-  -single=false: one shot execution
-  -symbollength=72: symbol length in samples, see -help for valid lengths
-
+  -single=false: one shot execution, if used with -filterid, will wait for exactly one packet from each meter id
+  -symbollength=72: symbol length in samples
+  -unique=false: suppress duplicate messages from each meter
+  -version=false: display build date and commit hash
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
-  -centerfreq=100000000: center frequency to receive on
+  -centerfreq=0: center frequency to receive on
   -directsampling=false: enable/disable direct sampling
   -freqcorrection=0: frequency correction in ppm
   -gainbyindex=0: set gain by index
   -offsettuning=false: enable/disable offset tuning
   -rtlxtalfreq=0: set rtl xtal frequency
-  -samplerate=2400000: sample rate
+  -samplerate=0: sample rate
   -server=127.0.0.1:1234: address or hostname of rtl_tcp instance
   -testmode=false: enable/disable test mode
   -tunergain=0: set tuner gain in dB
   -tunergainmode=false: enable/disable tuner gain
   -tunerxtalfreq=0: set tuner xtal frequency
+```
+
+Flag default values may be overridden via environment variables which are a flag's name in all-caps prefixed by `RTLAMR_`. Flags passed at time of execution will override any values set by environment variable.
+
+```bash
+rtlamr -h
+
+...
+  -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
+...
+```
+
+```bash
+RTLAMR_MSGTYPE=idm rtlamr -h
+
+...
+  -msgtype=idm: message type to receive: scm, scm+, idm, r900 and r900bcd
+...
 ```
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:

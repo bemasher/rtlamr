@@ -25,29 +25,25 @@ Available command-line flags are as follows:
 ```
 Usage of rtlamr:
   -decimation=1: integer decimation factor, keep every nth sample
-  -duration=0: time to run for, 0 for infinite, ex. 1h5m10s
+  -duration=0s: time to run for, 0 for infinite, ex. 1h5m10s
   -filterid=: display only messages matching an id in a comma-separated list of ids.
   -filtertype=: display only messages matching a type in a comma-separated list of types.
-  -format=plain: format to write log messages in: plain, csv, json, xml or gob
-  -gobunsafe=false: allow gob output to stdout
-  -logfile=/dev/stdout: log statement dump file
+  -format=plain: format to write log messages in: plain, csv, json, or xml
   -msgtype=scm: message type to receive: scm, scm+, idm, r900 and r900bcd
-  -quiet=false: suppress printing state information at startup
   -samplefile=/dev/null: raw signal dump file
   -single=false: one shot execution, if used with -filterid, will wait for exactly one packet from each meter id
   -symbollength=72: symbol length in samples
   -unique=false: suppress duplicate messages from each meter
   -version=false: display build date and commit hash
-
 rtltcp specific:
   -agcmode=false: enable/disable rtl agc
-  -centerfreq=100M: center frequency to receive on
+  -centerfreq=0: center frequency to receive on
   -directsampling=false: enable/disable direct sampling
   -freqcorrection=0: frequency correction in ppm
   -gainbyindex=0: set gain by index
   -offsettuning=false: enable/disable offset tuning
   -rtlxtalfreq=0: set rtl xtal frequency
-  -samplerate=2.4M: sample rate
+  -samplerate=0: sample rate
   -server=127.0.0.1:1234: address or hostname of rtl_tcp instance
   -testmode=false: enable/disable test mode
   -tunergain=0: set tuner gain in dB
