@@ -87,14 +87,10 @@ func (rcvr *Receiver) NewReceiver() {
 		rcvr.SetGainMode(true)
 	}
 
-	if !*quiet {
-		rcvr.p.Log()
-	}
+	rcvr.p.Log()
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
-	if !*quiet {
-		log.Println("GainCount:", rcvr.SDR.Info.GainCount)
-	}
+	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
 
 	return
 }
@@ -170,10 +166,9 @@ func (rcvr *Receiver) Run() {
 					log.Fatal("Error encoding message: ", err)
 				}
 
-				// The XML encoder doesn't write new lines after each
-				// element, add them.
+				// The XML encoder doesn't write new lines after each element, print them.
 				if _, ok := encoder.(*xml.Encoder); ok {
-					fmt.Fprintln(logFile)
+					fmt.Println()
 				}
 
 				pktFound = true
@@ -232,7 +227,6 @@ func main() {
 
 	rcvr.NewReceiver()
 
-	defer logFile.Close()
 	defer sampleFile.Close()
 	defer rcvr.Close()
 

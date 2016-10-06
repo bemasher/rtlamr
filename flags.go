@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -31,9 +30,6 @@ import (
 	"github.com/bemasher/rtlamr/csv"
 	"github.com/bemasher/rtlamr/parse"
 )
-
-var logFilename = flag.String("logfile", "/dev/stdout", "log statement dump file")
-var logFile *os.File
 
 var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file")
 var sampleFile *os.File
@@ -51,10 +47,8 @@ var meterType MeterTypeFilter
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
 var encoder Encoder
-var format = flag.String("format", "plain", "format to write log messages in: plain, csv, json, xml or gob")
-var gobUnsafe = flag.Bool("gobunsafe", false, "allow gob output to stdout")
+var format = flag.String("format", "plain", "format to write log messages in: plain, csv, json, or xml")
 
-var quiet = flag.Bool("quiet", false, "suppress printing state information at startup")
 var single = flag.Bool("single", false, "one shot execution, if used with -filterid, will wait for exactly one packet from each meter id")
 
 var version = flag.Bool("version", false, "display build date and commit hash")
@@ -67,7 +61,6 @@ func RegisterFlags() {
 	flag.Var(meterType, "filtertype", "display only messages matching a type in a comma-separated list of types.")
 
 	rtlamrFlags := map[string]bool{
-		"logfile":      true,
 		"samplefile":   true,
 		"msgtype":      true,
 		"symbollength": true,
@@ -76,12 +69,9 @@ func RegisterFlags() {
 		"filterid":     true,
 		"filtertype":   true,
 		"format":       true,
-		"gobunsafe":    true,
-		"quiet":        true,
 		"unique":       true,
 		"single":       true,
 		"cpuprofile":   true,
-		"fastmag":      true,
 		"version":      true,
 	}
 
@@ -125,16 +115,6 @@ func EnvOverride() {
 func HandleFlags() {
 	var err error
 
-	if *logFilename == "/dev/stdout" {
-		logFile = os.Stdout
-	} else {
-		logFile, err = os.Create(*logFilename)
-		if err != nil {
-			log.Fatal("Error creating log file:", err)
-		}
-	}
-	log.SetOutput(logFile)
-
 	sampleFile, err = os.Create(*sampleFilename)
 	if err != nil {
 		log.Fatal("Error creating sample file:", err)
@@ -143,19 +123,13 @@ func HandleFlags() {
 	*format = strings.ToLower(*format)
 	switch *format {
 	case "plain":
-		encoder = PlainEncoder{*sampleFilename, logFile}
+		encoder = PlainEncoder{*sampleFilename}
 	case "csv":
-		encoder = csv.NewEncoder(logFile)
+		encoder = csv.NewEncoder(os.Stdout)
 	case "json":
-		encoder = json.NewEncoder(logFile)
+		encoder = json.NewEncoder(os.Stdout)
 	case "xml":
-		encoder = xml.NewEncoder(logFile)
-	case "gob":
-		encoder = gob.NewEncoder(logFile)
-		if !*gobUnsafe && *logFilename == "/dev/stdout" {
-			fmt.Println("Gob encoded messages are not stdout safe, specify non-stdout -logfile or use -gobunsafe.")
-			os.Exit(1)
-		}
+		encoder = xml.NewEncoder(os.Stdout)
 	}
 }
 
@@ -227,14 +201,13 @@ func (uf UniqueFilter) Filter(msg parse.Message) bool {
 
 type PlainEncoder struct {
 	sampleFilename string
-	logFile        *os.File
 }
 
 func (pe PlainEncoder) Encode(msg interface{}) (err error) {
-	if pe.sampleFilename == os.DevNull {
-		_, err = fmt.Fprintln(pe.logFile, msg.(parse.LogMessage).StringNoOffset())
+	if m, ok := msg.(parse.LogMessage); ok && pe.sampleFilename == os.DevNull {
+		_, err = fmt.Println(m.StringNoOffset())
 	} else {
-		_, err = fmt.Fprintln(pe.logFile, msg.(parse.LogMessage))
+		_, err = fmt.Println(m)
 	}
 	return
 }
