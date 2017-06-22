@@ -129,7 +129,7 @@ func (rcvr *Receiver) Run() {
 		case <-sigint:
 			return
 		case <-tLimit:
-			fmt.Println("Time Limit Reached:", time.Since(start))
+			log.Println("Time Limit Reached:", time.Since(start))
 			return
 		default:
 			// Read new sample block.
