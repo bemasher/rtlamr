@@ -119,10 +119,23 @@ func (rcvr *Receiver) Run() {
 		}
 	}()
 
-	block := make([]byte, rcvr.p.Cfg().BlockSize2)
 	sampleBuf := new(bytes.Buffer)
-
 	start := time.Now()
+
+	blockCh := make(chan []byte)
+	go func() {
+		block := make([]byte, rcvr.p.Cfg().BlockSize2)
+
+		for {
+			// Read new sample block.
+			_, err := io.ReadFull(in, block)
+			if err != nil {
+				log.Fatal("Error reading samples: ", err)
+			}
+			blockCh <- block
+		}
+	}()
+
 	for {
 		// Exit on interrupt or time limit, otherwise receive.
 		select {
@@ -131,13 +144,7 @@ func (rcvr *Receiver) Run() {
 		case <-tLimit:
 			log.Println("Time Limit Reached:", time.Since(start))
 			return
-		default:
-			// Read new sample block.
-			_, err := io.ReadFull(in, block)
-			if err != nil {
-				log.Fatal("Error reading samples: ", err)
-			}
-
+		case block := <-blockCh:
 			// If dumping samples, discard the oldest block from the buffer if
 			// it's full and write the new block to it.
 			if *sampleFilename != os.DevNull {
@@ -161,7 +168,7 @@ func (rcvr *Receiver) Run() {
 				msg.Length = sampleBuf.Len()
 				msg.Message = pkt
 
-				err = encoder.Encode(msg)
+				err := encoder.Encode(msg)
 				if err != nil {
 					log.Fatal("Error encoding message: ", err)
 				}
@@ -183,7 +190,7 @@ func (rcvr *Receiver) Run() {
 
 			if pktFound {
 				if *sampleFilename != os.DevNull {
-					_, err = sampleFile.Write(sampleBuf.Bytes())
+					_, err := sampleFile.Write(sampleBuf.Bytes())
 					if err != nil {
 						log.Fatal("Error writing raw samples to file:", err)
 					}
