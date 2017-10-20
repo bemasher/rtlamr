@@ -1,15 +1,14 @@
 FROM ubuntu:14.04
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y \
+	apt-get install --no-install-recommends -y \
 	git-core \
 	bzr \
 	mercurial \
 	curl \
 	ca-certificates \
-	build-essential \
-        libfftw3-dev && \
-    rm -rf /var/lib/apt/lists/*
+	build-essential && \
+	rm -rf /var/lib/apt/lists/*
 
 # Download and install Go
 RUN curl -s https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz | tar -v -C /usr/local -xz
