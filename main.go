@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bemasher/rtlamr/parse"
@@ -122,17 +123,28 @@ func (rcvr *Receiver) Run() {
 	sampleBuf := new(bytes.Buffer)
 	start := time.Now()
 
-	blockCh := make(chan []byte)
-	go func() {
-		block := make([]byte, rcvr.p.Cfg().BlockSize2)
+	blockCh := make(chan []byte, 128)
+	blockPool := sync.Pool{
+		New: func() interface{} {
+			return make([]byte, rcvr.p.Cfg().BlockSize2)
+		},
+	}
 
+	go func() {
 		for {
+			block := blockPool.Get().([]byte)
+
 			// Read new sample block.
 			_, err := io.ReadFull(in, block)
 			if err != nil {
-				log.Fatal("Error reading samples: ", err)
+				log.Println("Error reading samples: ", err)
+				continue
 			}
-			blockCh <- block
+			select {
+			case blockCh <- block:
+			default:
+				log.Println("Dropped block...")
+			}
 		}
 	}()
 
