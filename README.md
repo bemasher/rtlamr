@@ -7,7 +7,7 @@ This project is a software defined radio receiver for these messages. We make us
 [![AGPLv3 License](http://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
 
 ### Requirements
- * GoLang >=1.2 (Go build environment setup guide: http://golang.org/doc/code.html)
+ * GoLang >=1.3 (Go build environment setup guide: http://golang.org/doc/code.html)
  * rtl-sdr
    * Windows: [pre-built binaries](http://sdr.osmocom.org/trac/attachment/wiki/rtl-sdr/RelWithDebInfo.zip)
    * Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
