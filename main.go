@@ -140,11 +140,7 @@ func (rcvr *Receiver) Run() {
 				log.Println("Error reading samples: ", err)
 				continue
 			}
-			select {
-			case blockCh <- block:
-			default:
-				log.Println("Dropped block...")
-			}
+			blockCh <- block
 		}
 	}()
 
