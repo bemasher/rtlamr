@@ -64,7 +64,7 @@ The ERT protocol consists of several different message structures but we are onl
 		<tr><td>Power Outage Flags</td><td>6</td><td></td><td></td></tr>
 		<tr><td>Last Consumption</td><td>4</td><td></td><td>Equivalent to SCM's consumption field.</td></tr>
 		<tr><td>Differential Consumption</td><td>53</td><td></td><td>47 intervals of 9-bit integers.</td></tr>
-		<tr><td>Transmit Time Offset</td><td>2</td><td></td><td></td></tr>
+		<tr><td>Transmit Time Offset</td><td>2</td><td></td><td>1/16ths of a second since the first transmission for this interval.</td></tr>
 		<tr><td>Meter ID Checksum</td><td>2</td><td></td><td>CRC-16-CCITT of Meter ID.</td></tr>
 		<tr><td>Packet Checksum</td><td>2</td><td></td><td>CRC-16-CCITT of packet starting at Packet Type.</td></tr>
 	</table>
