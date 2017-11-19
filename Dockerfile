@@ -1,31 +1,11 @@
-FROM ubuntu:14.04
+FROM golang:1.9.2-alpine3.6
 
-RUN apt-get update && \
-	apt-get install --no-install-recommends -y \
-	git-core \
-	bzr \
-	mercurial \
-	curl \
-	ca-certificates \
-	build-essential && \
-	rm -rf /var/lib/apt/lists/*
+WORKDIR /go/src/github.com/bemasher/rtlamr
+COPY . .
 
-# Download and install Go
-RUN curl -s https://storage.googleapis.com/golang/go1.3.linux-amd64.tar.gz | tar -v -C /usr/local -xz
+RUN go-wrapper install
 
-ENV GOROOT /usr/local/go
-ENV PATH $PATH:$GOROOT/bin
-
-ENV GOPATH /go
-ENV PATH $PATH:$GOPATH/bin
-
-# Build, test and install RTLAMR
-WORKDIR /go/src/
-RUN go get -v github.com/bemasher/rtlamr
-RUN go test -v ./...
-
-CMD ["rtlamr"]
-
+CMD ["go-wrapper", "run"]
 
 # Run rtlamr container with non-dockerized rtl_tcp instance:
 # docker run -d --name rtlamr --link rtltcp:rtltcp bemasher/rtlamr
@@ -36,4 +16,3 @@ CMD ["rtlamr"]
 
 # Run rtlamr container, link with rtl_tcp container:
 # docker run -d --name rtlamr --link rtltcp:rtltcp bemasher/rtlamr -server=rtltcp:1234
-
