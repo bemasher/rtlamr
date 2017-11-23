@@ -47,7 +47,7 @@ var meterType MeterTypeFilter
 var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
 var encoder Encoder
-var format = flag.String("format", "plain", "format to write log messages in: plain, csv, json, or xml")
+var format = flag.String("format", "plain", "decoded message output format: plain, csv, json, or xml")
 
 var single = flag.Bool("single", false, "one shot execution, if used with -filterid, will wait for exactly one packet from each meter id")
 
