@@ -1,4 +1,4 @@
-FROM golang:1.9.2-alpine3.6
+FROM golang:1.9.2
 
 WORKDIR /go/src/github.com/bemasher/rtlamr
 COPY . .
