@@ -1,3 +1,0 @@
-[submodule "vendor/github.com/bemasher/rtltcp"]
-	path = vendor/github.com/bemasher/rtltcp
-	url = https://github.com/bemasher/rtltcp
