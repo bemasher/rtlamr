@@ -15,7 +15,7 @@ func NewPacketConfig(chipLength int) (cfg PacketConfig) {
 }
 
 func BenchmarkMagLUT(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72))
 
 	input := make([]byte, d.DecCfg.BlockSize2)
 
@@ -28,7 +28,7 @@ func BenchmarkMagLUT(b *testing.B) {
 }
 
 func BenchmarkFilter(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72))
 
 	b.SetBytes(int64(d.DecCfg.BlockSize))
 	b.ReportAllocs()
@@ -39,7 +39,7 @@ func BenchmarkFilter(b *testing.B) {
 }
 
 func BenchmarkQuantize(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72))
 
 	b.SetBytes(int64(d.DecCfg.BlockSize))
 	b.ReportAllocs()
@@ -50,7 +50,7 @@ func BenchmarkQuantize(b *testing.B) {
 }
 
 func BenchmarkTranspose(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72))
 
 	b.SetBytes(int64(d.DecCfg.BlockSize))
 	b.ReportAllocs()
@@ -61,7 +61,7 @@ func BenchmarkTranspose(b *testing.B) {
 }
 
 func BenchmarkSearch(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72))
 
 	b.SetBytes(int64(d.DecCfg.BlockSize))
 	b.ReportAllocs()
@@ -72,7 +72,7 @@ func BenchmarkSearch(b *testing.B) {
 }
 
 func BenchmarkDecode(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72), 1)
+	d := NewDecoder(NewPacketConfig(72))
 
 	block := make([]byte, d.DecCfg.BlockSize2)
 

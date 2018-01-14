@@ -55,8 +55,6 @@ func (d Decoder) Log() {
 type Decoder struct {
 	Cfg PacketConfig
 
-	DecCfg PacketConfig
-
 	Signal    []float64
 	Filtered  []float64
 	Quantized []byte
@@ -88,9 +86,9 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 	d.Cfg.BufferLength = d.Cfg.PacketLength + d.Cfg.BlockSize
 
 	// Allocate necessary buffers.
-	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength)
-	d.Filtered = make([]float64, d.DecCfg.BlockSize)
-	d.Quantized = make([]byte, d.DecCfg.BufferLength)
+	d.Signal = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength)
+	d.Filtered = make([]float64, d.Cfg.BlockSize)
+	d.Quantized = make([]byte, d.Cfg.BufferLength)
 
 	d.csum = make([]float64, len(d.Signal)+1)
 
@@ -107,9 +105,9 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 
 	// Slice quantized sample buffer to make searching for the preamble more
 	// memory local.
-	d.slices = make([][]byte, d.DecCfg.SymbolLength)
+	d.slices = make([][]byte, d.Cfg.SymbolLength)
 
-	symbolsPerBlock := (d.DecCfg.BlockSize + d.DecCfg.PreambleLength) / d.DecCfg.SymbolLength
+	symbolsPerBlock := (d.Cfg.BlockSize + d.Cfg.PreambleLength) / d.Cfg.SymbolLength
 	for symbolOffset := range d.slices {
 		d.slices[symbolOffset] = make([]byte, symbolsPerBlock)
 	}
@@ -118,7 +116,7 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 
 	// Signal up to the final stage is 1-bit per byte. Allocate a buffer to
 	// store packed version 8-bits per byte.
-	d.pkt = make([]byte, (d.DecCfg.PacketSymbols+7)>>3)
+	d.pkt = make([]byte, (d.Cfg.PacketSymbols+7)>>3)
 
 	return
 }
@@ -126,17 +124,17 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 // Decode accepts a sample block and performs various DSP techniques to extract a packet.
 func (d Decoder) Decode(input []byte) []int {
 	// Shift buffers to append new block.
-	copy(d.Signal, d.Signal[d.DecCfg.BlockSize:])
-	copy(d.Quantized, d.Quantized[d.DecCfg.BlockSize:])
+	copy(d.Signal, d.Signal[d.Cfg.BlockSize:])
+	copy(d.Quantized, d.Quantized[d.Cfg.BlockSize:])
 
 	// Compute the magnitude of the new block.
-	d.demod.Execute(input, d.Signal[d.DecCfg.SymbolLength:])
+	d.demod.Execute(input, d.Signal[d.Cfg.SymbolLength:])
 
 	// Perform matched filter on new block.
 	d.Filter(d.Signal, d.Filtered)
 
 	// Perform bit-decision on new block.
-	Quantize(d.Filtered, d.Quantized[d.DecCfg.PacketLength:])
+	Quantize(d.Filtered, d.Quantized[d.Cfg.PacketLength:])
 
 	// Pack the quantized signal into slices for searching.
 	d.Transpose(d.Quantized)
@@ -187,8 +185,8 @@ func (d Decoder) Filter(input, output []float64) {
 	}
 
 	// Filter result is difference of summation of lower and upper symbols.
-	lower := d.csum[d.DecCfg.ChipLength:]
-	upper := d.csum[d.DecCfg.SymbolLength:]
+	lower := d.csum[d.Cfg.ChipLength:]
+	upper := d.csum[d.Cfg.SymbolLength:]
 	for idx, l := range lower[:len(output)] {
 		output[idx] = (l - d.csum[idx]) - (upper[idx] - l)
 	}
@@ -226,7 +224,7 @@ func (d *Decoder) Transpose(input []byte) {
 		offsetInput := input[symbolOffset:]
 		for symbolIdx := range slice {
 			slice[symbolIdx] = offsetInput[symbolInInput]
-			symbolInInput += d.DecCfg.SymbolLength
+			symbolInInput += d.Cfg.SymbolLength
 		}
 	}
 
@@ -243,7 +241,7 @@ func (d *Decoder) Search() (indexes []int) {
 		for {
 			idx = d.preambleFinder.next(slice[lastIdx:])
 			if idx != -1 {
-				indexes = append(indexes, (lastIdx+idx)*d.DecCfg.SymbolLength+symbolOffset)
+				indexes = append(indexes, (lastIdx+idx)*d.Cfg.SymbolLength+symbolOffset)
 				lastIdx += idx + 1
 			} else {
 				break
@@ -266,14 +264,14 @@ func (d Decoder) Slice(indices []int) (pkts [][]byte) {
 	for _, qIdx := range indices {
 		// Check that we're still within the first sample block. We'll catch
 		// the message on the next sample block otherwise.
-		if qIdx > d.DecCfg.BlockSize {
+		if qIdx > d.Cfg.BlockSize {
 			continue
 		}
 
 		// Packet is 1 bit per byte, pack to 8-bits per byte.
-		for pIdx := 0; pIdx < d.DecCfg.PacketSymbols; pIdx++ {
+		for pIdx := 0; pIdx < d.Cfg.PacketSymbols; pIdx++ {
 			d.pkt[pIdx>>3] <<= 1
-			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.DecCfg.SymbolLength)]
+			d.pkt[pIdx>>3] |= d.Quantized[qIdx+(pIdx*d.Cfg.SymbolLength)]
 		}
 
 		// Store the packet in the seen map and append to the packet list.
