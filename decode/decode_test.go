@@ -17,20 +17,20 @@ func NewPacketConfig(chipLength int) (cfg PacketConfig) {
 func BenchmarkMagLUT(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
-	input := make([]byte, d.DecCfg.BlockSize2)
+	input := make([]byte, d.Cfg.BlockSize2)
 
-	b.SetBytes(int64(d.DecCfg.BlockSize))
+	b.SetBytes(int64(d.Cfg.BlockSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		d.demod.Execute(input, d.Signal[d.DecCfg.SymbolLength:])
+		d.demod.Execute(input, d.Signal[d.Cfg.SymbolLength:])
 	}
 }
 
 func BenchmarkFilter(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
-	b.SetBytes(int64(d.DecCfg.BlockSize))
+	b.SetBytes(int64(d.Cfg.BlockSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -41,18 +41,18 @@ func BenchmarkFilter(b *testing.B) {
 func BenchmarkQuantize(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
-	b.SetBytes(int64(d.DecCfg.BlockSize))
+	b.SetBytes(int64(d.Cfg.BlockSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		Quantize(d.Filtered[d.DecCfg.SymbolLength:], d.Quantized[d.DecCfg.PacketLength:])
+		Quantize(d.Filtered[d.Cfg.SymbolLength:], d.Quantized[d.Cfg.PacketLength:])
 	}
 }
 
 func BenchmarkTranspose(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
-	b.SetBytes(int64(d.DecCfg.BlockSize))
+	b.SetBytes(int64(d.Cfg.BlockSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -63,7 +63,7 @@ func BenchmarkTranspose(b *testing.B) {
 func BenchmarkSearch(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
-	b.SetBytes(int64(d.DecCfg.BlockSize))
+	b.SetBytes(int64(d.Cfg.BlockSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -74,9 +74,9 @@ func BenchmarkSearch(b *testing.B) {
 func BenchmarkDecode(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
-	block := make([]byte, d.DecCfg.BlockSize2)
+	block := make([]byte, d.Cfg.BlockSize2)
 
-	b.SetBytes(int64(d.DecCfg.BlockSize))
+	b.SetBytes(int64(d.Cfg.BlockSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
