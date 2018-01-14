@@ -38,8 +38,6 @@ var msgType = flag.String("msgtype", "scm", "message type to receive: scm, scm+,
 
 var symbolLength = flag.Int("symbollength", 72, "symbol length in samples")
 
-var decimation = flag.Int("decimation", 1, "integer decimation factor, keep every nth sample")
-
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
 var meterID MeterIDFilter
 var meterType MeterTypeFilter
@@ -64,7 +62,6 @@ func RegisterFlags() {
 		"samplefile":   true,
 		"msgtype":      true,
 		"symbollength": true,
-		"decimation":   true,
 		"duration":     true,
 		"filterid":     true,
 		"filtertype":   true,

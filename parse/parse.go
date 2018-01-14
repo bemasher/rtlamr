@@ -20,7 +20,7 @@ var (
 	parsers     = make(map[string]NewParserFunc)
 )
 
-type NewParserFunc func(symbolLength, decimation int) Parser
+type NewParserFunc func(symbolLength int) Parser
 
 func Register(name string, parserFn NewParserFunc) {
 	parserMutex.Lock()
@@ -35,12 +35,12 @@ func Register(name string, parserFn NewParserFunc) {
 	parsers[name] = parserFn
 }
 
-func NewParser(name string, symbolLength, decimation int) (Parser, error) {
+func NewParser(name string, symbolLength int) (Parser, error) {
 	parserMutex.Lock()
 	defer parserMutex.Unlock()
 
 	if parserFn, exists := parsers[name]; exists {
-		return parserFn(symbolLength, decimation), nil
+		return parserFn(symbolLength), nil
 	} else {
 		return nil, fmt.Errorf("invalid message type: %q\n", name)
 	}

@@ -26,7 +26,6 @@ Available command-line flags are as follows:
 
 ```
 Usage of rtlamr:
-  -decimation=1: integer decimation factor, keep every nth sample
   -duration=0s: time to run for, 0 for infinite, ex. 1h5m10s
   -filterid=: display only messages matching an id in a comma-separated list of ids.
   -filtertype=: display only messages matching a type in a comma-separated list of types.

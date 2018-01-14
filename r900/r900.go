@@ -57,10 +57,10 @@ type Parser struct {
 	quantized []byte
 }
 
-func NewParser(chipLength, decimation int) parse.Parser {
+func NewParser(chipLength int) parse.Parser {
 	p := new(Parser)
 
-	p.Decoder = decode.NewDecoder(NewPacketConfig(chipLength), decimation)
+	p.Decoder = decode.NewDecoder(NewPacketConfig(chipLength))
 
 	// GF of order 32, polynomial 37, generator 2.
 	p.field = gf.NewField(32, 37, 2)

@@ -46,9 +46,9 @@ type Parser struct {
 	crc.CRC
 }
 
-func NewParser(chipLength, decimation int) (p parse.Parser) {
+func NewParser(chipLength int) (p parse.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(chipLength), decimation),
+		decode.NewDecoder(NewPacketConfig(chipLength)),
 		crc.NewCRC("BCH", 0, 0x6F63, 0),
 	}
 }

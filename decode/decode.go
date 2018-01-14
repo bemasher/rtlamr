@@ -39,46 +39,7 @@ type PacketConfig struct {
 	CenterFreq uint32
 }
 
-func (cfg PacketConfig) Decimate(decimation int) PacketConfig {
-	cfg.BlockSize /= decimation
-	cfg.BlockSize2 /= decimation
-	cfg.ChipLength /= decimation
-	cfg.SymbolLength /= decimation
-	cfg.SampleRate /= decimation
-	cfg.DataRate /= decimation
-
-	cfg.PreambleLength /= decimation
-	cfg.PacketLength /= decimation
-
-	cfg.BufferLength /= decimation
-
-	return cfg
-}
-
 func (d Decoder) Log() {
-	if d.Decimation != 1 {
-		log.Printf("BlockSize: %d|%d\n", d.Cfg.BlockSize, d.DecCfg.BlockSize)
-		log.Println("CenterFreq:", d.Cfg.CenterFreq)
-		log.Printf("SampleRate: %d|%d\n", d.Cfg.SampleRate, d.DecCfg.SampleRate)
-		log.Printf("DataRate: %d|%d\n", d.Cfg.DataRate, d.DecCfg.DataRate)
-		log.Printf("ChipLength: %d|%d\n", d.Cfg.ChipLength, d.DecCfg.ChipLength)
-		log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
-		log.Printf("PreambleLength: %d|%d\n", d.Cfg.PreambleLength, d.DecCfg.PreambleLength)
-		log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
-		log.Printf("PacketLength: %d|%d\n", d.Cfg.PacketLength, d.DecCfg.PacketLength)
-		log.Println("Preamble:", d.Cfg.Preamble)
-
-		if d.Cfg.ChipLength%d.Decimation != 0 {
-			log.Println("Warning: decimated symbol length is non-integral, sensitivity may be poor")
-		}
-
-		if d.DecCfg.ChipLength < 3 {
-			log.Fatal("Error: illegal decimation factor, choose a smaller factor")
-		}
-
-		return
-	}
-
 	log.Println("CenterFreq:", d.Cfg.CenterFreq)
 	log.Println("SampleRate:", d.Cfg.SampleRate)
 	log.Println("DataRate:", d.Cfg.DataRate)
@@ -94,8 +55,7 @@ func (d Decoder) Log() {
 type Decoder struct {
 	Cfg PacketConfig
 
-	Decimation int
-	DecCfg     PacketConfig
+	DecCfg PacketConfig
 
 	Signal    []float64
 	Filtered  []float64
@@ -113,7 +73,7 @@ type Decoder struct {
 }
 
 // Create a new decoder with the given packet configuration.
-func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
+func NewDecoder(cfg PacketConfig) (d Decoder) {
 	d.Cfg = cfg
 
 	d.Cfg.SymbolLength = d.Cfg.ChipLength << 1
@@ -126,9 +86,6 @@ func NewDecoder(cfg PacketConfig, decimation int) (d Decoder) {
 	d.Cfg.BlockSize2 = d.Cfg.BlockSize << 1
 
 	d.Cfg.BufferLength = d.Cfg.PacketLength + d.Cfg.BlockSize
-
-	d.Decimation = decimation
-	d.DecCfg = d.Cfg.Decimate(d.Decimation)
 
 	// Allocate necessary buffers.
 	d.Signal = make([]float64, d.DecCfg.BlockSize+d.DecCfg.SymbolLength)
