@@ -55,9 +55,9 @@ func (p *Parser) Cfg() *decode.PacketConfig {
 	return &p.Decoder.Cfg
 }
 
-func NewParser(chipLength, decimation int) (p parse.Parser) {
+func NewParser(chipLength int) (p parse.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(chipLength), decimation),
+		decode.NewDecoder(NewPacketConfig(chipLength)),
 		crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
 	}
 }

@@ -57,18 +57,18 @@ type Parser struct {
 	quantized []byte
 }
 
-func NewParser(chipLength, decimation int) parse.Parser {
+func NewParser(chipLength int) parse.Parser {
 	p := new(Parser)
 
-	p.Decoder = decode.NewDecoder(NewPacketConfig(chipLength), decimation)
+	p.Decoder = decode.NewDecoder(NewPacketConfig(chipLength))
 
 	// GF of order 32, polynomial 37, generator 2.
 	p.field = gf.NewField(32, 37, 2)
 
-	p.signal = make([]float64, p.Decoder.DecCfg.BufferLength)
-	p.csum = make([]float64, p.Decoder.DecCfg.BufferLength+1)
-	p.filtered = make([][3]float64, p.Decoder.DecCfg.BufferLength)
-	p.quantized = make([]byte, p.Decoder.DecCfg.BufferLength)
+	p.signal = make([]float64, p.Decoder.Cfg.BufferLength)
+	p.csum = make([]float64, p.Decoder.Cfg.BufferLength+1)
+	p.filtered = make([][3]float64, p.Decoder.Cfg.BufferLength)
+	p.quantized = make([]byte, p.Decoder.Cfg.BufferLength)
 
 	return p
 }
@@ -113,7 +113,7 @@ func (p Parser) Filter() {
 	// This is basically unreadable because of a lot of algebraic
 	// simplification but is necessary for efficiency.
 
-	cfg := p.Decoder.DecCfg
+	cfg := p.Decoder.Cfg
 	for idx := 0; idx < cfg.BufferLength-cfg.ChipLength*4; idx++ {
 		c0 := p.csum[idx]
 		c1 := p.csum[idx+cfg.ChipLength] * 2
@@ -161,7 +161,7 @@ func (p Parser) Quantize() {
 
 // Given a list of indices the preamble exists at, decode and parse a message.
 func (p Parser) Parse(indices []int) (msgs []parse.Message) {
-	cfg := p.Decoder.DecCfg
+	cfg := p.Decoder.Cfg
 	copy(p.signal, p.signal[cfg.BlockSize:])
 	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength:])
 
@@ -181,7 +181,7 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 			break
 		}
 
-		payloadIdx := preambleIdx + preambleLength - p.Dec().DecCfg.SymbolLength
+		payloadIdx := preambleIdx + preambleLength - p.Dec().Cfg.SymbolLength
 		var digits string
 		for idx := 0; idx < PayloadSymbols*4*cfg.ChipLength; idx += chipLength * 4 {
 			qIdx := payloadIdx + idx

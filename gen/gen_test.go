@@ -95,11 +95,10 @@ type TestCase struct {
 	*io.PipeReader
 	Data           []byte
 	SignalLevelIdx int
-	DecimationIdx  int
 }
 
 func TestGenerateSCM(t *testing.T) {
-	genParser, err := parse.NewParser("scm", 72, 1)
+	genParser, err := parse.NewParser("scm", 72)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,56 +112,50 @@ func TestGenerateSCM(t *testing.T) {
 	testCases := make(chan TestCase)
 
 	signalLevels := []float64{-40, -35, -30, -25, -20, -15, -10, -5, 0}
-	decimationFactors := []int{1, 2, 3, 4, 6, 8, 9, 12, 18}
 
 	go func() {
 		var block []byte
 		noise := make([]byte, cfg.BlockSize2<<1)
 
 		for signalLevelIdx, signalLevel := range signalLevels {
-			for decimationIdx, _ := range decimationFactors {
-				for idx := 0; idx < 24; idx++ {
-					r, w := io.Pipe()
+			for idx := 0; idx < 24; idx++ {
+				r, w := io.Pipe()
 
-					scm, _ := NewRandSCM()
-					testCases <- TestCase{r, scm, signalLevelIdx, decimationIdx}
+				scm, _ := NewRandSCM()
+				testCases <- TestCase{r, scm, signalLevelIdx}
 
-					manchester := lut.Encode(scm)
-					bits := Upsample(UnpackBits(manchester), 72<<1)
+				manchester := lut.Encode(scm)
+				bits := Upsample(UnpackBits(manchester), 72<<1)
 
-					freq := (rand.Float64() - 0.5) * float64(cfg.SampleRate)
-					carrier := CmplxOscillatorF64(len(bits)>>1, freq, float64(cfg.SampleRate))
+				freq := (rand.Float64() - 0.5) * float64(cfg.SampleRate)
+				carrier := CmplxOscillatorF64(len(bits)>>1, freq, float64(cfg.SampleRate))
 
-					signalAmplitude := math.Pow(10, signalLevel/20)
-					for idx := range carrier {
-						carrier[idx] *= float64(bits[idx]) * signalAmplitude
-						carrier[idx] += (rand.Float64() - 0.5) * 2.0 * noiseAmp
-					}
-
-					if len(block) != len(carrier) {
-						block = make([]byte, len(carrier))
-					}
-					F64toU8(carrier, block)
-
-					w.Write(block)
-					for idx := range noise {
-						noise[idx] = byte((rand.Float64()-0.5)*2.0*noiseAmp*127.5 + 127.5)
-					}
-					w.Write(noise)
-					w.Close()
+				signalAmplitude := math.Pow(10, signalLevel/20)
+				for idx := range carrier {
+					carrier[idx] *= float64(bits[idx]) * signalAmplitude
+					carrier[idx] += (rand.Float64() - 0.5) * 2.0 * noiseAmp
 				}
+
+				if len(block) != len(carrier) {
+					block = make([]byte, len(carrier))
+				}
+				F64toU8(carrier, block)
+
+				w.Write(block)
+				for idx := range noise {
+					noise[idx] = byte((rand.Float64()-0.5)*2.0*noiseAmp*127.5 + 127.5)
+				}
+				w.Write(noise)
+				w.Close()
 			}
 		}
 		close(testCases)
 	}()
 
-	results := make([][]int, len(decimationFactors))
-	for idx := range results {
-		results[idx] = make([]int, len(signalLevels))
-	}
+	results := make([]int, len(signalLevels))
 
 	for testCase := range testCases {
-		p, err := parse.NewParser("scm", 72, decimationFactors[testCase.DecimationIdx])
+		p, err := parse.NewParser("scm", 72)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -174,7 +167,7 @@ func TestGenerateSCM(t *testing.T) {
 			_, err := testCase.Read(block)
 			indices := p.Dec().Decode(block)
 			for _ = range p.Parse(indices) {
-				results[testCase.DecimationIdx][testCase.SignalLevelIdx]++
+				results[testCase.SignalLevelIdx]++
 			}
 
 			if err == io.EOF {
@@ -184,11 +177,9 @@ func TestGenerateSCM(t *testing.T) {
 		}
 	}
 
-	for idx := range results {
-		var row []string
-		for _, count := range results[idx] {
-			row = append(row, strconv.Itoa(count))
-		}
-		t.Log(strings.Join(row, ","))
+	var row []string
+	for _, count := range results {
+		row = append(row, strconv.Itoa(count))
 	}
+	t.Log(strings.Join(row, ","))
 }
