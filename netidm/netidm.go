@@ -130,8 +130,8 @@ func NewIDM(data parse.Data) (netidm NetIDM) {
 
 	offset := 38 << 3
 	for idx := range netidm.DifferentialConsumptionIntervals {
-		in, _ := strconv.ParseUint(data.Bits[offset:offset+14], 2, 14)
-		netidm.DifferentialConsumptionIntervals[idx] = uint16(in)
+		in, _ := strconv.ParseInt(data.Bits[offset:offset+14], 2, 14)
+		netidm.DifferentialConsumptionIntervals[idx] = int16(in)
 
 		offset += 14
 	}
@@ -143,7 +143,7 @@ func NewIDM(data parse.Data) (netidm NetIDM) {
 	return
 }
 
-type Interval [27]uint16
+type Interval [27]int16
 
 func (interval Interval) Record() (r []string) {
 	for _, val := range interval {
