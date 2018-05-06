@@ -197,7 +197,7 @@ func Quantize(input []float64, output []byte) {
 	// There's really not much we can optimize here as it depends pretty
 	// heavily on the content of the input, which is unbiased on average.
 	for idx, val := range input {
-		output[idx] = byte(math.Float64bits(val) >> 63)
+		output[idx] = 1 - byte(math.Float64bits(val)>>63)
 	}
 
 	return
