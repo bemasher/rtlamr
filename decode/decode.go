@@ -164,17 +164,15 @@ func NewMagLUT() (lut MagLUT) {
 
 // Calculates complex magnitude on given IQ stream writing result to output.
 func (lut MagLUT) Execute(input []byte, output []float64) {
-	decIdx := 0
-	dec := (len(input) / len(output))
-
-	for idx := 0; decIdx < len(output); idx += dec {
-		output[decIdx] = lut[input[idx]] + lut[input[idx+1]]
-		decIdx++
+	i := 0
+	for idx := range output {
+		output[idx] = lut[input[i]] + lut[input[i+1]]
+		i += 2
 	}
 }
 
 // Matched filter for Manchester coded signals. Output signal's sign at each
-// sample determines the bit-value since Manchester symbols have odd symmetry.
+// sample determines the bit-value due to Manchester symbol odd symmetry.
 func (d Decoder) Filter(input, output []float64) {
 	// Computing the cumulative summation over the signal simplifies
 	// filtering to the difference of a pair of subtractions.
@@ -184,7 +182,7 @@ func (d Decoder) Filter(input, output []float64) {
 		d.csum[idx+1] = sum
 	}
 
-	// Filter result is difference of summation of lower and upper symbols.
+	// Filter result is difference of summation of lower and upper chips.
 	lower := d.csum[d.Cfg.ChipLength:]
 	upper := d.csum[d.Cfg.SymbolLength:]
 	for idx, l := range lower[:len(output)] {
@@ -199,11 +197,7 @@ func Quantize(input []float64, output []byte) {
 	// There's really not much we can optimize here as it depends pretty
 	// heavily on the content of the input, which is unbiased on average.
 	for idx, val := range input {
-		if val > 0 {
-			output[idx] = 1
-		} else {
-			output[idx] = 0
-		}
+		output[idx] = byte(math.Float64bits(val) >> 63)
 	}
 
 	return
@@ -215,9 +209,9 @@ func Quantize(input []float64, output []byte) {
 //
 // Transforms:
 // <--Sym1--><--Sym2--><--Sym3--><--Sym4--><--Sym5--><--Sym6--><--Sym7--><--Sym8-->
-// <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
-// to:
 // <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
+// to:
+// <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
 func (d *Decoder) Transpose(input []byte) {
 	for symbolOffset, slice := range d.slices {
 		symbolInInput := 0
@@ -252,12 +246,12 @@ func (d *Decoder) Search() (indexes []int) {
 	return
 }
 
-// Given a list of indeces the preamble exists at, sample the appropriate bits
+// Given a list of indices the preamble exists at, sample the appropriate bits
 // of the signal's bit-decision. Pack bits of each index into an array of byte
 // arrays and return.
 func (d Decoder) Slice(indices []int) (pkts [][]byte) {
-	// We will likely find multiple instances of the message so only keep
-	// track of unique instances.
+	// It is likely that a message will be successfully decoded at multiple indices,
+	// only keep track of unique instances.
 	seen := make(map[string]bool)
 
 	// For each of the indices the preamble exists at.
