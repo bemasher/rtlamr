@@ -108,6 +108,7 @@ type NetIDM struct {
 	ERTSerialNumber                  uint32
 	ConsumptionIntervalCount         uint8
 	ProgrammingState                 uint8
+	LastGeneration                   uint32
 	LastConsumptionCount             uint32
 	DifferentialConsumptionIntervals Interval // 53 Bytes
 	TransmitTimeOffset               uint16
@@ -126,6 +127,7 @@ func NewIDM(data parse.Data) (netidm NetIDM) {
 	netidm.ConsumptionIntervalCount = data.Bytes[13]
 	netidm.ProgrammingState = data.Bytes[14]
 
+	netidm.LastGeneration = uint32(data.Bytes[28])<<16 | uint32(data.Bytes[29])<<8 | uint32(data.Bytes[30])
 	netidm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[34:38])
 
 	offset := 38 << 3
@@ -182,6 +184,7 @@ func (netidm NetIDM) String() string {
 	fields = append(fields, fmt.Sprintf("ERTSerialNumber:% 10d", netidm.ERTSerialNumber))
 	fields = append(fields, fmt.Sprintf("ConsumptionIntervalCount:%d", netidm.ConsumptionIntervalCount))
 	fields = append(fields, fmt.Sprintf("ProgrammingState:0x%02X", netidm.ProgrammingState))
+	fields = append(fields, fmt.Sprintf("LastGeneration:%d", netidm.LastGeneration))
 	fields = append(fields, fmt.Sprintf("LastConsumptionCount:%d", netidm.LastConsumptionCount))
 	fields = append(fields, fmt.Sprintf("DifferentialConsumptionIntervals:%d", netidm.DifferentialConsumptionIntervals))
 	fields = append(fields, fmt.Sprintf("TransmitTimeOffset:%d", netidm.TransmitTimeOffset))
@@ -201,6 +204,7 @@ func (netidm NetIDM) Record() (r []string) {
 	r = append(r, fmt.Sprintf("%d", netidm.ERTSerialNumber))
 	r = append(r, fmt.Sprintf("%d", netidm.ConsumptionIntervalCount))
 	r = append(r, fmt.Sprintf("0x%02X", netidm.ProgrammingState))
+	r = append(r, fmt.Sprintf("%d", netidm.LastGeneration))
 	r = append(r, fmt.Sprintf("%d", netidm.LastConsumptionCount))
 	r = append(r, netidm.DifferentialConsumptionIntervals.Record()...)
 	r = append(r, fmt.Sprintf("%d", netidm.TransmitTimeOffset))
