@@ -1,6 +1,8 @@
 package decode
 
-import "testing"
+import (
+	"testing"
+)
 
 func NewPacketConfig(chipLength int) (cfg PacketConfig) {
 	cfg.CenterFreq = 912600155
@@ -46,17 +48,6 @@ func BenchmarkQuantize(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		Quantize(d.Filtered[d.Cfg.SymbolLength:], d.Quantized[d.Cfg.PacketLength:])
-	}
-}
-
-func BenchmarkTranspose(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72))
-
-	b.SetBytes(int64(d.Cfg.BlockSize))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		d.Transpose(d.Quantized)
 	}
 }
 

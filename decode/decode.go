@@ -63,11 +63,11 @@ type Decoder struct {
 	demod Demodulator
 
 	preamble []byte
-	slices   [][]byte
-
-	preambleFinder *byteFinder
 
 	pkt []byte
+
+	packed       []byte
+	sIdxA, sIdxB []int
 }
 
 // Create a new decoder with the given packet configuration.
@@ -103,20 +103,14 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 		}
 	}
 
-	// Slice quantized sample buffer to make searching for the preamble more
-	// memory local.
-	d.slices = make([][]byte, d.Cfg.SymbolLength)
-
-	symbolsPerBlock := (d.Cfg.BlockSize + d.Cfg.PreambleLength) / d.Cfg.SymbolLength
-	for symbolOffset := range d.slices {
-		d.slices[symbolOffset] = make([]byte, symbolsPerBlock)
-	}
-
-	d.preambleFinder = makeByteFinder(d.preamble)
-
 	// Signal up to the final stage is 1-bit per byte. Allocate a buffer to
 	// store packed version 8-bits per byte.
 	d.pkt = make([]byte, (d.Cfg.PacketSymbols+7)>>3)
+
+	d.sIdxA = make([]int, 0, d.Cfg.BlockSize)
+	d.sIdxB = make([]int, 0, d.Cfg.BlockSize)
+
+	d.packed = make([]byte, (d.Cfg.BlockSize+d.Cfg.PreambleLength)>>3)
 
 	return
 }
@@ -136,10 +130,7 @@ func (d Decoder) Decode(input []byte) []int {
 	// Perform bit-decision on new block.
 	Quantize(d.Filtered, d.Quantized[d.Cfg.PacketLength:])
 
-	// Pack the quantized signal into slices for searching.
-	d.Transpose(d.Quantized)
-
-	// Return a list of indexes the preamble exists at.
+	// Return a list of indices the preamble exists at.
 	return d.Search()
 }
 
@@ -203,47 +194,82 @@ func Quantize(input []float64, output []byte) {
 	return
 }
 
-// Transpose quantized signal into slices such that the first rank represents
-// sample offsets and the second represents the value of each symbol from the
-// given offset.
-//
-// Transforms:
-// <--Sym1--><--Sym2--><--Sym3--><--Sym4--><--Sym5--><--Sym6--><--Sym7--><--Sym8-->
-// <11111111><22222222><33333333><44444444><55555555><66666666><77777777><88888888>
-// to:
-// <12345678><12345678><12345678><12345678><12345678><12345678><12345678><12345678>
-func (d *Decoder) Transpose(input []byte) {
-	for symbolOffset, slice := range d.slices {
-		symbolInInput := 0
-		offsetInput := input[symbolOffset:]
-		for symbolIdx := range slice {
-			slice[symbolIdx] = offsetInput[symbolInInput]
-			symbolInInput += d.Cfg.SymbolLength
+// Return a list of indices into the quantized signal at which a valid preamble exists.
+func (d *Decoder) Search() []int {
+	symLenByte := d.Cfg.SymbolLength >> 3
+
+	// Pack the bit-wise quantized signal into bytes.
+	for bIdx := range d.packed {
+		var b byte
+		for _, qBit := range d.Quantized[bIdx<<3 : (bIdx+1)<<3] {
+			b = (b << 1) | qBit
 		}
+		d.packed[bIdx] = b
 	}
 
-	return
-}
+	// Filter out indices at which the preamble cannot exist.
+	for pIdx, pBit := range d.preamble {
+		pBit = (pBit ^ 1) * 0xFF
+		offset := pIdx * symLenByte
+		if pIdx == 0 {
+			d.sIdxA = d.sIdxA[:0]
+			for qIdx, b := range d.packed[:d.Cfg.BlockSize>>3] {
+				if b != pBit {
+					d.sIdxA = append(d.sIdxA, qIdx)
+				}
+			}
+		} else {
+			d.sIdxB, d.sIdxA = searchPassByte(pBit, d.packed[offset:], d.sIdxA, d.sIdxB[:0])
 
-// For each sample offset look for the preamble. Return a list of indexes the
-// preamble is found at. Indexes are absolute in the unsliced quantized
-// buffer.
-func (d *Decoder) Search() (indexes []int) {
-	for symbolOffset, slice := range d.slices {
-		lastIdx := 0
-		idx := 0
-		for {
-			idx = d.preambleFinder.next(slice[lastIdx:])
-			if idx != -1 {
-				indexes = append(indexes, (lastIdx+idx)*d.Cfg.SymbolLength+symbolOffset)
-				lastIdx += idx + 1
-			} else {
-				break
+			if len(d.sIdxA) == 0 {
+				return nil
 			}
 		}
 	}
 
-	return
+	symLen := d.Cfg.SymbolLength
+
+	// Unpack the indices from bytes to bits.
+	d.sIdxB = d.sIdxB[:0]
+	for _, qIdx := range d.sIdxA {
+		for idx := 0; idx < 8; idx++ {
+			d.sIdxB = append(d.sIdxB, (qIdx<<3)+idx)
+		}
+	}
+	d.sIdxA, d.sIdxB = d.sIdxB, d.sIdxA
+
+	// Filter out indices at which the preamble does not exist.
+	for pIdx, pBit := range d.preamble {
+		offset := pIdx * symLen
+		offsetQuantized := d.Quantized[offset : offset+d.Cfg.BlockSize]
+		d.sIdxB, d.sIdxA = searchPass(pBit, offsetQuantized, d.sIdxA, d.sIdxB[:0])
+
+		if len(d.sIdxA) == 0 {
+			return nil
+		}
+	}
+
+	return d.sIdxA
+}
+
+func searchPassByte(pBit byte, sig []byte, a, b []int) ([]int, []int) {
+	for _, qIdx := range a {
+		if sig[qIdx] != pBit {
+			b = append(b, qIdx)
+		}
+	}
+
+	return a, b
+}
+
+func searchPass(pBit byte, sig []byte, a, b []int) ([]int, []int) {
+	for _, qIdx := range a {
+		if sig[qIdx] == pBit {
+			b = append(b, qIdx)
+		}
+	}
+
+	return a, b
 }
 
 // Given a list of indices the preamble exists at, sample the appropriate bits
