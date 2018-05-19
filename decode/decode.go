@@ -110,7 +110,7 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 	d.sIdxA = make([]int, 0, d.Cfg.BlockSize)
 	d.sIdxB = make([]int, 0, d.Cfg.BlockSize)
 
-	d.packed = make([]byte, (d.Cfg.BlockSize+d.Cfg.PreambleLength)>>3)
+	d.packed = make([]byte, (d.Cfg.BlockSize+d.Cfg.PreambleLength+7)>>3)
 
 	return
 }
