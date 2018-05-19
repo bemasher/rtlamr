@@ -137,4 +137,4 @@ The source of this project is licensed under Affero GPL v3.0. According to [http
  * **Sublicensing:** You may not grant a sublicense to modify and distribute this software to third parties not included in the license.
 
 ### Feedback
-If you have any general questions or feedback leave a comment below. For bugs, feature suggestions and anything directly relating to the program itself, submit an issue in github.
+If you have any questions, comments, feedback or bugs, please submit an issue.
