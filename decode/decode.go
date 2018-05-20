@@ -56,7 +56,6 @@ type Decoder struct {
 	Cfg PacketConfig
 
 	Signal    []float64
-	Filtered  []float64
 	Quantized []byte
 
 	csum  []float64
@@ -87,7 +86,6 @@ func NewDecoder(cfg PacketConfig) (d Decoder) {
 
 	// Allocate necessary buffers.
 	d.Signal = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength)
-	d.Filtered = make([]float64, d.Cfg.BlockSize)
 	d.Quantized = make([]byte, d.Cfg.BufferLength)
 
 	d.csum = make([]float64, len(d.Signal)+1)
@@ -125,10 +123,7 @@ func (d Decoder) Decode(input []byte) []int {
 	d.demod.Execute(input, d.Signal[d.Cfg.SymbolLength:])
 
 	// Perform matched filter on new block.
-	d.Filter(d.Signal, d.Filtered)
-
-	// Perform bit-decision on new block.
-	Quantize(d.Filtered, d.Quantized[d.Cfg.PacketLength:])
+	d.Filter(d.Signal, d.Quantized[d.Cfg.PacketLength:])
 
 	// Return a list of indices the preamble exists at.
 	return d.Search()
@@ -164,7 +159,7 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 
 // Matched filter for Manchester coded signals. Output signal's sign at each
 // sample determines the bit-value due to Manchester symbol odd symmetry.
-func (d Decoder) Filter(input, output []float64) {
+func (d Decoder) Filter(input []float64, output []byte) {
 	// Computing the cumulative summation over the signal simplifies
 	// filtering to the difference of a pair of subtractions.
 	var sum float64
@@ -177,18 +172,8 @@ func (d Decoder) Filter(input, output []float64) {
 	lower := d.csum[d.Cfg.ChipLength:]
 	upper := d.csum[d.Cfg.SymbolLength:]
 	for idx, l := range lower[:len(output)] {
-		output[idx] = (l - d.csum[idx]) - (upper[idx] - l)
-	}
-
-	return
-}
-
-// Bit-value is determined by the sign of each sample after filtering.
-func Quantize(input []float64, output []byte) {
-	// There's really not much we can optimize here as it depends pretty
-	// heavily on the content of the input, which is unbiased on average.
-	for idx, val := range input {
-		output[idx] = 1 - byte(math.Float64bits(val)>>63)
+		f := (l - d.csum[idx]) - (upper[idx] - l)
+		output[idx] = 1 - byte(math.Float64bits(f)>>63)
 	}
 
 	return
