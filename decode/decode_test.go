@@ -16,20 +16,6 @@ func NewPacketConfig(chipLength int) (cfg PacketConfig) {
 	return
 }
 
-func TestSymbolLength(t *testing.T) {
-	for idx := 7; idx <= 72; idx++ {
-		d := NewDecoder(NewPacketConfig(idx))
-		pLen := d.Cfg.BlockSize + d.Cfg.PreambleLength
-		t.Logf("%d: %d/8 = %0.2f (%d)\n", idx, pLen, float64(pLen)/8.0, len(d.packed))
-
-		block := make([]byte, d.Cfg.BlockSize2)
-		d.Decode(block)
-		d.Decode(block)
-		d.Decode(block)
-		d.Decode(block)
-	}
-}
-
 func BenchmarkMagLUT(b *testing.B) {
 	d := NewDecoder(NewPacketConfig(72))
 
@@ -50,18 +36,7 @@ func BenchmarkFilter(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		d.Filter(d.Signal, d.Filtered)
-	}
-}
-
-func BenchmarkQuantize(b *testing.B) {
-	d := NewDecoder(NewPacketConfig(72))
-
-	b.SetBytes(int64(d.Cfg.BlockSize))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for n := 0; n < b.N; n++ {
-		Quantize(d.Filtered[d.Cfg.SymbolLength:], d.Quantized[d.Cfg.PacketLength:])
+		d.Filter(d.Signal, d.Quantized[d.Cfg.PacketLength:])
 	}
 }
 
