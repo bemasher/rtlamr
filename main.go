@@ -34,6 +34,7 @@ import (
 	"github.com/bemasher/rtltcp"
 
 	_ "github.com/bemasher/rtlamr/idm"
+	_ "github.com/bemasher/rtlamr/netidm"
 	_ "github.com/bemasher/rtlamr/r900"
 	_ "github.com/bemasher/rtlamr/r900bcd"
 	_ "github.com/bemasher/rtlamr/scm"
