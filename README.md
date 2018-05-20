@@ -22,7 +22,7 @@ This project requires the package [`github.com/bemasher/rtltcp`](http://godoc.or
 This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add `$GOPATH/bin` to the path.
 
 ### Usage
-See the wiki page [Command Line Flags](https://github.com/bemasher/rtlamr/wiki/Command-Line-Flags) for details on configuring rtlamr.
+See the wiki page [Configuration](https://github.com/bemasher/rtlamr/wiki/Configuration) for details on configuring rtlamr.
 
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
