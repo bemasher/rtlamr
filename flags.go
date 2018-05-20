@@ -36,7 +36,7 @@ var sampleFile *os.File
 
 var msgType = flag.String("msgtype", "scm", "message type to receive: scm, scm+, idm, r900 and r900bcd")
 
-var symbolLength = flag.Int("symbollength", 72, "symbol length in samples")
+var symbolLength = flag.Int("symbollength", 72, "symbol length in samples (8, 32, 40, 48, 56, 64, 72, 80, 88, 96)")
 
 var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
 var meterID MeterIDFilter
@@ -112,6 +112,13 @@ func EnvOverride() {
 
 func HandleFlags() {
 	var err error
+
+	switch *symbolLength {
+	case 8, 32, 40, 48, 56, 64, 72, 80, 88, 96:
+		break
+	default:
+		log.Fatal("invalid symbollength")
+	}
 
 	sampleFile, err = os.Create(*sampleFilename)
 	if err != nil {
