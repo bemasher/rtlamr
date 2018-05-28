@@ -26,11 +26,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtltcp"
 
 	_ "github.com/bemasher/rtlamr/idm"
@@ -45,24 +44,41 @@ var rcvr Receiver
 
 type Receiver struct {
 	rtltcp.SDR
-	p  parse.Parser
-	fc parse.FilterChain
+	d  protocol.Decoder
+	fc protocol.FilterChain
 }
 
 func (rcvr *Receiver) NewReceiver() {
-	var err error
-	if rcvr.p, err = parse.NewParser(strings.ToLower(*msgType), *symbolLength); err != nil {
-		log.Fatal(err)
+	rcvr.d = protocol.NewDecoder()
+
+	// If the msgtype "all" is given alone, register and use scm, scm+, idm and r900.
+	if _, all := msgType["all"]; all && len(msgType) == 1 {
+		delete(msgType, "all")
+		msgType["scm"] = true
+		msgType["scm+"] = true
+		msgType["idm"] = true
+		msgType["r900"] = true
 	}
+
+	// For each given msgType, register it with the decoder.
+	for name := range msgType {
+		p, err := protocol.NewParser(name, *symbolLength)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		rcvr.d.RegisterProtocol(p)
+	}
+
+	// Allocate the internal buffers of the decoder.
+	rcvr.d.Allocate()
 
 	// Connect to rtl_tcp server.
 	if err := rcvr.Connect(nil); err != nil {
 		log.Fatal(err)
 	}
 
-	rcvr.HandleFlags()
-
-	cfg := rcvr.p.Cfg()
+	cfg := rcvr.d.Cfg
 
 	gainFlagSet := false
 	flag.Visit(func(f *flag.Flag) {
@@ -89,7 +105,7 @@ func (rcvr *Receiver) NewReceiver() {
 		rcvr.SetGainMode(true)
 	}
 
-	rcvr.p.Log()
+	rcvr.d.Log()
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
 	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
@@ -110,6 +126,7 @@ func (rcvr *Receiver) Run() {
 
 	in, out := io.Pipe()
 
+	// Read blocks of samples from the receiver and write them to a pipe.
 	go func() {
 		tcpBlock := make([]byte, 16384)
 		for {
@@ -124,13 +141,16 @@ func (rcvr *Receiver) Run() {
 	sampleBuf := new(bytes.Buffer)
 	start := time.Now()
 
+	// Allocate a channel of blocks and a sync.Pool for allocating/reusing
+	// sample blocks.
 	blockCh := make(chan []byte, 128)
 	blockPool := sync.Pool{
 		New: func() interface{} {
-			return make([]byte, rcvr.p.Cfg().BlockSize2)
+			return make([]byte, rcvr.d.Cfg.BlockSize2)
 		},
 	}
 
+	// Read sample blocks from the pipe created and fed above.
 	go func() {
 		for {
 			block := blockPool.Get().([]byte)
@@ -157,27 +177,30 @@ func (rcvr *Receiver) Run() {
 			// If dumping samples, discard the oldest block from the buffer if
 			// it's full and write the new block to it.
 			if *sampleFilename != os.DevNull {
-				if sampleBuf.Len() > rcvr.p.Cfg().BufferLength<<1 {
+				if sampleBuf.Len() > rcvr.d.Cfg.BufferLength<<1 {
 					io.CopyN(ioutil.Discard, sampleBuf, int64(len(block)))
 				}
 				sampleBuf.Write(block)
 			}
 
 			pktFound := false
-			indices := rcvr.p.Dec().Decode(block)
 
-			for _, pkt := range rcvr.p.Parse(indices) {
-				if !rcvr.fc.Match(pkt) {
+			// For each message returned
+			for msg := range rcvr.d.Decode(block) {
+				// If the filterchain rejects the message, skip it.
+				if !rcvr.fc.Match(msg) {
 					continue
 				}
 
-				var msg parse.LogMessage
-				msg.Time = time.Now()
-				msg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
-				msg.Length = sampleBuf.Len()
-				msg.Message = pkt
+				// Make a new LogMessage
+				var logMsg protocol.LogMessage
+				logMsg.Time = time.Now()
+				logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+				logMsg.Length = sampleBuf.Len()
+				logMsg.Message = msg
 
-				err := encoder.Encode(msg)
+				// Encode the message
+				err := encoder.Encode(logMsg)
 				if err != nil {
 					log.Fatal("Error encoding message: ", err)
 				}
@@ -192,7 +215,7 @@ func (rcvr *Receiver) Run() {
 					if len(meterID.UintMap) == 0 {
 						break
 					} else {
-						delete(meterID.UintMap, uint(pkt.MeterID()))
+						delete(meterID.UintMap, uint(msg.MeterID()))
 					}
 				}
 			}
@@ -225,8 +248,9 @@ func main() {
 	rcvr.RegisterFlags()
 	RegisterFlags()
 	EnvOverride()
-
 	flag.Parse()
+	rcvr.HandleFlags()
+
 	if *version {
 		if buildDate == "" || commitHash == "" {
 			fmt.Println("Built from source.")

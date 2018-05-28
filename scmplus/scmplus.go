@@ -21,75 +21,74 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/bemasher/rtlamr/crc"
-	"github.com/bemasher/rtlamr/decode"
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 )
 
 func init() {
-	parse.Register("scm+", NewParser)
-}
-
-func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
-	cfg.CenterFreq = 912600155
-	cfg.DataRate = 32768
-	cfg.ChipLength = chipLength
-	cfg.PreambleSymbols = 16
-	cfg.PacketSymbols = 16 * 8
-	cfg.Preamble = "0001011010100011"
-
-	return
+	protocol.RegisterParser("scm+", NewParser)
 }
 
 type Parser struct {
-	decode.Decoder
 	crc.CRC
+	cfg  protocol.PacketConfig
+	data protocol.Data
 }
 
-func (p Parser) Dec() decode.Decoder {
-	return p.Decoder
+func (p Parser) SetDecoder(d *protocol.Decoder) {}
+
+func (p *Parser) Cfg() protocol.PacketConfig {
+	return p.cfg
 }
 
-func (p *Parser) Cfg() *decode.PacketConfig {
-	return &p.Decoder.Cfg
-}
-
-func NewParser(chipLength int) (p parse.Parser) {
+func NewParser(chipLength int) (p protocol.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(chipLength)),
-		crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
+		CRC: crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
+		cfg: protocol.PacketConfig{
+			Protocol:        "scm+",
+			CenterFreq:      912600155,
+			DataRate:        32768,
+			ChipLength:      chipLength,
+			PreambleSymbols: 16,
+			PacketSymbols:   16 * 8,
+			Preamble:        "0001011010100011",
+		},
+		data: protocol.Data{Bytes: make([]byte, 16)},
 	}
 }
 
-func (p Parser) Parse(indices []int) (msgs []parse.Message) {
+func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
 	seen := make(map[string]bool)
 
-	for _, pkt := range p.Decoder.Slice(indices) {
-		s := string(pkt)
+	for _, pkt := range pkts {
+		p.data.Idx = pkt.Idx
+		p.data.Bits = pkt.Bits[0:p.cfg.PacketSymbols]
+		copy(p.data.Bytes, pkt.Bytes)
+
+		s := string(p.data.Bytes)
 		if seen[s] {
 			continue
 		}
 		seen[s] = true
 
-		data := parse.NewDataFromBytes(pkt)
-
 		// If the checksum fails, bail.
-		if residue := p.Checksum(data.Bytes[2:]); residue != p.Residue {
+		if residue := p.Checksum(p.data.Bytes[2:]); residue != p.Residue {
 			continue
 		}
 
-		scm := NewSCM(data)
+		scm := NewSCM(p.data)
 
 		// If the EndpointID is 0 or ProtocolID is invalid, bail.
 		if scm.EndpointID == 0 || scm.ProtocolID != 0x1E {
 			continue
 		}
 
-		msgs = append(msgs, scm)
+		msgCh <- scm
 	}
 
-	return
+	wg.Done()
 }
 
 // Standard Consumption Message Plus
@@ -103,7 +102,7 @@ type SCM struct {
 	PacketCRC    uint16 `xml:"Checksum,attr",json:"Checksum"`
 }
 
-func NewSCM(data parse.Data) (scm SCM) {
+func NewSCM(data protocol.Data) (scm SCM) {
 	binary.Read(bytes.NewReader(data.Bytes), binary.BigEndian, &scm)
 
 	return

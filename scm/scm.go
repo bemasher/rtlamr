@@ -20,80 +20,74 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/bemasher/rtlamr/crc"
-	"github.com/bemasher/rtlamr/decode"
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 )
 
 func init() {
-	parse.Register("scm", NewParser)
-}
-
-func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
-	cfg.CenterFreq = 912600155
-	cfg.DataRate = 32768
-	cfg.ChipLength = chipLength
-	cfg.PreambleSymbols = 21
-	cfg.PacketSymbols = 96
-	cfg.Preamble = "111110010101001100000"
-
-	return
+	protocol.RegisterParser("scm", NewParser)
 }
 
 type Parser struct {
-	decode.Decoder
 	crc.CRC
+	cfg  protocol.PacketConfig
+	data protocol.Data
 }
 
-func NewParser(chipLength int) (p parse.Parser) {
+func NewParser(chipLength int) (p protocol.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(chipLength)),
-		crc.NewCRC("BCH", 0, 0x6F63, 0),
+		CRC: crc.NewCRC("BCH", 0, 0x6F63, 0),
+		cfg: protocol.PacketConfig{
+			Protocol:        "scm",
+			CenterFreq:      912600155,
+			DataRate:        32768,
+			ChipLength:      chipLength,
+			PreambleSymbols: 21,
+			PacketSymbols:   96,
+			Preamble:        "111110010101001100000",
+		},
+		data: protocol.Data{Bytes: make([]byte, 96>>3)},
 	}
 }
 
-func (p Parser) Dec() decode.Decoder {
-	return p.Decoder
+func (p Parser) SetDecoder(d *protocol.Decoder) {}
+
+func (p *Parser) Cfg() protocol.PacketConfig {
+	return p.cfg
 }
 
-func (p *Parser) Cfg() *decode.PacketConfig {
-	return &p.Decoder.Cfg
-}
-
-func (p Parser) Parse(indices []int) (msgs []parse.Message) {
+func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
 	seen := make(map[string]bool)
 
-	for _, pkt := range p.Decoder.Slice(indices) {
-		s := string(pkt)
+	for _, pkt := range pkts {
+		p.data.Idx = pkt.Idx
+		p.data.Bits = pkt.Bits[0:p.cfg.PacketSymbols]
+		copy(p.data.Bytes, pkt.Bytes)
+
+		s := string(p.data.Bytes)
 		if seen[s] {
 			continue
 		}
 		seen[s] = true
 
-		data := parse.NewDataFromBytes(pkt)
-
-		// If the packet is too short, bail.
-		if l := len(data.Bytes); l != 12 {
-			continue
-		}
-
 		// If the checksum fails, bail.
-		if p.Checksum(data.Bytes[2:12]) != 0 {
+		if p.Checksum(p.data.Bytes[2:12]) != 0 {
 			continue
 		}
 
-		scm := NewSCM(data)
+		scm := NewSCM(p.data)
 
 		// If the meter id is 0, bail.
 		if scm.ID == 0 {
 			continue
 		}
 
-		msgs = append(msgs, scm)
+		msgCh <- scm
 	}
 
-	return
+	wg.Done()
 }
 
 // Standard Consumption Message
@@ -106,7 +100,7 @@ type SCM struct {
 	ChecksumVal uint16 `xml:"Checksum,attr"`
 }
 
-func NewSCM(data parse.Data) (scm SCM) {
+func NewSCM(data protocol.Data) (scm SCM) {
 	ertid, _ := strconv.ParseUint(data.Bits[21:23]+data.Bits[56:80], 2, 26)
 	erttype, _ := strconv.ParseUint(data.Bits[26:30], 2, 4)
 	tamperphy, _ := strconv.ParseUint(data.Bits[24:26], 2, 2)

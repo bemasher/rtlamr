@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"sync"
 
-	"github.com/bemasher/rtlamr/decode"
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtlamr/r900/gf"
 )
 
@@ -32,22 +32,17 @@ const (
 )
 
 func init() {
-	parse.Register("r900", NewParser)
+	protocol.RegisterParser("r900", NewParser)
 }
 
-func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
-	cfg.CenterFreq = 912380000
-	cfg.DataRate = 32768
-	cfg.ChipLength = chipLength
-	cfg.PreambleSymbols = 32
-	cfg.PacketSymbols = 116
-	cfg.Preamble = "00000000000000001110010101100100"
+func NewPacketConfig(chipLength int) (cfg protocol.PacketConfig) {
 
 	return
 }
 
 type Parser struct {
-	decode.Decoder
+	*protocol.Decoder
+	cfg   protocol.PacketConfig
 	field *gf.Field
 	rsBuf [31]byte
 
@@ -55,34 +50,39 @@ type Parser struct {
 	csum      []float64
 	filtered  [][3]float64
 	quantized []byte
+
+	once sync.Once
 }
 
-func NewParser(chipLength int) parse.Parser {
-	p := new(Parser)
+func NewParser(chipLength int) protocol.Parser {
+	var p Parser
 
-	p.Decoder = decode.NewDecoder(NewPacketConfig(chipLength))
+	p.cfg = protocol.PacketConfig{
+		Protocol:        "r900",
+		CenterFreq:      912380000,
+		DataRate:        32768,
+		ChipLength:      chipLength,
+		PreambleSymbols: 32,
+		PacketSymbols:   116,
+		Preamble:        "00000000000000001110010101100100",
+	}
 
 	// GF of order 32, polynomial 37, generator 2.
 	p.field = gf.NewField(32, 37, 2)
 
-	p.signal = make([]float64, p.Decoder.Cfg.BufferLength)
-	p.csum = make([]float64, p.Decoder.Cfg.BufferLength+1)
-	p.filtered = make([][3]float64, p.Decoder.Cfg.BufferLength)
-	p.quantized = make([]byte, p.Decoder.Cfg.BufferLength)
-
-	return p
+	return &p
 }
 
-func (p Parser) Dec() decode.Decoder {
-	return p.Decoder
+func (p *Parser) SetDecoder(d *protocol.Decoder) {
+	p.Decoder = d
 }
 
-func (p *Parser) Cfg() *decode.PacketConfig {
-	return &p.Decoder.Cfg
+func (p Parser) Cfg() protocol.PacketConfig {
+	return p.cfg
 }
 
 // Perform matched filtering.
-func (p Parser) Filter() {
+func (p Parser) filter() {
 	// This function computes the convolution of each symbol kernel with the
 	// signal. The naive approach requires for each symbol to calculate the
 	// summation of samples between a pair of indices.
@@ -128,7 +128,7 @@ func (p Parser) Filter() {
 }
 
 // Determine the symbol that exists at each sample of the signal.
-func (p Parser) Quantize() {
+func (p Parser) quantize() {
 	// 0 0011, 3 1100
 	// 1 0101, 4 1010
 	// 2 0110, 5 1001
@@ -160,13 +160,20 @@ func (p Parser) Quantize() {
 }
 
 // Given a list of indices the preamble exists at, decode and parse a message.
-func (p Parser) Parse(indices []int) (msgs []parse.Message) {
-	cfg := p.Decoder.Cfg
+func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
+	p.once.Do(func() {
+		p.signal = make([]float64, p.Decoder.Cfg.BufferLength)
+		p.csum = make([]float64, p.Decoder.Cfg.BufferLength+1)
+		p.filtered = make([][3]float64, p.Decoder.Cfg.BufferLength)
+		p.quantized = make([]byte, p.Decoder.Cfg.BufferLength)
+	})
+
+	cfg := p.cfg
 	copy(p.signal, p.signal[cfg.BlockSize:])
 	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength:])
 
-	p.Filter()
-	p.Quantize()
+	p.filter()
+	p.quantize()
 
 	preambleLength := cfg.PreambleLength
 	chipLength := cfg.ChipLength
@@ -176,12 +183,12 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 
 	seen := make(map[string]bool)
 
-	for _, preambleIdx := range indices {
-		if preambleIdx > cfg.BlockSize {
+	for _, pkt := range pkts {
+		if pkt.Idx > cfg.BlockSize {
 			break
 		}
 
-		payloadIdx := preambleIdx + preambleLength - p.Dec().Cfg.SymbolLength
+		payloadIdx := pkt.Idx + preambleLength - p.cfg.SymbolLength
 		var digits string
 		for idx := 0; idx < PayloadSymbols*4*cfg.ChipLength; idx += chipLength * 4 {
 			qIdx := payloadIdx + idx
@@ -238,10 +245,10 @@ func (p Parser) Parse(indices []int) (msgs []parse.Message) {
 		r900.LeakNow = uint8(leaknow)
 		copy(r900.checksum[:], symbols[16:])
 
-		msgs = append(msgs, r900)
+		msgCh <- r900
 	}
 
-	return
+	wg.Done()
 }
 
 type R900 struct {

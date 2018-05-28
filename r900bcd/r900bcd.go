@@ -17,33 +17,48 @@
 package r900bcd
 
 import (
+	"log"
 	"strconv"
+	"sync"
 
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtlamr/r900"
 )
 
 func init() {
-	parse.Register("r900bcd", NewParser)
+	protocol.RegisterParser("r900bcd", NewParser)
 }
 
 type Parser struct {
-	parse.Parser
+	protocol.Parser
 }
 
-func NewParser(ChipLength int) parse.Parser {
+func NewParser(ChipLength int) protocol.Parser {
 	return Parser{r900.NewParser(ChipLength)}
 }
 
 // Parse messages using r900 parser and convert consumption from BCD to int.
-func (p Parser) Parse(indices []int) (msgs []parse.Message) {
-	msgs = p.Parser.Parse(indices)
-	for idx, msg := range msgs {
+func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
+	localWg := new(sync.WaitGroup)
+
+	localMsgCh := make(chan protocol.Message)
+	localWg.Add(1)
+
+	go func() {
+		localWg.Wait()
+		close(localMsgCh)
+	}()
+
+	go p.Parser.Parse(pkts, localMsgCh, localWg)
+
+	for msg := range localMsgCh {
 		r900msg := msg.(r900.R900)
+		log.Printf("%+v\n", r900msg)
 		hex := strconv.FormatUint(uint64(r900msg.Consumption), 16)
 		consumption, _ := strconv.ParseUint(hex, 10, 32)
 		r900msg.Consumption = uint32(consumption)
-		msgs[idx] = r900msg
+		msgCh <- r900msg
 	}
-	return
+
+	wg.Done()
 }

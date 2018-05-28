@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/bemasher/rtlamr/crc"
-	"github.com/bemasher/rtlamr/decode"
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 )
 
 func init() {
-	parse.Register("netidm", NewParser)
+	protocol.RegisterParser("netidm", NewParser)
 }
 
-func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
+func NewPacketConfig(chipLength int) (cfg protocol.PacketConfig) {
 	cfg.CenterFreq = 912600155
 	cfg.DataRate = 32768
 	cfg.ChipLength = chipLength
@@ -43,58 +43,63 @@ func NewPacketConfig(chipLength int) (cfg decode.PacketConfig) {
 }
 
 type Parser struct {
-	decode.Decoder
 	crc.CRC
+	cfg  protocol.PacketConfig
+	data protocol.Data
 }
 
-func (p Parser) Dec() decode.Decoder {
-	return p.Decoder
+func (p Parser) SetDecoder(d *protocol.Decoder) {}
+
+func (p *Parser) Cfg() protocol.PacketConfig {
+	return p.cfg
 }
 
-func (p *Parser) Cfg() *decode.PacketConfig {
-	return &p.Decoder.Cfg
-}
-
-func NewParser(chipLength int) (p parse.Parser) {
+func NewParser(chipLength int) (p protocol.Parser) {
 	return &Parser{
-		decode.NewDecoder(NewPacketConfig(chipLength)),
-		crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
+		CRC: crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F),
+		cfg: protocol.PacketConfig{
+			Protocol:        "netidm",
+			CenterFreq:      912600155,
+			DataRate:        32768,
+			ChipLength:      chipLength,
+			PreambleSymbols: 32,
+			PacketSymbols:   92 * 8,
+			Preamble:        "01010101010101010001011010100011",
+		},
+		data: protocol.Data{Bytes: make([]byte, 92)},
 	}
 }
 
-func (p Parser) Parse(indices []int) (msgs []parse.Message) {
+func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
 	seen := make(map[string]bool)
 
-	for _, pkt := range p.Decoder.Slice(indices) {
-		s := string(pkt)
+	for _, pkt := range pkts {
+		p.data.Idx = pkt.Idx
+		p.data.Bits = pkt.Bits[0:p.cfg.PacketSymbols]
+		copy(p.data.Bytes, pkt.Bytes)
+
+		s := string(p.data.Bytes)
 		if seen[s] {
 			continue
 		}
 		seen[s] = true
 
-		data := parse.NewDataFromBytes(pkt)
-
-		// If the packet is too short, bail.
-		if l := len(data.Bytes); l != 92 {
-			continue
-		}
-
 		// If the checksum fails, bail.
-		if residue := p.Checksum(data.Bytes[4:92]); residue != p.Residue {
+		if residue := p.Checksum(p.data.Bytes[4:92]); residue != p.Residue {
 			continue
 		}
 
-		netidm := NewIDM(data)
+		netidm := NewNetIDM(p.data)
 
 		// If the meter id is 0, bail.
 		if netidm.ERTSerialNumber == 0 {
 			continue
 		}
 
-		msgs = append(msgs, netidm)
+		msgCh <- netidm
 	}
 
-	return
+	wg.Done()
 }
 
 // Net Meter Interval Data Message
@@ -116,7 +121,7 @@ type NetIDM struct {
 	PacketCRC                        uint16
 }
 
-func NewIDM(data parse.Data) (netidm NetIDM) {
+func NewNetIDM(data protocol.Data) (netidm NetIDM) {
 	netidm.Preamble = binary.BigEndian.Uint32(data.Bytes[0:4])
 	netidm.ProtocolID = data.Bytes[4]
 	netidm.PacketLength = data.Bytes[5]

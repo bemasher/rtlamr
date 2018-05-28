@@ -24,17 +24,18 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/bemasher/rtlamr/csv"
-	"github.com/bemasher/rtlamr/parse"
+	"github.com/bemasher/rtlamr/protocol"
 )
 
 var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file")
 var sampleFile *os.File
 
-var msgType = flag.String("msgtype", "scm", "message type to receive: scm, scm+, idm, netidm, r900 and r900bcd")
+var msgType StringMap
 
 var symbolLength = flag.Int("symbollength", 72, "symbol length in samples (8, 32, 40, 48, 56, 64, 72, 80, 88, 96)")
 
@@ -52,6 +53,9 @@ var single = flag.Bool("single", false, "one shot execution, if used with -filte
 var version = flag.Bool("version", false, "display build date and commit hash")
 
 func RegisterFlags() {
+	msgType = StringMap{"scm": true}
+	flag.Var(msgType, "msgtype", "comma-separated list of message types to receive: all, scm, scm+, idm, netidm, r900 and r900bcd")
+
 	meterID = MeterIDFilter{make(UintMap)}
 	meterType = MeterTypeFilter{make(UintMap)}
 
@@ -84,7 +88,7 @@ func RegisterFlags() {
 	}
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", filepath.Base(os.Args[0]))
 		printDefaults(rtlamrFlags, true)
 
 		fmt.Fprintln(os.Stderr)
@@ -144,6 +148,35 @@ type Encoder interface {
 	Encode(interface{}) error
 }
 
+// A Flag value that populates a map of string to bool from a comma-separated list.
+type StringMap map[string]bool
+
+func (m StringMap) String() (s string) {
+	var keys []string
+	for key, _ := range m {
+		keys = append(keys, key)
+	}
+	return strings.Join(keys, ",")
+}
+
+func (m StringMap) Set(value string) error {
+	// Delete any default keys.
+	var keys []string
+	for key := range m {
+		keys = append(keys, key)
+	}
+	for _, key := range keys {
+		delete(m, key)
+	}
+
+	// Set keys from value.
+	for _, val := range strings.Split(value, ",") {
+		m[strings.ToLower(val)] = true
+	}
+
+	return nil
+}
+
 type UintMap map[uint]bool
 
 func (m UintMap) String() (s string) {
@@ -173,7 +206,7 @@ type MeterIDFilter struct {
 	UintMap
 }
 
-func (m MeterIDFilter) Filter(msg parse.Message) bool {
+func (m MeterIDFilter) Filter(msg protocol.Message) bool {
 	return m.UintMap[uint(msg.MeterID())]
 }
 
@@ -181,7 +214,7 @@ type MeterTypeFilter struct {
 	UintMap
 }
 
-func (m MeterTypeFilter) Filter(msg parse.Message) bool {
+func (m MeterTypeFilter) Filter(msg protocol.Message) bool {
 	return m.UintMap[uint(msg.MeterType())]
 }
 
@@ -191,7 +224,7 @@ func NewUniqueFilter() UniqueFilter {
 	return make(UniqueFilter)
 }
 
-func (uf UniqueFilter) Filter(msg parse.Message) bool {
+func (uf UniqueFilter) Filter(msg protocol.Message) bool {
 	checksum := msg.Checksum()
 	mid := uint(msg.MeterID())
 
@@ -209,7 +242,7 @@ type PlainEncoder struct {
 }
 
 func (pe PlainEncoder) Encode(msg interface{}) (err error) {
-	if m, ok := msg.(parse.LogMessage); ok && pe.sampleFilename == os.DevNull {
+	if m, ok := msg.(protocol.LogMessage); ok && pe.sampleFilename == os.DevNull {
 		_, err = fmt.Println(m.StringNoOffset())
 	} else {
 		_, err = fmt.Println(m)
