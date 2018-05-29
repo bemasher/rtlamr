@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/xml"
 	"flag"
@@ -26,7 +27,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/bemasher/rtlamr/protocol"
@@ -124,44 +124,29 @@ func (rcvr *Receiver) Run() {
 		tLimit = time.After(*timeLimit)
 	}
 
-	in, out := io.Pipe()
-
-	// Read blocks of samples from the receiver and write them to a pipe.
-	go func() {
-		tcpBlock := make([]byte, 16384)
-		for {
-			n, err := rcvr.Read(tcpBlock)
-			if err != nil {
-				return
-			}
-			out.Write(tcpBlock[:n])
-		}
-	}()
-
 	sampleBuf := new(bytes.Buffer)
 	start := time.Now()
 
 	// Allocate a channel of blocks and a sync.Pool for allocating/reusing
 	// sample blocks.
-	blockCh := make(chan []byte, 128)
-	blockPool := sync.Pool{
-		New: func() interface{} {
-			return make([]byte, rcvr.d.Cfg.BlockSize2)
-		},
-	}
+	blockCh := make(chan []byte)
 
 	// Read sample blocks from the pipe created and fed above.
 	go func() {
-		for {
-			block := blockPool.Get().([]byte)
+		buf := bufio.NewReaderSize(rcvr, 1<<20)
 
+		blockA := make([]byte, rcvr.d.Cfg.BlockSize2)
+		blockB := make([]byte, rcvr.d.Cfg.BlockSize2)
+
+		for {
 			// Read new sample block.
-			_, err := io.ReadFull(in, block)
+			_, err := io.ReadFull(buf, blockA)
 			if err != nil {
 				log.Println("Error reading samples: ", err)
 				continue
 			}
-			blockCh <- block
+			blockCh <- blockA
+			blockA, blockB = blockB, blockA
 		}
 	}()
 
