@@ -162,6 +162,7 @@ func (p Parser) quantize() {
 // Given a list of indices the preamble exists at, decode and parse a message.
 func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
 	p.once.Do(func() {
+		p.cfg = p.Decoder.Cfg
 		p.signal = make([]float64, p.Decoder.Cfg.BufferLength)
 		p.csum = make([]float64, p.Decoder.Cfg.BufferLength+1)
 		p.filtered = make([][3]float64, p.Decoder.Cfg.BufferLength)
