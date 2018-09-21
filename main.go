@@ -225,8 +225,9 @@ func init() {
 }
 
 var (
-	buildDate  string // date -u '+%Y-%m-%d'
-	commitHash string // git rev-parse HEAD
+	buildTag   = "dev"     // v#.#.#
+	buildDate  = "unknown" // date -u '+%Y-%m-%d'
+	commitHash = "unknown" // git rev-parse HEAD
 )
 
 func main() {
@@ -237,14 +238,9 @@ func main() {
 	rcvr.HandleFlags()
 
 	if *version {
-		if buildDate == "" || commitHash == "" {
-			fmt.Println("Built from source.")
-			fmt.Println("Build Date: Unknown")
-			fmt.Println("Commit:     Unknown")
-		} else {
-			fmt.Println("Build Date:", buildDate)
-			fmt.Println("Commit:    ", commitHash)
-		}
+		fmt.Println("Build Tag: ", buildTag)
+		fmt.Println("Build Date:", buildDate)
+		fmt.Println("Commit:    ", commitHash)
 		os.Exit(0)
 	}
 
