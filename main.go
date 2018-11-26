@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/xml"
 	"flag"
@@ -25,6 +24,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"time"
@@ -46,10 +46,14 @@ type Receiver struct {
 	rtltcp.SDR
 	d  protocol.Decoder
 	fc protocol.FilterChain
+
+	stop chan struct{}
 }
 
 func (rcvr *Receiver) NewReceiver() {
 	rcvr.d = protocol.NewDecoder()
+
+	rcvr.stop = make(chan struct{}, 1)
 
 	// If the msgtype "all" is given alone, register and use scm, scm+, idm and r900.
 	if _, all := msgType["all"]; all && len(msgType) == 1 {
@@ -113,6 +117,11 @@ func (rcvr *Receiver) NewReceiver() {
 	return
 }
 
+func (rcvr *Receiver) Close() {
+	rcvr.stop <- struct{}{}
+	rcvr.SDR.Close()
+}
+
 func (rcvr *Receiver) Run() {
 	// Setup signal channel for interruption.
 	sigint := make(chan os.Signal, 1)
@@ -127,26 +136,53 @@ func (rcvr *Receiver) Run() {
 	sampleBuf := new(bytes.Buffer)
 	start := time.Now()
 
-	// Allocate a channel of blocks and a sync.Pool for allocating/reusing
-	// sample blocks.
+	// Allocate a channel of blocks.
 	blockCh := make(chan []byte)
 
-	// Read sample blocks from the pipe created and fed above.
+	// Read and send sample blocks to the decoder.
 	go func() {
-		buf := bufio.NewReaderSize(rcvr, 1<<20)
-
+		// Make two sample blocks, one for reading, and one for the receiver to
+		// decode, these are exchanged each time we read a new block.
 		blockA := make([]byte, rcvr.d.Cfg.BlockSize2)
 		blockB := make([]byte, rcvr.d.Cfg.BlockSize2)
 
+		// When exiting this goroutine, close the block channel.
+		defer close(blockCh)
+
 		for {
-			// Read new sample block.
-			_, err := io.ReadFull(buf, blockA)
-			if err != nil {
-				log.Println("Error reading samples: ", err)
-				continue
+			select {
+			// Exit if we've been told to stop.
+			case <-rcvr.stop:
+				return
+			default:
+				// Read new sample block.
+				_, err := io.ReadFull(rcvr, blockA)
+
+				// If we get an EOF, exit.
+				if err == io.EOF || err == io.ErrUnexpectedEOF {
+					log.Println("encountered eof:", err)
+					return
+				}
+
+				// If we get a network operation error.
+				if opErr, ok := err.(*net.OpError); ok {
+					// If temporary, keep reading.
+					if opErr.Temporary() {
+						log.Printf("operr: temporary: %+v\n", opErr)
+						continue
+					}
+
+					// If it's not temporary, exit.
+					log.Printf("operr: %+v\n", opErr)
+					return
+				}
+
+				// Send the sample block.
+				blockCh <- blockA
+
+				// Exchange blocks for next read.
+				blockA, blockB = blockB, blockA
 			}
-			blockCh <- blockA
-			blockA, blockB = blockB, blockA
 		}
 	}()
 
@@ -158,7 +194,12 @@ func (rcvr *Receiver) Run() {
 		case <-tLimit:
 			log.Println("Time Limit Reached:", time.Since(start))
 			return
-		case block := <-blockCh:
+		case block, ok := <-blockCh:
+			// If blockCh is closed, exit.
+			if !ok {
+				return
+			}
+
 			// If dumping samples, discard the oldest block from the buffer if
 			// it's full and write the new block to it.
 			if *sampleFilename != os.DevNull {
@@ -182,6 +223,7 @@ func (rcvr *Receiver) Run() {
 				logMsg.Time = time.Now()
 				logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
 				logMsg.Length = sampleBuf.Len()
+				logMsg.Type = msg.MsgType()
 				logMsg.Message = msg
 
 				// Encode the message

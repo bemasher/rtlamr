@@ -89,6 +89,7 @@ type LogMessage struct {
 	Time   time.Time `xml:",attr"`
 	Offset int64     `xml:",attr"`
 	Length int       `xml:",attr"`
+	Type   string    `xml:",attr"`
 	Message
 }
 
