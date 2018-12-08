@@ -138,7 +138,7 @@ func HandleFlags() {
 	case "json":
 		encoder = json.NewEncoder(os.Stdout)
 	case "xml":
-		encoder = xml.NewEncoder(os.Stdout)
+		encoder = NewLineEncoder{xml.NewEncoder(os.Stdout)}
 	}
 }
 
@@ -146,6 +146,18 @@ func HandleFlags() {
 // output formatting.
 type Encoder interface {
 	Encode(interface{}) error
+}
+
+// The XML encoder doesn't write new lines after each element, make a wrapper
+// for the Encoder interface that prints a new line after each call.
+type NewLineEncoder struct {
+	Encoder
+}
+
+func (nle NewLineEncoder) Encode(e interface{}) error {
+	err := nle.Encoder.Encode(e)
+	fmt.Println()
+	return err
 }
 
 // A Flag value that populates a map of string to bool from a comma-separated list.

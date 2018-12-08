@@ -18,7 +18,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
@@ -250,11 +249,6 @@ func (rcvr *Receiver) Run() {
 				err := encoder.Encode(logMsg)
 				if err != nil {
 					log.Fatal("Error encoding message: ", err)
-				}
-
-				// The XML encoder doesn't write new lines after each element, print them.
-				if _, ok := encoder.(*xml.Encoder); ok {
-					fmt.Println()
 				}
 
 				pktFound = true
