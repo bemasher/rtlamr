@@ -83,6 +83,23 @@ type Message interface {
 	Checksum() []byte
 }
 
+// Uniquely identifies a message spanning two sample blocks.
+type Digest struct {
+	MsgType   string
+	MeterType uint8
+	MeterID   uint32
+	Checksum  string
+}
+
+func NewDigest(msg Message) Digest {
+	return Digest{
+		msg.MsgType(),
+		msg.MeterType(),
+		msg.MeterID(),
+		string(msg.Checksum()),
+	}
+}
+
 // A LogMessage associates a message with a point in time and an offset and
 // length into a binary sample file.
 type LogMessage struct {

@@ -139,6 +139,10 @@ func (rcvr *Receiver) Run() {
 	// Allocate a channel of blocks.
 	blockCh := make(chan []byte)
 
+	// Make maps for tracking messages spanning sample blocks.
+	prev := map[protocol.Digest]bool{}
+	next := map[protocol.Digest]bool{}
+
 	// Read and send sample blocks to the decoder.
 	go func() {
 		// Make two sample blocks, one for reading, and one for the receiver to
@@ -200,6 +204,11 @@ func (rcvr *Receiver) Run() {
 				return
 			}
 
+			// Clear next map for this sample block.
+			for key := range next {
+				delete(next, key)
+			}
+
 			// If dumping samples, discard the oldest block from the buffer if
 			// it's full and write the new block to it.
 			if *sampleFilename != os.DevNull {
@@ -225,6 +234,17 @@ func (rcvr *Receiver) Run() {
 				logMsg.Length = sampleBuf.Len()
 				logMsg.Type = msg.MsgType()
 				logMsg.Message = msg
+
+				// This should be unique enough to identify a message between blocks.
+				msgDigest := protocol.NewDigest(msg)
+
+				// Mark the message as seen for the next loop.
+				next[msgDigest] = true
+
+				// If the message was seen in the previous loop, skip it.
+				if prev[msgDigest] {
+					continue
+				}
 
 				// Encode the message
 				err := encoder.Encode(logMsg)
@@ -258,6 +278,9 @@ func (rcvr *Receiver) Run() {
 					return
 				}
 			}
+
+			// Swap next and previous digest maps.
+			next, prev = prev, next
 		}
 	}
 }
