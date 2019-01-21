@@ -17,7 +17,6 @@
 package r900bcd
 
 import (
-	"log"
 	"strconv"
 	"sync"
 
@@ -37,6 +36,14 @@ func NewParser(ChipLength int) protocol.Parser {
 	return Parser{r900.NewParser(ChipLength)}
 }
 
+type R900BCD struct {
+	r900.R900
+}
+
+func (r R900BCD) MsgType() string {
+	return "R900BCD"
+}
+
 // Parse messages using r900 parser and convert consumption from BCD to int.
 func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
 	localWg := new(sync.WaitGroup)
@@ -52,12 +59,11 @@ func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *syn
 	go p.Parser.Parse(pkts, localMsgCh, localWg)
 
 	for msg := range localMsgCh {
-		r900msg := msg.(r900.R900)
-		log.Printf("%+v\n", r900msg)
-		hex := strconv.FormatUint(uint64(r900msg.Consumption), 16)
+		r900bcd := R900BCD{msg.(r900.R900)}
+		hex := strconv.FormatUint(uint64(r900bcd.Consumption), 16)
 		consumption, _ := strconv.ParseUint(hex, 10, 32)
-		r900msg.Consumption = uint32(consumption)
-		msgCh <- r900msg
+		r900bcd.Consumption = uint32(consumption)
+		msgCh <- r900bcd
 	}
 
 	wg.Done()
