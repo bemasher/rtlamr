@@ -73,14 +73,20 @@ func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *syn
 		}
 		seen[s] = true
 
-		// If the checksum fails, bail.
+		// If the packet checksum fails, bail.
 		if residue := p.Checksum(p.data.Bytes[4:92]); residue != p.Residue {
 			continue
 		}
 
-		idm := NewIDM(p.data)
+		// If the serial checksum fails, bail.
+		buf := make([]byte, 6)
+		copy(buf, p.data.Bytes[9:13])
+		copy(buf[4:], p.data.Bytes[88:90])
+		if residue := p.Checksum(buf); residue != p.Residue {
+			continue
+		}
 
-		// If the meter id is 0, bail.
+		idm := NewIDM(p.data)
 		if idm.ERTSerialNumber == 0 {
 			continue
 		}

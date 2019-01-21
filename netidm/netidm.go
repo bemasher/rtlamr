@@ -89,6 +89,14 @@ func (p Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *syn
 			continue
 		}
 
+		// If the serial checksum fails, bail.
+		buf := make([]byte, 6)
+		copy(buf, p.data.Bytes[9:13])
+		copy(buf[4:], p.data.Bytes[88:90])
+		if residue := p.Checksum(buf); residue != p.Residue {
+			continue
+		}
+
 		netidm := NewNetIDM(p.data)
 
 		// If the meter id is 0, bail.
@@ -114,7 +122,8 @@ type NetIDM struct {
 	ConsumptionIntervalCount         uint8
 	ProgrammingState                 uint8
 	LastGeneration                   uint32
-	LastConsumptionCount             uint32
+	LastConsumption                  uint32
+	LastConsumptionNet               uint32
 	DifferentialConsumptionIntervals Interval // 53 Bytes
 	TransmitTimeOffset               uint16
 	SerialNumberCRC                  uint16
@@ -132,8 +141,9 @@ func NewNetIDM(data protocol.Data) (netidm NetIDM) {
 	netidm.ConsumptionIntervalCount = data.Bytes[13]
 	netidm.ProgrammingState = data.Bytes[14]
 
+	netidm.LastConsumption = uint32(data.Bytes[25])<<16 | uint32(data.Bytes[26])<<8 | uint32(data.Bytes[27])
 	netidm.LastGeneration = uint32(data.Bytes[28])<<16 | uint32(data.Bytes[29])<<8 | uint32(data.Bytes[30])
-	netidm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[34:38])
+	netidm.LastConsumptionNet = binary.BigEndian.Uint32(data.Bytes[34:38])
 
 	offset := 38 << 3
 	for idx := range netidm.DifferentialConsumptionIntervals {
@@ -190,7 +200,8 @@ func (netidm NetIDM) String() string {
 	fields = append(fields, fmt.Sprintf("ConsumptionIntervalCount:%d", netidm.ConsumptionIntervalCount))
 	fields = append(fields, fmt.Sprintf("ProgrammingState:0x%02X", netidm.ProgrammingState))
 	fields = append(fields, fmt.Sprintf("LastGeneration:%d", netidm.LastGeneration))
-	fields = append(fields, fmt.Sprintf("LastConsumptionCount:%d", netidm.LastConsumptionCount))
+	fields = append(fields, fmt.Sprintf("LastConsumption:%d", netidm.LastConsumption))
+	fields = append(fields, fmt.Sprintf("LastConsumptionNet:%d", netidm.LastConsumptionNet))
 	fields = append(fields, fmt.Sprintf("DifferentialConsumptionIntervals:%d", netidm.DifferentialConsumptionIntervals))
 	fields = append(fields, fmt.Sprintf("TransmitTimeOffset:%d", netidm.TransmitTimeOffset))
 	fields = append(fields, fmt.Sprintf("SerialNumberCRC:0x%04X", netidm.SerialNumberCRC))
@@ -210,7 +221,8 @@ func (netidm NetIDM) Record() (r []string) {
 	r = append(r, fmt.Sprintf("%d", netidm.ConsumptionIntervalCount))
 	r = append(r, fmt.Sprintf("0x%02X", netidm.ProgrammingState))
 	r = append(r, fmt.Sprintf("%d", netidm.LastGeneration))
-	r = append(r, fmt.Sprintf("%d", netidm.LastConsumptionCount))
+	r = append(r, fmt.Sprintf("%d", netidm.LastConsumption))
+	r = append(r, fmt.Sprintf("%d", netidm.LastConsumptionNet))
 	r = append(r, netidm.DifferentialConsumptionIntervals.Record()...)
 	r = append(r, fmt.Sprintf("%d", netidm.TransmitTimeOffset))
 	r = append(r, fmt.Sprintf("0x%04X", netidm.SerialNumberCRC))
