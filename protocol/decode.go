@@ -248,7 +248,14 @@ func (d Decoder) Filter(input []float64, output []byte) {
 	return
 }
 
-// Return a list of indices into the quantized signal at which a valid preamble exists.
+// Return a list of indices into the quantized signal at which a valid preamble
+// exists.
+// 1. Pack the quantized signal into bytes.
+// 2. Build a list of indices by eliminating bytes that contain no bits matching
+//    the first bit of the preamble.
+// 3. Continue eliminating indices at which the preamble cannot exist.
+// 4. Convert indices from byte-based to sample-based.
+// 5. Check each of these indices for the preamble.
 func (d *Decoder) Search(preamble []byte) []int {
 	symLenByte := d.Cfg.SymbolLength >> 3
 
@@ -261,20 +268,29 @@ func (d *Decoder) Search(preamble []byte) []int {
 		d.packed[bIdx] = b
 	}
 
-	// Filter out indices at which the preamble cannot exist.
+	// For each bit in the preamble.
 	for pIdx, pBit := range preamble {
+		// For 0, mask is 0xFF, for 1, mask is 0x00
 		pBit = (pBit ^ 1) * 0xFF
 		offset := pIdx * symLenByte
+		// If this is the first bit of the preamble.
 		if pIdx == 0 {
+			// Truncate the list of possible indices.
 			d.sIdxA = d.sIdxA[:0]
+			// For each packed byte.
 			for qIdx, b := range d.packed[:d.Cfg.BlockSize>>3] {
+				// If the byte contains any bits that match the current preamble bit.
 				if b != pBit {
+					// Add the index to the list.
 					d.sIdxA = append(d.sIdxA, qIdx)
 				}
 			}
 		} else {
+			// From the list of possible indices, eliminate any indices at which
+			// the preamble does not exist for the current preamble bit.
 			d.sIdxB, d.sIdxA = searchPassByte(pBit, d.packed[offset:], d.sIdxA, d.sIdxB[:0])
 
+			// If we've eliminated all possible indices, there is no preamble.
 			if len(d.sIdxA) == 0 {
 				return nil
 			}
@@ -283,21 +299,30 @@ func (d *Decoder) Search(preamble []byte) []int {
 
 	symLen := d.Cfg.SymbolLength
 
-	// Unpack the indices from bytes to bits.
+	// Truncate index list B.
 	d.sIdxB = d.sIdxB[:0]
+	// For each index in list A.
 	for _, qIdx := range d.sIdxA {
+		// For each bit in the current byte.
 		for idx := 0; idx < 8; idx++ {
+			// Add the signal-based index to index list B.
 			d.sIdxB = append(d.sIdxB, (qIdx<<3)+idx)
 		}
 	}
+
+	// Swap index lists A and B.
 	d.sIdxA, d.sIdxB = d.sIdxB, d.sIdxA
 
-	// Filter out indices at which the preamble does not exist.
+	// Check which indices the preamble actually exists at.
 	for pIdx, pBit := range preamble {
 		offset := pIdx * symLen
 		offsetQuantized := d.Quantized[offset : offset+d.Cfg.BlockSize]
+
+		// Search the list of possible indices for indices at which the preamble actually exists.
 		d.sIdxB, d.sIdxA = searchPass(pBit, offsetQuantized, d.sIdxA, d.sIdxB[:0])
 
+		// If at the current bit of the preamble, there are no indices left to
+		// check, the preamble does not exist in the current sample block.
 		if len(d.sIdxA) == 0 {
 			return nil
 		}
