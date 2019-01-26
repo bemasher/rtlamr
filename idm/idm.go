@@ -110,7 +110,7 @@ type IDM struct {
 	ModuleProgrammingState           uint8
 	TamperCounters                   []byte // 6 Bytes
 	AsynchronousCounters             uint16
-	PowerOutageFlags                 []byte // 6 Bytes
+	PowerOutageFlags                 uint64 // 6 Bytes
 	LastConsumptionCount             uint32
 	DifferentialConsumptionIntervals Interval // 53 Bytes
 	TransmitTimeOffset               uint16
@@ -130,7 +130,11 @@ func NewIDM(data protocol.Data) (idm IDM) {
 	idm.ModuleProgrammingState = data.Bytes[14]
 	idm.TamperCounters = data.Bytes[15:21]
 	idm.AsynchronousCounters = binary.BigEndian.Uint16(data.Bytes[21:23])
-	idm.PowerOutageFlags = data.Bytes[23:29]
+
+	powerOutageFlags := [8]byte{}
+	copy(powerOutageFlags[:], data.Bytes[23:29])
+	idm.PowerOutageFlags = binary.BigEndian.Uint64(powerOutageFlags[:])
+
 	idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
 
 	offset := 264
