@@ -28,6 +28,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtltcp"
 
@@ -47,6 +49,8 @@ type Receiver struct {
 	fc protocol.FilterChain
 
 	stop chan struct{}
+
+	err error
 }
 
 func (rcvr *Receiver) NewReceiver() {
@@ -77,8 +81,8 @@ func (rcvr *Receiver) NewReceiver() {
 	rcvr.d.Allocate()
 
 	// Connect to rtl_tcp server.
-	if err := rcvr.Connect(nil); err != nil {
-		log.Fatal(err)
+	if rcvr.err = rcvr.Connect(nil); rcvr.err != nil {
+		log.Fatalf("%+v", errors.Wrap(rcvr.err, "rcvr.Connect"))
 	}
 
 	cfg := rcvr.d.Cfg
@@ -159,26 +163,36 @@ func (rcvr *Receiver) Run() {
 			case <-rcvr.stop:
 				return
 			default:
-				// Read new sample block.
-				_, err := io.ReadFull(rcvr, blockA)
-
-				// If we get an EOF, exit.
-				if err == io.EOF || err == io.ErrUnexpectedEOF {
-					log.Println("encountered eof:", err)
+				rcvr.err = rcvr.SetDeadline(time.Now().Add(5 * time.Second))
+				if rcvr.err != nil {
+					rcvr.err = errors.Wrap(rcvr.err, "rcvr.SetDeadline")
 					return
 				}
 
-				// If we get a network operation error.
-				if opErr, ok := err.(*net.OpError); ok {
-					// If temporary, keep reading.
-					if opErr.Temporary() {
-						log.Printf("operr: temporary: %+v\n", opErr)
-						continue
-					}
+				// Read new sample block.
+				_, rcvr.err = io.ReadFull(rcvr, blockA)
+				rcvr.err = errors.Wrap(rcvr.err, "io.ReadFull")
 
-					// If it's not temporary, exit.
-					log.Printf("operr: %+v\n", opErr)
+				// If we get an EOF, exit.
+				if rcvr.err == io.EOF || rcvr.err == io.ErrUnexpectedEOF {
 					return
+				}
+
+				if rcvr.err != nil {
+					switch err := rcvr.err.(type) {
+					// If we get a network operation error.
+					case *net.OpError:
+						if err.Temporary() {
+							// If temporary, keep trying to read.
+							continue
+						} else {
+							// If it's not temporary, exit.
+							return
+						}
+					default:
+						// For everything else, assume it's fatal and bail.
+						return
+					}
 				}
 
 				// Send the sample block.
@@ -247,9 +261,11 @@ func (rcvr *Receiver) Run() {
 				}
 
 				// Encode the message
-				err := encoder.Encode(logMsg)
-				if err != nil {
-					log.Fatal("Error encoding message: ", err)
+				rcvr.err = encoder.Encode(logMsg)
+				rcvr.err = errors.Wrap(rcvr.err, "encoder.Encode")
+
+				if rcvr.err != nil {
+					return
 				}
 
 				pktFound = true
@@ -308,8 +324,14 @@ func main() {
 
 	rcvr.NewReceiver()
 
-	defer sampleFile.Close()
-	defer rcvr.Close()
+	defer func() {
+		sampleFile.Close()
+		rcvr.Close()
+
+		if rcvr.err != nil {
+			log.Fatalf("%+v\n", rcvr.err)
+		}
+	}()
 
 	rcvr.Run()
 }
