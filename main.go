@@ -108,6 +108,7 @@ func (rcvr *Receiver) NewReceiver() {
 		rcvr.SetGainMode(true)
 	}
 
+	rcvr.d.Cfg = cfg
 	rcvr.d.Log()
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
