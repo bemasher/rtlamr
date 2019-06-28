@@ -1,11 +1,14 @@
-FROM golang:1.9.2
+FROM golang:1.12.6
 
+ENV GO111MODULE=on
 WORKDIR /go/src/github.com/bemasher/rtlamr
+
 COPY . .
 
-RUN go-wrapper install
+RUN go get -d -v ./...
+RUN go install -v ./...
 
-CMD ["go-wrapper", "run"]
+CMD ["rtlamr"]
 
 # Run rtlamr container with non-dockerized rtl_tcp instance:
 # docker run -d --name rtlamr --link rtltcp:rtltcp bemasher/rtlamr
