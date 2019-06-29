@@ -19,7 +19,7 @@ COPY --from=build /rtlamr /rtlamr
 ENTRYPOINT ["/rtlamr"]
 
 # Run rtlamr container with non-dockerized rtl_tcp instance:
-# docker run -d --name rtlamr --link rtltcp:rtltcp bemasher/rtlamr
+# docker run -d --name rtlamr --net=host bemasher/rtlamr
 
 # For use with bemasher/rtl-sdr:
 # Start rtl_tcp from rtl-sdr container:
