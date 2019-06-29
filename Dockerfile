@@ -7,7 +7,7 @@ COPY . .
 RUN go get -d -v ./...
 RUN go install -v ./...
 
-CMD ["rtlamr"]
+ENTRYPOINT ["rtlamr"]
 
 # Run rtlamr container with non-dockerized rtl_tcp instance:
 # docker run -d --name rtlamr --link rtltcp:rtltcp bemasher/rtlamr
