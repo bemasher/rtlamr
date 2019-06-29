@@ -1,13 +1,22 @@
-FROM golang:1.12.6
+########################################
+FROM golang:1.12.6-alpine AS build
+
+RUN apk --no-cache add git
 
 WORKDIR /src/rtlamr
 
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
 COPY . .
+RUN CGO_ENABLED=0 go build -o /rtlamr
 
-RUN go get -d -v ./...
-RUN go install -v ./...
+########################################
+FROM scratch
 
-ENTRYPOINT ["rtlamr"]
+COPY --from=build /rtlamr /rtlamr
+
+ENTRYPOINT ["/rtlamr"]
 
 # Run rtlamr container with non-dockerized rtl_tcp instance:
 # docker run -d --name rtlamr --link rtltcp:rtltcp bemasher/rtlamr
