@@ -1,7 +1,6 @@
 FROM golang:1.12.6
 
-ENV GO111MODULE=on
-WORKDIR /go/src/github.com/bemasher/rtlamr
+WORKDIR /src/rtlamr
 
 COPY . .
 
