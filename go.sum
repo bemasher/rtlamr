@@ -2,3 +2,5 @@ github.com/bemasher/rtltcp v0.0.0-20151011062038-3aed81c166c5 h1:QFs9NpZKQY/WPjO
 github.com/bemasher/rtltcp v0.0.0-20151011062038-3aed81c166c5/go.mod h1:O6JJfPo2Vr2FA+N401mWyEVhwq5Wo/z1dfX+tIKGRUU=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898 h1:/atklqdjdhuosWIl6AIbOeHJjicWYPqR9bpxqxYG2pA=
+golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
