@@ -133,7 +133,7 @@ func (rcvr *Receiver) Close() {
 }
 
 func (rcvr *Receiver) Run() {
-	rcvr.wg.Add(2)
+	rcvr.wg.Add(3)
 
 	sampleBuf := new(bytes.Buffer)
 
@@ -144,8 +144,17 @@ func (rcvr *Receiver) Run() {
 	prev := map[protocol.Digest]bool{}
 	next := map[protocol.Digest]bool{}
 
+	go func() {
+		defer rcvr.wg.Done()
+		<-rcvr.ctx.Done()
+		// Consume any in-flight blocks.
+		for range blockCh {
+		}
+	}()
+
 	// Read and send sample blocks to the decoder.
 	go func() {
+		defer rcvr.cancel()
 		defer close(blockCh)
 		defer rcvr.wg.Done()
 
@@ -183,13 +192,12 @@ func (rcvr *Receiver) Run() {
 	}()
 
 	go func() {
+		defer rcvr.cancel()
 		defer rcvr.wg.Done()
+
 		for {
 			select {
 			case <-rcvr.ctx.Done():
-				// Consume any in-flight blocks.
-				for range blockCh {
-				}
 				return
 			case block, ok := <-blockCh:
 				if !ok {
@@ -264,6 +272,7 @@ func (rcvr *Receiver) Run() {
 						}
 					}
 					if *single && len(meterID.UintMap) == 0 {
+						rcvr.cancel()
 						return
 					}
 				}
@@ -330,6 +339,8 @@ func main() {
 		log.Println("Received Signal:", sig)
 	case <-timeLimitCh:
 		log.Println("Time Limit Reached:", time.Since(start))
+	case <-rcvr.ctx.Done():
+		log.Println("Receiver context cancelled.")
 	}
 
 	rcvr.Close()
