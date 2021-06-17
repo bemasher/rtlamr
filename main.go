@@ -102,7 +102,9 @@ func (rcvr *Receiver) NewReceiver() {
 		case "gainbyindex", "tunergainmode", "tunergain", "agcmode":
 			gainFlagSet = true
 		case "unique":
-			rcvr.fc.Add(NewUniqueFilter())
+			if f.Value.String() == "true" {
+				rcvr.fc.Add(NewUniqueFilter())
+			}
 		case "filterid":
 			rcvr.fc.Add(meterID)
 		case "filtertype":
