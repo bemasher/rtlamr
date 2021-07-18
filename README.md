@@ -51,17 +51,21 @@ The following message types are supported by rtlamr:
 - **r900**: Message type used by Neptune R900 transmitters, provides total consumption and leak flags.
 - **r900bcd**: Some Neptune R900 meters report consumption as a binary-coded digits.
 
-### Sensitivity
-
-Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~300 different meters and intermittently from another ~600 meters. These figures are calculated from the number of messages received during a 25 minute window. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
-
 ### Compatibility
 
-Currently the only tested meter is the Itron C1SR. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
+Currently the only tested meter is the Itron C1SR and Itron 40G. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
 
 Check out the table of meters I've been compiling from various internet sources: [ERT Compatible Meters](https://github.com/bemasher/rtlamr/blob/master/meters.md)
 
-If you've got a meter not on the list that you've successfully received messages from, you can submit this info via a form available at the link above.
+Look for an FCC ID label on your meter, it should identify the two-digit commodity or endpoint type and the eight- or ten-digit endpoint ID of your meter: `## ########[##]`. Below are a few examples:
+
+![Example FCC Label (1)](assets/fcc_label_01.png)
+![Example FCC Label (2)](assets/fcc_label_02.png)
+![Example FCC Label (3)](assets/fcc_label_03.png)
+
+### Sensitivity
+
+Using a NooElec NESDR Nano R820T with the provided antenna, I can reliably receive standard consumption messages from ~300 different meters and intermittently from another ~600 meters. These figures are calculated from the number of messages received during a 25 minute window. Reliably in this case means receiving at least 10 of the expected 12 messages and intermittently means 3-9 messages.
 
 ### Ethics
 
