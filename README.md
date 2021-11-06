@@ -11,7 +11,7 @@ There's now experimental support for data collection and aggregation with [rtlam
 
 ### Requirements
 
-- GoLang >=1.3 (Go build environment setup guide: http://golang.org/doc/code.html)
+- GoLang >=1.11 (Go build environment setup guide: http://golang.org/doc/code.html)
 - rtl-sdr
   - Windows: [pre-built binaries](https://ftp.osmocom.org/binaries/windows/rtl-sdr/)
   - Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
