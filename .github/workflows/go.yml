@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-
   build:
+    continue-on-error: true
     runs-on: ubuntu-18.04
     strategy:
       matrix:
