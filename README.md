@@ -1,3 +1,5 @@
+[![AGPLv3 License](https://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
+
 ### Purpose
 
 Utilities often use "smart meters" to optimize their residential meter reading infrastructure. Smart meters transmit consumption information in the various ISM bands allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. One protocol in particular: Encoder Receiver Transmitter by Itron is fairly straight forward to decode and operates in the 900MHz ISM band, well within the tunable range of inexpensive rtl-sdr dongles.
@@ -5,9 +7,6 @@ Utilities often use "smart meters" to optimize their residential meter reading i
 This project is a software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
 There's now experimental support for data collection and aggregation with [rtlamr-collect](https://github.com/bemasher/rtlamr-collect)!
-
-[![Build Status](https://travis-ci.org/bemasher/rtlamr.svg?branch=master&style=flat)](https://travis-ci.org/bemasher/rtlamr)
-[![AGPLv3 License](https://img.shields.io/badge/license-AGPLv3-blue.svg?style=flat)](http://choosealicense.com/licenses/agpl-3.0/)
 
 ### Requirements
 
@@ -27,13 +26,9 @@ go install github.com/bemasher/rtlamr@latest
 go get github.com/bemasher/rtlamr
 ```
 
-The command above will add the binary to `$HOME/go/bin/` or if you have set the `GOPATH` environment variable, it will be added to `$GOPATH/bin/`.  
+The command above will add the binary to `$HOME/go/bin/`, or if `$GOPATH` is set, `$GOPATH/bin/`.
 
-To run the rtlamr binary from any directory, ensure the directory the binary was added to is in to your path.  
-For example, is you are using bash with no `GOPATH` set, add the following to the end of your `.bashrc` file.
-```bash
-export PATH=$PATH:$HOME/go/bin
-```
+To run the rtlamr binary from any directory, ensure the directory containing the binary is in your `PATH` ([more info](https://superuser.com/questions/284342/what-are-path-and-other-environment-variables-and-how-can-i-set-or-use-them)).
 
 ### Usage
 
@@ -51,14 +46,10 @@ $ rtlamr
 
 The animation below shows an example of starting rtlamr along with the successful capture of an ERT message.
 ![Animation of output when starting rtlamr](assets/run_rtlamr.gif)  
-In this case, the captured message, with meter ID redacted, was:
-```
-{Time:2021-10-11T16:36:48.370 SCM:{ID: XXXXXXX Type:12 Tamper:{Phy:02 Enc:00} Consumption:   18708 CRC:0xDE68}}
-```
 
 ---
 
-If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp` with an address accessible by the system running the receiver.
+If you want to run the spectrum server on a different machine than the receiver you'll need to specify an address to listen on with the `-a` flag for `rtl_tcp`, and the `-server` flag for `rtlamr`.
 
 ### Message Types
 
