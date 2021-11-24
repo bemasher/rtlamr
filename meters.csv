@@ -24,6 +24,7 @@ http://fcc.io/SK9AMI6,Itron,AMI6,Electric,4,909.6,921.8
 http://fcc.io/SK9C1A-2,Itron,C1A-2,Electric,4,910,920
 http://fcc.io/SK9C1A-2,Itron,C1A-2,Electric,4,917.6,917.6
 http://fcc.io/SK9C1A-3,Itron,C1A-3,Electric,"4,7",909,922
+,Itron,C1SR,Electric,7,,
 http://fcc.io/SK9AMI-3,Itron,C2SOD,Electric,4,902.2,927.8
 http://fcc.io/SK9C3A-1H,Itron,C3A-1H,Electric,"4,8",909,922
 http://fcc.io/SK9C3A-1L,Itron,C3A1L,Electric,4,909,922
@@ -40,6 +41,8 @@ http://fcc.io/SK9R300S-2,Itron,R300S2,Electric,8,909.3,918.4
 ,Itron,R300SD3,Electric,8,,
 http://fcc.io/EO9100G,Itron,100G,Gas,12,903,928
 http://fcc.io/100GDLAN,Itron,100GDLAN,Gas,12,908,926.8
+,Itron,100G DLN,Gas,12,,
+,Itron,100G DLS,Gas,156,,
 http://fcc.io/EWQ100T,Itron,100T,Gas,9,903,926.9
 ,Itron,25G - 1 foot,Gas,0,,
 ,Itron,25G - 2 foot,Gas,1,,
