@@ -16,13 +16,24 @@ There's now experimental support for data collection and aggregation with [rtlam
   - Windows: [pre-built binaries](https://ftp.osmocom.org/binaries/windows/rtl-sdr/)
   - Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 
-### Building
+### Install
+To install rtlamr, run the following:  
+- For Go versions >= 1.16: 
+```bash
+go install github.com/bemasher/rtlamr@latest
+```
+- Or, for older versions of Go: 
+```bash
+go get github.com/bemasher/rtlamr
+```
 
-This project requires the package [`github.com/bemasher/rtltcp`](http://godoc.org/github.com/bemasher/rtltcp), which provides a means of controlling and sampling from rtl-sdr dongles via the `rtl_tcp` tool. This package will be automatically downloaded and installed when getting rtlamr. The following command should be all that is required to install rtlamr.
+The command above will add the binary to `$HOME/go/bin/` or if you have set the `GOPATH` environment variable, it will be added to `$GOPATH/bin/`.  
 
-    go get github.com/bemasher/rtlamr
-
-This will produce the binary `$GOPATH/bin/rtlamr`. For convenience it's common to add `$GOPATH/bin` to the path.
+To run the rtlamr binary from any directory, ensure the directory the binary was added to is in to your path.  
+For example, is you are using bash with no `GOPATH` set, add the following to the end of your `.bashrc` file.
+```bash
+export PATH=$PATH:$HOME/go/bin
+```
 
 ### Usage
 
@@ -37,6 +48,15 @@ $ rtl_tcp
 # Terminal B
 $ rtlamr
 ```
+
+The animation below shows an example of starting rtlamr along with the successful capture of an ERT message.
+![Animation of output when starting rtlamr](assets/run_rtlamr.gif)  
+In this case, the captured message, with meter ID redacted, was:
+```
+{Time:2021-10-11T16:36:48.370 SCM:{ID: XXXXXXX Type:12 Tamper:{Phy:02 Enc:00} Consumption:   18708 CRC:0xDE68}}
+```
+
+---
 
 If you want to run the spectrum server on a different machine than the receiver you'll want to specify an address to listen on that is accessible from the machine `rtlamr` will run on with the `-a` option for `rtl_tcp` with an address accessible by the system running the receiver.
 
