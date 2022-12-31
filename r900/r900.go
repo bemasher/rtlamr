@@ -284,7 +284,7 @@ func (r900 R900) Checksum() []byte {
 }
 
 func (r900 R900) String() string {
-	return fmt.Sprintf("{ID:%10d Unkn1:0x%02X MeterType:%02d Unkn2:0x%02X NoUse:%2d BackFlow:%1d Consumption:%8d Leak:%2d LeakNow:%1d}",
+	return fmt.Sprintf("{ID:%10d Unkn1:0x%1X MeterType:%02d Unkn2:0x%1X NoUse:%1d BackFlow:%1d Consumption:%8d Leak:%1d LeakNow:%1d}",
 		r900.ID,
 		r900.Unkn1,
 		r900.AmrType,
