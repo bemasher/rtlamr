@@ -257,7 +257,7 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 type R900 struct {
 	ID          uint32 `xml:",attr"` // 32 bits
 	Unkn1       uint8  `xml:",attr"` // 4 bits
-        AmrType   uint8  `xml:",attr"` // 4 bits
+        AmrType     uint8  `xml:",attr"` // 4 bits
         Unkn2       uint8  `xml:",attr"` // 3 bits
 	NoUse       uint8  `xml:",attr"` // 3 bits, day bins of no use
 	BackFlow    uint8  `xml:",attr"` // 2 bits, backflow past 35d hi/lo
