@@ -34,7 +34,7 @@ To run the rtlamr binary from any directory, ensure the directory containing the
 
 See the wiki page [Configuration](https://github.com/bemasher/rtlamr/wiki/Configuration) for details on configuring rtlamr.
 
-Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
+Running the receiver is as simple as starting an [`rtl_tcp`](https://osmocom.org/projects/rtl-sdr/wiki/Rtl-sdr) instance and then starting the receiver:
 
 ```bash
 # Terminal A
