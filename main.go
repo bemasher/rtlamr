@@ -232,7 +232,7 @@ func (rcvr *Receiver) Run() {
 					// Make a new LogMessage
 					var logMsg protocol.LogMessage
 					logMsg.Time = time.Now()
-					logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+					logMsg.Offset, _ = sampleFile.Seek(0, io.SeekCurrent)
 					logMsg.Length = sampleBuf.Len()
 					logMsg.Type = msg.MsgType()
 					logMsg.Message = msg
