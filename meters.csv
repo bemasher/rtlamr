@@ -6,11 +6,11 @@ URL,Manufacturer,Model Name,Commodity,ERT Type,Lower (MHz),Upper (MHz)
 ,Itron,41ER-1,Electric,5,,
 ,Itron,45EN-1,Electric,7,,
 ,Itron,45ER-1,Electric,7,,
-http://fcc.io/EO945ES-1,Itron,45ES-1,Electric,7,910,920
-http://fcc.io/EO950ESS,Itron,50ESS,Electric,8,910,920
-http://fcc.io/EO951ESS,Itron,51ESS,Electric,7,910,920
-http://fcc.io/EO952ESS,Itron,52ESS,Electric,5,910,920
-http://fcc.io/EO953ESS,Itron,53ESS,Electric,8,902,928
+https://fcc.io/EO945ES-1,Itron,45ES-1,Electric,7,910,920
+https://fcc.io/EO950ESS,Itron,50ESS,Electric,8,910,920
+https://fcc.io/EO951ESS,Itron,51ESS,Electric,7,910,920
+https://fcc.io/EO952ESS,Itron,52ESS,Electric,5,910,920
+https://fcc.io/EO953ESS,Itron,53ESS,Electric,8,902,928
 ,Itron,54ESS,Electric,4,,
 ,Itron,54ESS-HP,Electric,4,,
 ,Itron,55ESS,Electric,5,,
@@ -18,17 +18,17 @@ http://fcc.io/EO953ESS,Itron,53ESS,Electric,8,902,928
 ,Itron,56ESS,Electric,7,,
 ,Itron,56ESS-HP,Electric,7,,
 ,Itron,57ESS-HP,Electric,8,,
-http://fcc.io/SK9AMI-4,Itron,AMI4,Electric,4,902.2,927.8
-http://fcc.io/SK9AMI6,Itron,AMI6,Electric,4,902.2,927.8
-http://fcc.io/SK9AMI6,Itron,AMI6,Electric,4,909.6,921.8
-http://fcc.io/SK9C1A-2,Itron,C1A-2,Electric,4,910,920
-http://fcc.io/SK9C1A-2,Itron,C1A-2,Electric,4,917.6,917.6
-http://fcc.io/SK9C1A-3,Itron,C1A-3,Electric,"4,7",909,922
+https://fcc.io/SK9AMI-4,Itron,AMI4,Electric,4,902.2,927.8
+https://fcc.io/SK9AMI6,Itron,AMI6,Electric,4,902.2,927.8
+https://fcc.io/SK9AMI6,Itron,AMI6,Electric,4,909.6,921.8
+https://fcc.io/SK9C1A-2,Itron,C1A-2,Electric,4,910,920
+https://fcc.io/SK9C1A-2,Itron,C1A-2,Electric,4,917.6,917.6
+https://fcc.io/SK9C1A-3,Itron,C1A-3,Electric,"4,7",909,922
 ,Itron,C1SR,Electric,7,,
-http://fcc.io/SK9AMI-3,Itron,C2SOD,Electric,4,902.2,927.8
-http://fcc.io/SK9C3A-1H,Itron,C3A-1H,Electric,"4,8",909,922
-http://fcc.io/SK9C3A-1L,Itron,C3A1L,Electric,4,909,922
-http://fcc.io/SK9AMI-5,Itron,CVSO-B,Electric,4,902.2,927.8
+https://fcc.io/SK9AMI-3,Itron,C2SOD,Electric,4,902.2,927.8
+https://fcc.io/SK9C3A-1H,Itron,C3A-1H,Electric,"4,8",909,922
+https://fcc.io/SK9C3A-1L,Itron,C3A1L,Electric,4,909,922
+https://fcc.io/SK9AMI-5,Itron,CVSO-B,Electric,4,902.2,927.8
 ,Itron,R300,Electric,4,,
 ,Itron,R300-HP,Electric,5,,
 ,Itron,R300C,Electric,4,,
@@ -36,31 +36,31 @@ http://fcc.io/SK9AMI-5,Itron,CVSO-B,Electric,4,902.2,927.8
 ,Itron,R300CD-HP,Electric,4,,
 ,Itron,R300CD3-HP,Electric,8,,
 ,Itron,R300S,Electric,5,,
-http://fcc.io/SK9R300S-2,Itron,R300S2,Electric,8,909.3,918.4
+https://fcc.io/SK9R300S-2,Itron,R300S2,Electric,8,909.3,918.4
 ,Itron,R300SD,Electric,4,,
 ,Itron,R300SD3,Electric,8,,
-http://fcc.io/EO9100G,Itron,100G,Gas,12,903,928
-http://fcc.io/100GDLAN,Itron,100GDLAN,Gas,12,908,926.8
+https://fcc.io/EO9100G,Itron,100G,Gas,12,903,928
+https://fcc.io/100GDLAN,Itron,100GDLAN,Gas,12,908,926.8
 ,Itron,100G DLN,Gas,12,,
 ,Itron,100G DLS,Gas,156,,
-http://fcc.io/EWQ100T,Itron,100T,Gas,9,903,926.9
+https://fcc.io/EWQ100T,Itron,100T,Gas,9,903,926.9
 ,Itron,25G - 1 foot,Gas,0,,
 ,Itron,25G - 2 foot,Gas,1,,
 ,Itron,40G,Gas,2,,
 ,Itron,40GB,Gas,2,,
-http://fcc.io/EWQ100W,Itron,100W,Water,11,903,927
+https://fcc.io/EWQ100W,Itron,100W,Water,11,903,927
 ,Itron,100WP,Water,11,,
 ,Itron,100WR,Water,11,,
 ,Itron,40W,Water,3,,
 ,Itron,50W,Water,3,,
-http://fcc.io/EO960W,Itron,60W,Water,13,910,919.8
+https://fcc.io/EO960W,Itron,60W,Water,13,910,919.8
 ,Itron,60WP,Water,13,,
-http://fcc.io/EO980WI,Itron,80W-i,Water,13,910,920
-http://fcc.io/TEB-41ER-1,Landis+Gyr,AirPoint 41 Series,Electric,5,910,920
-http://fcc.io/TEB-AIRPT622,Landis+Gyr,AirPoint Focus,Electric,5,913.672,916.138
-http://fcc.io/TEB-AIRPT654,Landis+Gyr,AirPoint I-210,Electric,5,913.672,916.138
-http://fcc.io/TEB-AIRPT652,Landis+Gyr,AirPoint iCon,Electric,5,913.75,916.25
-http://fcc.io/TEB-AIRPT677,Landis+Gyr,HP AirPoint,Electric,5,909.586,921.773
-http://fcc.io/TEB-AIRPT725,Landis+Gyr,HP AirPoint,Electric,5,909.586,921.773
-http://fcc.io/TEB-AIRPT657,Landis+Gyr,HP AirPoint I-210,Electric,5,909.586,921.773
-http://fcc.io/F9CC1C-3,Schlumberger,CENTRON OOK RF,Electric,12,917.58,917.58
+https://fcc.io/EO980WI,Itron,80W-i,Water,13,910,920
+https://fcc.io/TEB-41ER-1,Landis+Gyr,AirPoint 41 Series,Electric,5,910,920
+https://fcc.io/TEB-AIRPT622,Landis+Gyr,AirPoint Focus,Electric,5,913.672,916.138
+https://fcc.io/TEB-AIRPT654,Landis+Gyr,AirPoint I-210,Electric,5,913.672,916.138
+https://fcc.io/TEB-AIRPT652,Landis+Gyr,AirPoint iCon,Electric,5,913.75,916.25
+https://fcc.io/TEB-AIRPT677,Landis+Gyr,HP AirPoint,Electric,5,909.586,921.773
+https://fcc.io/TEB-AIRPT725,Landis+Gyr,HP AirPoint,Electric,5,909.586,921.773
+https://fcc.io/TEB-AIRPT657,Landis+Gyr,HP AirPoint I-210,Electric,5,909.586,921.773
+https://fcc.io/F9CC1C-3,Schlumberger,CENTRON OOK RF,Electric,12,917.58,917.58
