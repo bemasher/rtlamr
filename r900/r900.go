@@ -226,22 +226,24 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 		}
 
 		id, _ := strconv.ParseUint(bits[:32], 2, 32)
-		unkn1, _ := strconv.ParseUint(bits[32:40], 2, 8)
-		nouse, _ := strconv.ParseUint(bits[40:46], 2, 6)
+		unkn1, _ := strconv.ParseUint(bits[32:36], 2, 4)
+                metertype, _ := strconv.ParseUint(bits[36:40], 2, 4)
+                unkn2, _ := strconv.ParseUint(bits[40:43], 2, 3)
+		nouse, _ := strconv.ParseUint(bits[43:46], 2, 3)
 		backflow, _ := strconv.ParseUint(bits[46:48], 2, 2)
-		consumption, _ := strconv.ParseUint(bits[48:72], 2, 24)
-		unkn3, _ := strconv.ParseUint(bits[72:74], 2, 2)
-		leak, _ := strconv.ParseUint(bits[74:78], 2, 4)
+		consumption, _ := strconv.ParseUint(bits[72:75] + bits[48:72], 2, 27)
+		leak, _ := strconv.ParseUint(bits[75:78], 2, 3)
 		leaknow, _ := strconv.ParseUint(bits[78:80], 2, 2)
 
 		var r900 R900
 
 		r900.ID = uint32(id)
 		r900.Unkn1 = uint8(unkn1)
+		r900.AmrType = uint8(metertype)
+		r900.Unkn2 = uint8(unkn2)
 		r900.NoUse = uint8(nouse)
 		r900.BackFlow = uint8(backflow)
 		r900.Consumption = uint32(consumption)
-		r900.Unkn3 = uint8(unkn3)
 		r900.Leak = uint8(leak)
 		r900.LeakNow = uint8(leaknow)
 		copy(r900.checksum[:], symbols[16:])
@@ -254,12 +256,13 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 
 type R900 struct {
 	ID          uint32 `xml:",attr"` // 32 bits
-	Unkn1       uint8  `xml:",attr"` // 8 bits
-	NoUse       uint8  `xml:",attr"` // 6 bits, day bins of no use
+	Unkn1       uint8  `xml:",attr"` // 4 bits
+        AmrType     uint8  `xml:",attr"` // 4 bits
+        Unkn2       uint8  `xml:",attr"` // 3 bits
+	NoUse       uint8  `xml:",attr"` // 3 bits, day bins of no use
 	BackFlow    uint8  `xml:",attr"` // 2 bits, backflow past 35d hi/lo
-	Consumption uint32 `xml:",attr"` // 24 bits
-	Unkn3       uint8  `xml:",attr"` // 2 bits
-	Leak        uint8  `xml:",attr"` // 4 bits, day bins of leak
+	Consumption uint32 `xml:",attr"` // 27 bits
+	Leak        uint8  `xml:",attr"` // 3 bits, day bins of leak
 	LeakNow     uint8  `xml:",attr"` // 2 bits, leak past 24h hi/lo
 	checksum    [5]byte
 }
@@ -273,7 +276,7 @@ func (r900 R900) MeterID() uint32 {
 }
 
 func (r900 R900) MeterType() uint8 {
-	return r900.Unkn1
+	return r900.AmrType
 }
 
 func (r900 R900) Checksum() []byte {
@@ -281,13 +284,14 @@ func (r900 R900) Checksum() []byte {
 }
 
 func (r900 R900) String() string {
-	return fmt.Sprintf("{ID:%10d Unkn1:0x%02X NoUse:%2d BackFlow:%1d Consumption:%8d Unkn3:0x%02X Leak:%2d LeakNow:%1d}",
+	return fmt.Sprintf("{ID:%10d Unkn1:0x%1X MeterType:%02d Unkn2:0x%1X NoUse:%1d BackFlow:%1d Consumption:%8d Leak:%1d LeakNow:%1d}",
 		r900.ID,
 		r900.Unkn1,
+		r900.AmrType,
+		r900.Unkn2,
 		r900.NoUse,
 		r900.BackFlow,
 		r900.Consumption,
-		r900.Unkn3,
 		r900.Leak,
 		r900.LeakNow,
 	)
@@ -296,10 +300,11 @@ func (r900 R900) String() string {
 func (r900 R900) Record() (r []string) {
 	r = append(r, strconv.FormatUint(uint64(r900.ID), 10))
 	r = append(r, strconv.FormatUint(uint64(r900.Unkn1), 10))
+	r = append(r, strconv.FormatUint(uint64(r900.AmrType), 10))
+	r = append(r, strconv.FormatUint(uint64(r900.Unkn2), 10))
 	r = append(r, strconv.FormatUint(uint64(r900.NoUse), 10))
 	r = append(r, strconv.FormatUint(uint64(r900.BackFlow), 10))
 	r = append(r, strconv.FormatUint(uint64(r900.Consumption), 10))
-	r = append(r, strconv.FormatUint(uint64(r900.Unkn3), 10))
 	r = append(r, strconv.FormatUint(uint64(r900.Leak), 10))
 	r = append(r, strconv.FormatUint(uint64(r900.LeakNow), 10))
 
