@@ -22,6 +22,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -32,21 +33,27 @@ import (
 	"github.com/bemasher/rtlamr/protocol"
 )
 
-var sampleFilename = flag.String("samplefile", os.DevNull, "raw signal dump file")
-var sampleFile *os.File
+var (
+	sampleFile   = flag.String("samplefile", os.DevNull, "raw signal dump file")
+	sampleWriter = io.Discard
+)
 
 var msgType StringMap
 
 var symbolLength = flag.Int("symbollength", 72, "symbol length in samples (8, 32, 40, 48, 56, 64, 72, 80, 88, 96)")
 
-var timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
-var meterID MeterIDFilter
-var meterType MeterTypeFilter
+var (
+	timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
+	meterID   MeterIDFilter
+	meterType MeterTypeFilter
+)
 
-var unique = flag.Bool("unique", false, "suppress duplicate messages from each meter")
+var _ = flag.Bool("unique", false, "suppress duplicate messages from each meter")
 
-var encoder Encoder
-var format = flag.String("format", "plain", "decoded message output format: plain, csv, json, or xml")
+var (
+	encoder Encoder
+	format  = flag.String("format", "plain", "decoded message output format: plain, csv, json, or xml")
+)
 
 var single = flag.Bool("single", false, "one shot execution, if used with -filterid, will wait for exactly one packet from each meter id")
 
@@ -124,15 +131,17 @@ func HandleFlags() {
 		log.Fatal("invalid symbollength")
 	}
 
-	sampleFile, err = os.Create(*sampleFilename)
-	if err != nil {
-		log.Fatal("Error creating sample file:", err)
+	if *sampleFile != os.DevNull {
+		sampleWriter, err = os.Create(*sampleFile)
+		if err != nil {
+			log.Fatal("Error creating sample file:", err)
+		}
 	}
 
 	*format = strings.ToLower(*format)
 	switch *format {
 	case "plain":
-		encoder = PlainEncoder{*sampleFilename}
+		encoder = PlainEncoder{*sampleFile}
 	case "csv":
 		encoder = csv.NewEncoder(os.Stdout)
 	case "json":
@@ -165,7 +174,7 @@ type StringMap map[string]bool
 
 func (m StringMap) String() (s string) {
 	var keys []string
-	for key, _ := range m {
+	for key := range m {
 		keys = append(keys, key)
 	}
 	return strings.Join(keys, ",")
@@ -240,7 +249,7 @@ func (uf UniqueFilter) Filter(msg protocol.Message) bool {
 	checksum := msg.Checksum()
 	mid := uint(msg.MeterID())
 
-	if val, ok := uf[mid]; ok && bytes.Compare(val, checksum) == 0 {
+	if val, ok := uf[mid]; ok && bytes.Equal(val, checksum) {
 		return false
 	}
 
