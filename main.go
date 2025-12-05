@@ -22,12 +22,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -124,8 +123,6 @@ func (rcvr *Receiver) NewReceiver() {
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
 	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
-
-	return
 }
 
 func (rcvr *Receiver) Close() {
@@ -137,7 +134,7 @@ func (rcvr *Receiver) Close() {
 func (rcvr *Receiver) Run() {
 	rcvr.wg.Add(3)
 
-	sampleBuf := new(bytes.Buffer)
+	sampleBuf := &bytes.Buffer{}
 
 	// Allocate a channel of blocks.
 	blockCh := make(chan []byte)
@@ -211,14 +208,12 @@ func (rcvr *Receiver) Run() {
 					delete(next, key)
 				}
 
-				// If dumping samples, discard the oldest block from the buffer if
+				// Discard the oldest block from the buffer if
 				// it's full and write the new block to it.
-				if *sampleFilename != os.DevNull {
-					if sampleBuf.Len() > rcvr.d.Cfg.BufferLength<<1 {
-						io.CopyN(ioutil.Discard, sampleBuf, int64(len(block)))
-					}
-					sampleBuf.Write(block)
+				if sampleBuf.Len() > rcvr.d.Cfg.BufferLength<<1 {
+					io.CopyN(io.Discard, sampleBuf, int64(len(block)))
 				}
+				sampleBuf.Write(block)
 
 				pktFound := false
 
@@ -232,7 +227,9 @@ func (rcvr *Receiver) Run() {
 					// Make a new LogMessage
 					var logMsg protocol.LogMessage
 					logMsg.Time = time.Now()
-					logMsg.Offset, _ = sampleFile.Seek(0, os.SEEK_CUR)
+					if s, ok := sampleWriter.(io.Seeker); ok {
+						logMsg.Offset, _ = s.Seek(0, io.SeekCurrent)
+					}
 					logMsg.Length = sampleBuf.Len()
 					logMsg.Type = msg.MsgType()
 					logMsg.Message = msg
@@ -267,11 +264,9 @@ func (rcvr *Receiver) Run() {
 				}
 
 				if pktFound {
-					if *sampleFilename != os.DevNull {
-						_, err := sampleFile.Write(sampleBuf.Bytes())
-						if err != nil {
-							log.Fatal("Error writing raw samples to file:", err)
-						}
+					_, err := sampleWriter.Write(sampleBuf.Bytes())
+					if err != nil {
+						log.Fatal("Error writing raw samples to file:", err)
 					}
 					if *single && len(meterID.UintMap) == 0 {
 						rcvr.cancel()
@@ -290,12 +285,6 @@ func init() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 }
 
-var (
-	buildTag   = "dev"     // v#.#.#
-	buildDate  = "unknown" // date -u '+%Y-%m-%d'
-	commitHash = "unknown" // git rev-parse HEAD
-)
-
 func main() {
 	rcvr.RegisterFlags()
 	RegisterFlags()
@@ -304,9 +293,11 @@ func main() {
 	rcvr.HandleFlags()
 
 	if *version {
-		fmt.Println("Build Tag: ", buildTag)
-		fmt.Println("Build Date:", buildDate)
-		fmt.Println("Commit:    ", commitHash)
+		if info, ok := debug.ReadBuildInfo(); ok {
+			fmt.Printf("%+v\n", info)
+		} else {
+			log.Fatal("could not read build info")
+		}
 		os.Exit(0)
 	}
 
@@ -315,7 +306,9 @@ func main() {
 	rcvr.NewReceiver()
 
 	defer func() {
-		sampleFile.Close()
+		if c, ok := sampleWriter.(io.Closer); ok {
+			c.Close()
+		}
 		rcvr.Close()
 
 		if rcvr.err != nil {
@@ -328,7 +321,7 @@ func main() {
 
 	// Setup signal channel for interruption.
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(sigCh, os.Interrupt)
 
 	// Setup time limit channel
 	timeLimitCh := make(<-chan time.Time, 1)
