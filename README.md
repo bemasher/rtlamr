@@ -10,7 +10,7 @@ There's now experimental support for data collection and aggregation with [rtlam
 
 ### Requirements
 
-- GoLang >=1.11 (Go build environment setup guide: http://golang.org/doc/code.html)
+- GoLang >=1.16 (Go build environment setup guide: http://golang.org/doc/code.html)
 - rtl-sdr
   - Windows: [pre-built binaries](https://ftp.osmocom.org/binaries/windows/rtl-sdr/)
   - Linux: [source and build instructions](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
@@ -34,7 +34,7 @@ To run the rtlamr binary from any directory, ensure the directory containing the
 
 See the wiki page [Configuration](https://github.com/bemasher/rtlamr/wiki/Configuration) for details on configuring rtlamr.
 
-Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
+Running the receiver is as simple as starting an [`rtl_tcp`](https://osmocom.org/projects/rtl-sdr/wiki/Rtl-sdr) instance and then starting the receiver:
 
 ```bash
 # Terminal A
@@ -67,6 +67,8 @@ The following message types are supported by rtlamr:
 Currently the only tested meter is the Itron C1SR and Itron 40G. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
 
 Check out the table of meters I've been compiling from various internet sources: [ERT Compatible Meters](https://github.com/bemasher/rtlamr/blob/master/meters.md)
+
+User provided, but otherwise unverified compatible meters: [Google Sheets](https://docs.google.com/spreadsheets/d/1lTeHkk7rwFfq0joMWngrhnJA2nXAk4m82eApVaAKfhw/edit?usp=sharing)
 
 Look for an FCC ID label on your meter, it should identify the two-digit commodity or endpoint type and the eight- or ten-digit endpoint ID of your meter: `## ########[##]`. Below are a few examples:
 
