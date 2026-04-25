@@ -5,3 +5,5 @@ release.7z
 *.diff
 desktop.ini
 *~
+# Added by goreleaser init:
+dist/
