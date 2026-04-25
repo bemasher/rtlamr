@@ -22,10 +22,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -75,7 +78,7 @@ func (rcvr *Receiver) NewReceiver() {
 	for name := range msgType {
 		p, err := protocol.NewParser(name, *symbolLength)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("message type", "error", err)
 		}
 
 		rcvr.d.RegisterProtocol(p)
@@ -86,7 +89,8 @@ func (rcvr *Receiver) NewReceiver() {
 
 	// Connect to rtl_tcp server.
 	if rcvr.err = rcvr.Connect(nil); rcvr.err != nil {
-		log.Fatalf("%+v", errors.Wrap(rcvr.err, "rcvr.Connect"))
+		slog.Error("receiver connect", "error", errors.Wrap(rcvr.err, "rcvr.Connect"))
+		os.Exit(1)
 	}
 
 	cfg := rcvr.d.Cfg
@@ -122,7 +126,7 @@ func (rcvr *Receiver) NewReceiver() {
 	rcvr.d.Log()
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
-	log.Println("GainCount:", rcvr.SDR.Info.GainCount)
+	slog.Info("rtl_tcp", "GainCount", rcvr.SDR.Info.GainCount)
 }
 
 func (rcvr *Receiver) Close() {
@@ -157,35 +161,47 @@ func (rcvr *Receiver) Run() {
 		defer close(blockCh)
 		defer rcvr.wg.Done()
 
-		// Make two sample blocks, one for reading, and one for the receiver to
-		// decode, these are exchanged each time we read a new block.
-		blockA := make([]byte, rcvr.d.Cfg.BlockSize2)
-		blockB := make([]byte, rcvr.d.Cfg.BlockSize2)
+		tick := time.Tick(time.Second)
+
+		bytesRead := 0
 
 		for {
+			block := make([]byte, rcvr.d.Cfg.BlockSize2)
+
+			rcvr.err = rcvr.SetDeadline(time.Now().Add(5 * time.Second))
+			if rcvr.err != nil {
+				rcvr.err = errors.Wrap(rcvr.err, "rcvr.SetDeadline")
+				return
+			}
+
+			// Read new sample block.
+			for offset := 0; offset < len(block); {
+				var n int
+
+				n, rcvr.err = rcvr.Read(block[offset:])
+				if rcvr.err != nil {
+					rcvr.err = errors.Wrap(rcvr.err, "rcvr.Read")
+					return
+				}
+
+				offset += n
+				bytesRead += n
+			}
+
+			select {
+			case <-tick:
+				if bytesRead>>1 < rcvr.d.Cfg.SampleRate {
+					slog.Error("not keeping up with rtl_tcp", "rate", bytesRead>>1)
+				}
+				bytesRead = 0
+			default:
+			}
+
 			select {
 			// Exit if we've been told to stop.
 			case <-rcvr.ctx.Done():
 				return
-			default:
-				rcvr.err = rcvr.SetDeadline(time.Now().Add(5 * time.Second))
-				if rcvr.err != nil {
-					rcvr.err = errors.Wrap(rcvr.err, "rcvr.SetDeadline")
-					return
-				}
-
-				// Read new sample block.
-				_, rcvr.err = io.ReadFull(rcvr, blockA)
-				if rcvr.err != nil {
-					rcvr.err = errors.Wrap(rcvr.err, "io.ReadFull")
-					return
-				}
-
-				// Send the sample block.
-				blockCh <- blockA
-
-				// Exchange blocks for next read.
-				blockA, blockB = blockB, blockA
+			case blockCh <- block: // Send the sample block.
 			}
 		}
 	}()
@@ -266,7 +282,8 @@ func (rcvr *Receiver) Run() {
 				if pktFound {
 					_, err := sampleWriter.Write(sampleBuf.Bytes())
 					if err != nil {
-						log.Fatal("Error writing raw samples to file:", err)
+						slog.Error("error writing raw samples to file", "error", err)
+						os.Exit(1)
 					}
 					if *single && len(meterID.UintMap) == 0 {
 						rcvr.cancel()
@@ -282,7 +299,25 @@ func (rcvr *Receiver) Run() {
 }
 
 func init() {
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
+	_, file, _, ok := runtime.Caller(0)
+	dir := ""
+	if ok {
+		dir = filepath.Dir(file)
+		dir = filepath.Dir(dir) + string(filepath.Separator)
+		fmt.Println(dir)
+	}
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr,
+		&slog.HandlerOptions{
+			AddSource: true,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				if a.Key == slog.SourceKey {
+					source := a.Value.Any().(*slog.Source)
+					source.File = strings.TrimPrefix(filepath.FromSlash(source.File), dir)
+				}
+				return a
+			},
+		})))
 }
 
 func main() {
@@ -296,7 +331,7 @@ func main() {
 		if info, ok := debug.ReadBuildInfo(); ok {
 			fmt.Printf("%+v\n", info)
 		} else {
-			log.Fatal("could not read build info")
+			slog.Error("could not read build info")
 		}
 		os.Exit(0)
 	}
@@ -312,7 +347,8 @@ func main() {
 		rcvr.Close()
 
 		if rcvr.err != nil {
-			log.Fatalf("%+v\n", rcvr.err)
+			slog.Error("receiver", "error", rcvr.err)
+			os.Exit(1)
 		}
 	}()
 
@@ -331,11 +367,11 @@ func main() {
 
 	select {
 	case sig := <-sigCh:
-		log.Println("Received Signal:", sig)
+		slog.Info("signal received", "signal", sig)
 	case <-timeLimitCh:
-		log.Println("Time Limit Reached:", time.Since(start))
+		slog.Info("time limit reached:", "since", time.Since(start))
 	case <-rcvr.ctx.Done():
-		log.Println("Receiver context cancelled.")
+		slog.Info("receiver context cancelled")
 	}
 
 	rcvr.Close()
