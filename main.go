@@ -304,7 +304,6 @@ func init() {
 	if ok {
 		dir = filepath.Dir(file)
 		dir = filepath.Dir(dir) + string(filepath.Separator)
-		fmt.Println(dir)
 	}
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr,
