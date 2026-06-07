@@ -35,7 +35,6 @@ func init() {
 }
 
 func NewPacketConfig(chipLength int) (cfg protocol.PacketConfig) {
-
 	return
 }
 
@@ -49,7 +48,7 @@ type Parser struct {
 	csum      []float64
 	quantized []byte
 
-	once *sync.Once
+	once sync.Once
 }
 
 func NewParser(chipLength int) protocol.Parser {
