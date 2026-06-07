@@ -19,7 +19,6 @@ package r900
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"strconv"
 	"sync"
 
@@ -48,10 +47,9 @@ type Parser struct {
 
 	signal    []float64
 	csum      []float64
-	filtered  [][3]float64
 	quantized []byte
 
-	once sync.Once
+	once *sync.Once
 }
 
 func NewParser(chipLength int) protocol.Parser {
@@ -114,49 +112,49 @@ func (p Parser) filter() {
 	// simplification but is necessary for efficiency.
 
 	cfg := p.Decoder.Cfg
-	for idx := 0; idx < cfg.BufferLength-cfg.ChipLength*4; idx++ {
+	cl := cfg.ChipLength
+	cl2 := cl * 2
+	cl3 := cl * 3
+	cl4 := cl * 4
+
+	limit := cfg.BufferLength - cl4
+
+	for idx := 0; idx < limit; idx++ {
 		c0 := p.csum[idx]
-		c1 := p.csum[idx+cfg.ChipLength] * 2
-		c2 := p.csum[idx+cfg.ChipLength*2] * 2
-		c3 := p.csum[idx+cfg.ChipLength*3] * 2
-		c4 := p.csum[idx+cfg.ChipLength*4]
+		c1 := p.csum[idx+cl] + p.csum[idx+cl]
+		c2 := p.csum[idx+cl2] + p.csum[idx+cl2]
+		c3 := p.csum[idx+cl3] + p.csum[idx+cl3]
+		c4 := p.csum[idx+cl4]
 
-		p.filtered[idx][0] = c2 - c4 - c0           // 1100
-		p.filtered[idx][1] = c1 - c2 + c3 - c4 - c0 // 1010
-		p.filtered[idx][2] = c1 - c3 + c4 - c0      // 1001
-	}
-}
+		a0 := c2 - c4 - c0           // 1100
+		a1 := c1 - c2 + c3 - c4 - c0 // 1010
+		a2 := c1 - c3 + c4 - c0      // 1001
 
-// Determine the symbol that exists at each sample of the signal.
-func (p Parser) quantize() {
-	// 0 0011, 3 1100
-	// 1 0101, 4 1010
-	// 2 0110, 5 1001
-
-	for idx, vec := range p.filtered {
+		// Quantize in the same loop
+		maxAbs := abs(a0)
 		argmax := byte(0)
-		max := math.Abs(vec[0])
+		if abs(a1) > maxAbs {
 
-		// If v1 is larger than v0, update max and argmax.
-		if v1 := math.Abs(vec[1]); v1 > max {
-			max = v1
+			maxAbs = abs(a1)
 			argmax = 1
 		}
-
-		// If v2 is larger than the greater of v1 or v0, update max and argmax.
-		if v2 := math.Abs(vec[2]); v2 > max {
-			max = v2
+		if abs(a2) > maxAbs {
+			maxAbs = abs(a2)
 			argmax = 2
 		}
 
-		// Set the output symbol index.
 		p.quantized[idx] = argmax
-
-		// If the sign is negative, jump to the index of the inverted symbol.
-		if vec[argmax] > 0 {
+		if [3]float64{a0, a1, a2}[argmax] > 0 {
 			p.quantized[idx] += 3
 		}
 	}
+}
+
+func abs[F float32 | float64](x F) F {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // Given a list of indices the preamble exists at, decode and parse a message.
@@ -165,7 +163,6 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 		p.cfg = p.Decoder.Cfg
 		p.signal = make([]float64, p.Decoder.Cfg.BufferLength)
 		p.csum = make([]float64, p.Decoder.Cfg.BufferLength+1)
-		p.filtered = make([][3]float64, p.Decoder.Cfg.BufferLength)
 		p.quantized = make([]byte, p.Decoder.Cfg.BufferLength)
 	})
 
@@ -174,7 +171,6 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength:])
 
 	p.filter()
-	p.quantize()
 
 	preambleLength := cfg.PreambleLength
 	chipLength := cfg.ChipLength
