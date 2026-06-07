@@ -41,25 +41,6 @@ type PacketConfig struct {
 	CenterFreq   uint32
 }
 
-func (d Decoder) Log() {
-	log.Println("CenterFreq:", d.Cfg.CenterFreq)
-	log.Println("SampleRate:", d.Cfg.SampleRate)
-	log.Println("DataRate:", d.Cfg.DataRate)
-	log.Println("ChipLength:", d.Cfg.ChipLength)
-	log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
-	log.Println("PreambleLength:", d.Cfg.PreambleLength)
-	log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
-	log.Println("PacketLength:", d.Cfg.PacketLength)
-
-	var preambles []string
-	for preamble, _ := range d.preambleStrs {
-		preambles = append(preambles, preamble)
-	}
-
-	log.Println("Protocols:", strings.Join(d.protocols, ","))
-	log.Println("Preambles:", strings.Join(preambles, ","))
-}
-
 // Decoder contains buffers and radio configuration.
 type Decoder struct {
 	Cfg PacketConfig
@@ -87,6 +68,25 @@ func NewDecoder() Decoder {
 		preambles:    make(map[string][]Parser),
 		preambleStrs: make(map[string]bool),
 	}
+}
+
+func (d Decoder) Log() {
+	log.Println("CenterFreq:", d.Cfg.CenterFreq)
+	log.Println("SampleRate:", d.Cfg.SampleRate)
+	log.Println("DataRate:", d.Cfg.DataRate)
+	log.Println("ChipLength:", d.Cfg.ChipLength)
+	log.Println("PreambleSymbols:", d.Cfg.PreambleSymbols)
+	log.Println("PreambleLength:", d.Cfg.PreambleLength)
+	log.Println("PacketSymbols:", d.Cfg.PacketSymbols)
+	log.Println("PacketLength:", d.Cfg.PacketLength)
+
+	var preambles []string
+	for preamble := range d.preambleStrs {
+		preambles = append(preambles, preamble)
+	}
+
+	log.Println("Protocols:", strings.Join(d.protocols, ","))
+	log.Println("Preambles:", strings.Join(preambles, ","))
 }
 
 func max(a, b int) int {
@@ -157,8 +157,6 @@ func (d *Decoder) Allocate() {
 	d.sIdxB = make([]int, 0, d.Cfg.BlockSize)
 
 	d.packed = make([]byte, (d.Cfg.BlockSize+d.Cfg.PreambleLength+7)>>3)
-
-	return
 }
 
 // Decode accepts a sample block and returns a channel of messages.
@@ -244,18 +242,16 @@ func (d Decoder) Filter(input []float64, output []byte) {
 		f := (l - d.csum[idx]) - (upper[idx] - l)
 		output[idx] = 1 - byte(math.Float64bits(f)>>63)
 	}
-
-	return
 }
 
 // Return a list of indices into the quantized signal at which a valid preamble
 // exists.
-// 1. Pack the quantized signal into bytes.
-// 2. Build a list of indices by eliminating bytes that contain no bits matching
-//    the first bit of the preamble.
-// 3. Continue eliminating indices at which the preamble cannot exist.
-// 4. Convert indices from byte-based to sample-based.
-// 5. Check each of these indices for the preamble.
+//  1. Pack the quantized signal into bytes.
+//  2. Build a list of indices by eliminating bytes that contain no bits matching
+//     the first bit of the preamble.
+//  3. Continue eliminating indices at which the preamble cannot exist.
+//  4. Convert indices from byte-based to sample-based.
+//  5. Check each of these indices for the preamble.
 func (d *Decoder) Search(preamble []byte) []int {
 	symLenByte := d.Cfg.SymbolLength >> 3
 

@@ -21,7 +21,7 @@ var (
 type NewParserFunc func(symbolLength int) Parser
 
 // Given a name and a parser, register a parser for use.
-// Later used by underscore improting each parser package:
+// Later used by underscore importing each parser package:
 //
 // import _ "github.com/bemasher/rtlamr/scm"
 //
