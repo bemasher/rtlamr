@@ -190,7 +190,8 @@ func (rcvr *Receiver) Run() {
 
 			select {
 			case <-tick:
-				if bytesRead>>1 < rcvr.d.Cfg.SampleRate {
+				// Complain if received samples are less than 90% configured rate.
+				if bytesRead>>1 < (rcvr.d.Cfg.SampleRate * 9 / 10) {
 					slog.Error("not keeping up with rtl_tcp", "rate", bytesRead>>1)
 				}
 				bytesRead = 0
