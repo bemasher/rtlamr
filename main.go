@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -31,8 +32,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtltcp"
@@ -52,15 +51,14 @@ type Receiver struct {
 	d  protocol.Decoder
 	fc protocol.FilterChain
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     *sync.WaitGroup
-
-	err error
+	ctx  context.Context
+	canc context.CancelCauseFunc
+	wg   *sync.WaitGroup
 }
 
-func (rcvr *Receiver) NewReceiver() {
-	rcvr.ctx, rcvr.cancel = context.WithCancel(context.Background())
+func (rcvr *Receiver) NewReceiver(ctx context.Context) {
+	rcvr.ctx, rcvr.canc = context.WithCancelCause(ctx)
+
 	rcvr.wg = &sync.WaitGroup{}
 
 	rcvr.d = protocol.NewDecoder()
@@ -88,9 +86,9 @@ func (rcvr *Receiver) NewReceiver() {
 	rcvr.d.Allocate()
 
 	// Connect to rtl_tcp server.
-	if rcvr.err = rcvr.Connect(nil); rcvr.err != nil {
-		slog.Error("receiver connect", "error", errors.Wrap(rcvr.err, "rcvr.Connect"))
-		os.Exit(1)
+	if err := rcvr.Connect(); err != nil {
+		rcvr.canc(fmt.Errorf("rcvr.Connect: %w", err))
+		return
 	}
 
 	cfg := rcvr.d.Cfg
@@ -130,7 +128,6 @@ func (rcvr *Receiver) NewReceiver() {
 }
 
 func (rcvr *Receiver) Close() {
-	rcvr.cancel()
 	rcvr.wg.Wait()
 	rcvr.SDR.Close()
 }
@@ -157,7 +154,7 @@ func (rcvr *Receiver) Run() {
 
 	// Read and send sample blocks to the decoder.
 	go func() {
-		defer rcvr.cancel()
+		defer rcvr.canc(nil)
 		defer close(blockCh)
 		defer rcvr.wg.Done()
 
@@ -168,9 +165,9 @@ func (rcvr *Receiver) Run() {
 		for {
 			block := make([]byte, rcvr.d.Cfg.BlockSize2)
 
-			rcvr.err = rcvr.SetDeadline(time.Now().Add(5 * time.Second))
-			if rcvr.err != nil {
-				rcvr.err = errors.Wrap(rcvr.err, "rcvr.SetDeadline")
+			err := rcvr.SetDeadline(time.Now().Add(5 * time.Second))
+			if err != nil {
+				rcvr.canc(fmt.Errorf("rcvr.SetDeadline: %w", err))
 				return
 			}
 
@@ -178,9 +175,9 @@ func (rcvr *Receiver) Run() {
 			for offset := 0; offset < len(block); {
 				var n int
 
-				n, rcvr.err = rcvr.Read(block[offset:])
-				if rcvr.err != nil {
-					rcvr.err = errors.Wrap(rcvr.err, "rcvr.Read")
+				n, err = rcvr.Read(block[offset:])
+				if err != nil {
+					rcvr.canc(fmt.Errorf("rcvr.Read: %w", err))
 					return
 				}
 
@@ -192,7 +189,7 @@ func (rcvr *Receiver) Run() {
 			case <-tick:
 				// Complain if received samples are less than 90% configured rate.
 				if bytesRead>>1 < (rcvr.d.Cfg.SampleRate * 9 / 10) {
-					slog.Error("not keeping up with rtl_tcp", "rate", bytesRead>>1)
+					slog.Warn("not keeping up with rtl_tcp", "rate", bytesRead>>1)
 				}
 				bytesRead = 0
 			default:
@@ -208,7 +205,7 @@ func (rcvr *Receiver) Run() {
 	}()
 
 	go func() {
-		defer rcvr.cancel()
+		defer rcvr.canc(nil)
 		defer rcvr.wg.Done()
 
 		for {
@@ -263,10 +260,9 @@ func (rcvr *Receiver) Run() {
 					}
 
 					// Encode the message
-					rcvr.err = encoder.Encode(logMsg)
-					rcvr.err = errors.Wrap(rcvr.err, "encoder.Encode")
-
-					if rcvr.err != nil {
+					err := encoder.Encode(logMsg)
+					if err != nil {
+						rcvr.canc(fmt.Errorf("encoder.Encode: %w", err))
 						return
 					}
 
@@ -287,7 +283,7 @@ func (rcvr *Receiver) Run() {
 						os.Exit(1)
 					}
 					if *single && len(meterID.UintMap) == 0 {
-						rcvr.cancel()
+						rcvr.canc(errors.New("single: received messages from all meters"))
 						return
 					}
 				}
@@ -338,41 +334,35 @@ func main() {
 
 	HandleFlags()
 
-	rcvr.NewReceiver()
+	// Setup signal channel for interruption.
+	ctx, canc := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer canc()
 
+	// Make sure sampleWriter is closed.
 	defer func() {
 		if c, ok := sampleWriter.(io.Closer); ok {
+			slog.Info("closing sampleWriter")
 			c.Close()
-		}
-		rcvr.Close()
-
-		if rcvr.err != nil {
-			slog.Error("receiver", "error", rcvr.err)
-			os.Exit(1)
 		}
 	}()
 
-	start := time.Now()
+	// Set context timeout when provided.
+	if *timeLimit != 0 {
+		ctx, canc = context.WithTimeout(ctx, *timeLimit)
+		defer canc()
+	}
+
+	rcvr.NewReceiver(ctx)
+	defer rcvr.Close()
+
 	rcvr.Run()
 
-	// Setup signal channel for interruption.
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-
-	// Setup time limit channel
-	timeLimitCh := make(<-chan time.Time, 1)
-	if *timeLimit != 0 {
-		timeLimitCh = time.After(*timeLimit)
-	}
-
 	select {
-	case sig := <-sigCh:
-		slog.Info("signal received", "signal", sig)
-	case <-timeLimitCh:
-		slog.Info("time limit reached:", "since", time.Since(start))
+	case <-ctx.Done():
+		err := context.Cause(ctx)
+		slog.Info("main context cancelled", "cause", err)
 	case <-rcvr.ctx.Done():
-		slog.Info("receiver context cancelled")
+		err := context.Cause(rcvr.ctx)
+		slog.Info("receiver context cancelled", "cause", err)
 	}
-
-	rcvr.Close()
 }
