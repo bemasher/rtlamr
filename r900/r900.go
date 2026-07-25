@@ -44,8 +44,8 @@ type Parser struct {
 	field *gf.Field
 	rsBuf [31]byte
 
-	signal    []float64
-	csum      []float64
+	signal    []float32
+	csum      []float32
 	quantized []byte
 
 	once sync.Once
@@ -74,12 +74,12 @@ func (p *Parser) SetDecoder(d *protocol.Decoder) {
 	p.Decoder = d
 }
 
-func (p Parser) Cfg() protocol.PacketConfig {
+func (p *Parser) Cfg() protocol.PacketConfig {
 	return p.cfg
 }
 
 // Perform matched filtering.
-func (p Parser) filter() {
+func (p *Parser) filter() {
 	// This function computes the convolution of each symbol kernel with the
 	// signal. The naive approach requires for each symbol to calculate the
 	// summation of samples between a pair of indices.
@@ -93,7 +93,7 @@ func (p Parser) filter() {
 	// signal. This reduces each summation to the difference between the two
 	// indices of the cumulative sum.
 
-	var sum float64
+	var sum float32
 	for idx, v := range p.signal {
 		sum += v
 		p.csum[idx+1] = sum
@@ -143,7 +143,7 @@ func (p Parser) filter() {
 		}
 
 		p.quantized[idx] = argmax
-		if [3]float64{a0, a1, a2}[argmax] > 0 {
+		if [3]float32{a0, a1, a2}[argmax] > 0 {
 			p.quantized[idx] += 3
 		}
 	}
@@ -160,8 +160,8 @@ func abs[F float32 | float64](x F) F {
 func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sync.WaitGroup) {
 	p.once.Do(func() {
 		p.cfg = p.Decoder.Cfg
-		p.signal = make([]float64, p.Decoder.Cfg.BufferLength)
-		p.csum = make([]float64, p.Decoder.Cfg.BufferLength+1)
+		p.signal = make([]float32, p.Decoder.Cfg.BufferLength)
+		p.csum = make([]float32, p.Decoder.Cfg.BufferLength+1)
 		p.quantized = make([]byte, p.Decoder.Cfg.BufferLength)
 	})
 

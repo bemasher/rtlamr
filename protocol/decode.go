@@ -46,10 +46,10 @@ type Decoder struct {
 	Cfg PacketConfig
 	wg  *sync.WaitGroup
 
-	Signal    []float64
+	Signal    []float32
 	Quantized []byte
 
-	csum  []float64
+	csum  []float32
 	demod Demodulator
 
 	preambleStrs map[string]bool
@@ -141,10 +141,10 @@ func (d *Decoder) Allocate() {
 	d.Cfg.BufferLength = d.Cfg.PacketLength + d.Cfg.BlockSize
 
 	// Allocate necessary buffers.
-	d.Signal = make([]float64, d.Cfg.BlockSize+d.Cfg.SymbolLength)
+	d.Signal = make([]float32, d.Cfg.BlockSize+d.Cfg.SymbolLength)
 	d.Quantized = make([]byte, d.Cfg.BufferLength)
 
-	d.csum = make([]float64, len(d.Signal)+1)
+	d.csum = make([]float32, len(d.Signal)+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
 	d.demod = NewMagLUT()
@@ -197,26 +197,26 @@ func (d Decoder) Decode(input []byte) chan Message {
 }
 
 // A Demodulator knows how to demodulate an array of uint8 IQ samples into an
-// array of float64 samples.
+// array of float32 samples.
 type Demodulator interface {
-	Execute([]byte, []float64)
+	Execute([]byte, []float32)
 }
 
 // Default Magnitude Lookup Table
-type MagLUT []float64
+type MagLUT []float32
 
 // Pre-computes normalized squares with most common DC offset for rtl-sdr dongles.
 func NewMagLUT() (lut MagLUT) {
-	lut = make([]float64, 0x100)
+	lut = make([]float32, 0x100)
 	for idx := range lut {
-		lut[idx] = (127.5 - float64(idx)) / 127.5
+		lut[idx] = (127.5 - float32(idx)) / 127.5
 		lut[idx] *= lut[idx]
 	}
 	return
 }
 
 // Calculates complex magnitude on given IQ stream writing result to output.
-func (lut MagLUT) Execute(input []byte, output []float64) {
+func (lut MagLUT) Execute(input []byte, output []float32) {
 	i := 0
 	for idx := range output {
 		output[idx] = lut[input[i]] + lut[input[i+1]]
@@ -226,10 +226,10 @@ func (lut MagLUT) Execute(input []byte, output []float64) {
 
 // Matched filter for Manchester coded signals. Output signal's sign at each
 // sample determines the bit-value due to Manchester symbol odd symmetry.
-func (d Decoder) Filter(input []float64, output []byte) {
+func (d Decoder) Filter(input []float32, output []byte) {
 	// Computing the cumulative summation over the signal simplifies
 	// filtering to the difference of a pair of subtractions.
-	var sum float64
+	var sum float32
 	for idx, v := range input {
 		sum += v
 		d.csum[idx+1] = sum
@@ -240,7 +240,7 @@ func (d Decoder) Filter(input []float64, output []byte) {
 	upper := d.csum[d.Cfg.SymbolLength:]
 	for idx, l := range lower[:len(output)] {
 		f := (l - d.csum[idx]) - (upper[idx] - l)
-		output[idx] = 1 - byte(math.Float64bits(f)>>63)
+		output[idx] = 1 - byte(math.Float32bits(f)>>31)
 	}
 }
 
