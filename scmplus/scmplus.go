@@ -99,7 +99,7 @@ type SCM struct {
 	EndpointID   uint32 `xml:",attr"`
 	Consumption  uint32 `xml:",attr"`
 	Tamper       uint16 `xml:",attr"`
-	PacketCRC    uint16 `xml:"Checksum,attr",json:"Checksum"`
+	PacketCRC    uint16 `xml:"Checksum,attr"`
 }
 
 func NewSCM(data protocol.Data) (scm SCM) {
