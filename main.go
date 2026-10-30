@@ -91,6 +91,14 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 		return
 	}
 
+	// Send rtltcp-specific flags (gain, AGC, freq correction, etc.) to the
+	// server. This must happen after Connect: before it, every command is
+	// written to a nil connection and the flags are silently dropped.
+	if err := rcvr.HandleFlags(); err != nil {
+		rcvr.canc(fmt.Errorf("rcvr.HandleFlags: %w", err))
+		return
+	}
+
 	cfg := rcvr.d.Cfg
 
 	gainFlagSet := false
@@ -321,7 +329,6 @@ func main() {
 	RegisterFlags()
 	EnvOverride()
 	flag.Parse()
-	rcvr.HandleFlags()
 
 	if *version {
 		if info, ok := debug.ReadBuildInfo(); ok {
