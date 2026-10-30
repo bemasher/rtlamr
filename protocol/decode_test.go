@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/bemasher/rtlamr/crc"
+	"github.com/bemasher/rtlamr/idm"
 	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtlamr/scm"
 )
@@ -154,5 +155,83 @@ func TestSyntheticSCM(t *testing.T) {
 	got.ChecksumVal = 0
 	if got != want {
 		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+// buildIDM assembles a 92-byte IDM packet with valid serial and packet CRCs.
+func buildIDM(serial uint32, tamper, outage [6]byte) []byte {
+	pkt := make([]byte, 92)
+	binary.BigEndian.PutUint32(pkt[0:4], 0x555516A3)
+	pkt[4] = 0x1C // PacketTypeID
+	pkt[5] = 0x5C // PacketLength
+	pkt[8] = 0x07 // ERTType
+	binary.BigEndian.PutUint32(pkt[9:13], serial)
+	copy(pkt[15:21], tamper[:])
+	copy(pkt[23:29], outage[:])
+	binary.BigEndian.PutUint32(pkt[29:33], 424242)
+
+	ccitt := crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
+
+	serialBuf := append(append([]byte{}, pkt[9:13]...), 0, 0)
+	binary.BigEndian.PutUint16(serialBuf[4:], ^ccitt.Checksum(serialBuf[:4]))
+	copy(pkt[88:90], serialBuf[4:])
+
+	binary.BigEndian.PutUint16(pkt[90:92], ^ccitt.Checksum(pkt[4:90]))
+
+	return pkt
+}
+
+// TestIDMRetainedMessages decodes two different IDM transmissions and checks
+// that the first message's byte-slice fields aren't overwritten by the
+// second. Before the fix, TamperCounters and PowerOutageFlags aliased the
+// parser's reusable buffer.
+func TestIDMRetainedMessages(t *testing.T) {
+	const chipLength = 72
+
+	type tx struct {
+		serial         uint32
+		tamper, outage [6]byte
+	}
+	txs := []tx{
+		{11111111, [6]byte{1, 2, 3, 4, 5, 6}, [6]byte{0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6}},
+		{22222222, [6]byte{9, 8, 7, 6, 5, 4}, [6]byte{0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6}},
+	}
+
+	// Sanity-check the CRC construction against the same check the parser uses.
+	ccitt := crc.NewCRC("CCITT", 0xFFFF, 0x1021, 0x1D0F)
+	if r := ccitt.Checksum(buildIDM(1, [6]byte{}, [6]byte{})[4:92]); r != ccitt.Residue {
+		t.Fatalf("test packet CRC residue 0x%04X, want 0x%04X", r, ccitt.Residue)
+	}
+
+	var sig []byte
+	sig = append(sig, silence(20000)...)
+	for _, x := range txs {
+		sig = append(sig, modulate(buildIDM(x.serial, x.tamper, x.outage), chipLength)...)
+		sig = append(sig, silence(150000)...)
+	}
+
+	msgs := decodeStream(t, newDecoder(t, "idm", chipLength), bytes.NewReader(sig))
+
+	// The same packet may be found at several adjacent offsets; keep the
+	// first message seen for each serial, exactly as it was emitted.
+	first := map[uint32]idm.IDM{}
+	for _, m := range msgs {
+		i := m.(idm.IDM)
+		if _, ok := first[i.ERTSerialNumber]; !ok {
+			first[i.ERTSerialNumber] = i
+		}
+	}
+
+	for _, x := range txs {
+		got, ok := first[x.serial]
+		if !ok {
+			t.Fatalf("serial %d not decoded (got %d messages)", x.serial, len(msgs))
+		}
+		if !bytes.Equal(got.TamperCounters, x.tamper[:]) {
+			t.Errorf("serial %d TamperCounters = %X, want %X", x.serial, got.TamperCounters, x.tamper)
+		}
+		if !bytes.Equal(got.PowerOutageFlags, x.outage[:]) {
+			t.Errorf("serial %d PowerOutageFlags = %X, want %X", x.serial, got.PowerOutageFlags, x.outage)
+		}
 	}
 }
