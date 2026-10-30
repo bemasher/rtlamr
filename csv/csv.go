@@ -2,9 +2,8 @@ package csv
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
-
-	"golang.org/x/xerrors"
 )
 
 // Produces a list of fields making up a record.
@@ -31,9 +30,9 @@ func (enc *Encoder) Encode(v interface{}) (err error) {
 		switch r := recover().(type) {
 		case nil:
 		case error:
-			err = xerrors.Errorf("recovered: %w", r)
+			err = fmt.Errorf("recovered: %w", r)
 		default:
-			err = xerrors.Errorf("recovered: %v", r)
+			err = fmt.Errorf("recovered: %v", r)
 		}
 	}()
 

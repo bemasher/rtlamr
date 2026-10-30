@@ -3,10 +3,9 @@ package csv
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
 	"runtime"
 	"testing"
-
-	"golang.org/x/xerrors"
 )
 
 func TestRecorderNil(t *testing.T) {
@@ -42,7 +41,7 @@ func TestNonRecorder(t *testing.T) {
 	err := enc.Encode(NonRecorder{})
 
 	var runtimeErr runtime.Error
-	if !xerrors.As(err, &runtimeErr) {
+	if !errors.As(err, &runtimeErr) {
 		t.Fatalf("%+v\n", runtimeErr)
 	}
 }
@@ -51,14 +50,14 @@ type failWriter struct{}
 
 func (failWriter) Write([]byte) (int, error) { return 0, errWrite }
 
-var errWrite = xerrors.New("write failed")
+var errWrite = errors.New("write failed")
 
 // TestWriteError checks that an error writing to the underlying stream is
 // returned. Previously Encode always returned nil on a non-panicking path.
 func TestWriteError(t *testing.T) {
 	enc := NewEncoder(failWriter{})
 
-	if err := enc.Encode(Msg{}); !xerrors.Is(err, errWrite) {
+	if err := enc.Encode(Msg{}); !errors.Is(err, errWrite) {
 		t.Fatalf("Encode() = %v, want %v", err, errWrite)
 	}
 }
