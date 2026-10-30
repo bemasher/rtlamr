@@ -46,6 +46,10 @@ import (
 
 var rcvr Receiver
 
+// errSingleDone stops the receiver once -single has heard from every meter.
+// It is a normal exit, not a failure.
+var errSingleDone = errors.New("single: received messages from all meters")
+
 type Receiver struct {
 	rtltcp.SDR
 	d  protocol.Decoder
@@ -283,7 +287,7 @@ func (rcvr *Receiver) Run() {
 						os.Exit(1)
 					}
 					if *single && len(meterID.UintMap) == 0 {
-						rcvr.canc(errors.New("single: received messages from all meters"))
+						rcvr.canc(errSingleDone)
 						return
 					}
 				}
@@ -317,6 +321,13 @@ func init() {
 }
 
 func main() {
+	os.Exit(run())
+}
+
+// run is main's body. Returning the exit code (rather than calling os.Exit
+// here) lets the deferred cleanup below finish first, and lets a panic crash
+// with its stack trace instead of being masked by an exit status.
+func run() int {
 	rcvr.RegisterFlags()
 	RegisterFlags()
 	EnvOverride()
@@ -329,7 +340,7 @@ func main() {
 		} else {
 			slog.Error("could not read build info")
 		}
-		os.Exit(0)
+		return 0
 	}
 
 	HandleFlags()
@@ -365,4 +376,26 @@ func main() {
 		err := context.Cause(rcvr.ctx)
 		slog.Info("receiver context cancelled", "cause", err)
 	}
+
+	if err := exitError(ctx, rcvr.ctx); err != nil {
+		slog.Error("receiver stopped", "error", err)
+		return 1
+	}
+	return 0
+}
+
+// exitError returns the error that stopped the receiver, or nil if it stopped
+// normally: interrupted, -duration elapsed, or -single heard from every meter.
+func exitError(mainCtx, rcvrCtx context.Context) error {
+	cause := context.Cause(rcvrCtx)
+	switch {
+	case cause == nil,
+		errors.Is(cause, context.Canceled),
+		errors.Is(cause, errSingleDone):
+		return nil
+	case mainCtx.Err() != nil && cause == context.Cause(mainCtx):
+		// Inherited from main's context: interrupt or -duration.
+		return nil
+	}
+	return cause
 }
