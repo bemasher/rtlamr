@@ -80,7 +80,8 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	for name := range msgType {
 		p, err := protocol.NewParser(name, *symbolLength)
 		if err != nil {
-			slog.Error("message type", "error", err)
+			rcvr.canc(fmt.Errorf("protocol.NewParser: %w", err))
+			return
 		}
 
 		rcvr.d.RegisterProtocol(p)
@@ -364,6 +365,10 @@ func run() int {
 	}
 
 	rcvr.NewReceiver(ctx)
+	if rcvr.ctx.Err() != nil {
+		slog.Error("rcvr.NewReceiver", "error", context.Cause(rcvr.ctx))
+		return 1
+	}
 	defer rcvr.Close()
 
 	rcvr.Run()
