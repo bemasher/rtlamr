@@ -128,9 +128,9 @@ func NewIDM(data protocol.Data) (idm IDM) {
 	idm.ERTSerialNumber = binary.BigEndian.Uint32(data.Bytes[9:13])
 	idm.ConsumptionIntervalCount = data.Bytes[13]
 	idm.ModuleProgrammingState = data.Bytes[14]
-	idm.TamperCounters = append([]byte(nil), data.Bytes[15:21])
+	idm.TamperCounters = append([]byte(nil), data.Bytes[15:21]...)
 	idm.AsynchronousCounters = binary.BigEndian.Uint16(data.Bytes[21:23])
-	idm.PowerOutageFlags = append([]byte(nil), data.Bytes[23:29])
+	idm.PowerOutageFlags = append([]byte(nil), data.Bytes[23:29]...)
 	idm.LastConsumptionCount = binary.BigEndian.Uint32(data.Bytes[29:33])
 
 	offset := 264
