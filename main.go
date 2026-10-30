@@ -86,7 +86,7 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	rcvr.d.Allocate()
 
 	// Connect to rtl_tcp server.
-	if err := rcvr.Connect(); err != nil {
+	if err := rcvr.Connect(nil); err != nil {
 		rcvr.canc(fmt.Errorf("rcvr.Connect: %w", err))
 		return
 	}
