@@ -2,9 +2,8 @@ package csv
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
-
-	"golang.org/x/xerrors"
 )
 
 // Produces a list of fields making up a record.
@@ -26,13 +25,21 @@ func NewEncoder(w io.Writer) *Encoder {
 // newline character. Value given must implement the Recorder interface.
 func (enc *Encoder) Encode(v interface{}) (err error) {
 	defer func() {
-		if err, _ = recover().(error); err != nil {
-			err = xerrors.Errorf("recovered: %w", err)
+		// Only override err if we actually recovered from a panic; otherwise
+		// keep whatever error the write returned.
+		switch r := recover().(type) {
+		case nil:
+		case error:
+			err = fmt.Errorf("recovered: %w", r)
+		default:
+			err = fmt.Errorf("recovered: %v", r)
 		}
 	}()
 
-	err = enc.w.Write(v.(Recorder).Record())
+	if err = enc.w.Write(v.(Recorder).Record()); err != nil {
+		return err
+	}
 	enc.w.Flush()
 
-	return nil
+	return enc.w.Error()
 }
