@@ -46,7 +46,7 @@ func NewParser(name string, symbolLength int) (Parser, error) {
 	if parserFn, exists := parsers[name]; exists {
 		return parserFn(symbolLength), nil
 	} else {
-		return nil, fmt.Errorf("invalid message type: %q\n", name)
+		return nil, fmt.Errorf("invalid message type: %q", name)
 	}
 }
 

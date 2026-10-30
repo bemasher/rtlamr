@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -148,6 +149,9 @@ func HandleFlags() {
 		encoder = json.NewEncoder(os.Stdout)
 	case "xml":
 		encoder = NewLineEncoder{xml.NewEncoder(os.Stdout)}
+	default:
+		slog.Error("invalid format: must be plain, csv, json, or xml", "format", *format)
+		os.Exit(1)
 	}
 }
 

@@ -76,7 +76,8 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	for name := range msgType {
 		p, err := protocol.NewParser(name, *symbolLength)
 		if err != nil {
-			slog.Error("message type", "error", err)
+			rcvr.canc(fmt.Errorf("message type: %w", err))
+			return
 		}
 
 		rcvr.d.RegisterProtocol(p)
@@ -353,6 +354,14 @@ func main() {
 	}
 
 	rcvr.NewReceiver(ctx)
+
+	// NewReceiver cancels the receiver's context if setup fails (bad
+	// -msgtype, rtl_tcp unreachable, ...). Bail out before Run and Close,
+	// both of which need a live connection.
+	if rcvr.ctx.Err() != nil {
+		slog.Error("receiver setup failed", "error", context.Cause(rcvr.ctx))
+		os.Exit(1)
+	}
 	defer rcvr.Close()
 
 	rcvr.Run()
