@@ -340,7 +340,7 @@ func run() int {
 		} else {
 			slog.Error("could not read build info")
 		}
-		os.Exit(0)
+		return 0
 	}
 
 	HandleFlags()
