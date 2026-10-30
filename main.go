@@ -96,6 +96,11 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 		return
 	}
 
+	if err := rcvr.HandleFlags(); err != nil {
+		rcvr.canc(fmt.Errorf("rcvr.HandleFlags: %w", err))
+		return
+	}
+
 	cfg := rcvr.d.Cfg
 
 	gainFlagSet := false
@@ -333,7 +338,6 @@ func run() int {
 	RegisterFlags()
 	EnvOverride()
 	flag.Parse()
-	rcvr.HandleFlags()
 
 	if *version {
 		if info, ok := debug.ReadBuildInfo(); ok {
