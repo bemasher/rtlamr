@@ -99,7 +99,9 @@ type SCM struct {
 	EndpointID   uint32 `xml:",attr"`
 	Consumption  uint32 `xml:",attr"`
 	Tamper       uint16 `xml:",attr"`
-	PacketCRC    uint16 `xml:"Checksum,attr",json:"Checksum"`
+	// JSON keeps the Go field name ("PacketCRC") for compatibility with
+	// existing consumers; XML has always used "Checksum".
+	PacketCRC uint16 `xml:"Checksum,attr" json:"PacketCRC"`
 }
 
 func NewSCM(data protocol.Data) (scm SCM) {
