@@ -1,0 +1,4 @@
+# github.com/bemasher/rtltcp v0.0.0-20151011062038-3aed81c166c5
+## explicit
+github.com/bemasher/rtltcp
+github.com/bemasher/rtltcp/si
