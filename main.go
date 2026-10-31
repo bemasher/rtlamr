@@ -35,6 +35,7 @@ import (
 
 	"github.com/bemasher/rtlamr/protocol"
 	"github.com/bemasher/rtltcp"
+	"github.com/bemasher/rtltcp/si"
 
 	_ "github.com/bemasher/rtlamr/idm"
 	_ "github.com/bemasher/rtlamr/netidm"
@@ -52,6 +53,8 @@ var errSingleDone = errors.New("single: received messages from all meters")
 
 type Receiver struct {
 	rtltcp.SDR
+	flags SdrFlags
+
 	d  protocol.Decoder
 	fc protocol.FilterChain
 
@@ -135,6 +138,89 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 
 	// Tell the user how many gain settings were reported by rtl_tcp.
 	slog.Info("rtl_tcp", "GainCount", rcvr.SDR.Info.GainCount)
+}
+
+type SdrFlags struct {
+	ServerAddr     string
+	CenterFreq     si.ScientificNotation
+	SampleRate     si.ScientificNotation
+	TunerGainMode  bool
+	TunerGain      float64
+	FreqCorrection int
+	TestMode       bool
+	AgcMode        bool
+	DirectSampling bool
+	OffsetTuning   bool
+	RtlXtalFreq    uint
+	TunerXtalFreq  uint
+	GainByIndex    uint
+}
+
+// Registers command line flags for rtltcp commands.
+func (rcvr *Receiver) RegisterFlags() {
+	flag.StringVar(&rcvr.flags.ServerAddr, "server", "127.0.0.1:1234", "address or hostname of rtl_tcp instance")
+	flag.Var(&rcvr.flags.CenterFreq, "centerfreq", "center frequency to receive on")
+	flag.Lookup("centerfreq").DefValue = "100M"
+	flag.Var(&rcvr.flags.SampleRate, "samplerate", "sample rate")
+	flag.Lookup("samplerate").DefValue = "2.4M"
+	flag.BoolVar(&rcvr.flags.TunerGainMode, "tunergainmode", false, "enable/disable tuner gain")
+	flag.Float64Var(&rcvr.flags.TunerGain, "tunergain", 0.0, "set tuner gain in dB")
+	flag.IntVar(&rcvr.flags.FreqCorrection, "freqcorrection", 0, "frequency correction in ppm")
+	flag.BoolVar(&rcvr.flags.TestMode, "testmode", false, "enable/disable test mode")
+	flag.BoolVar(&rcvr.flags.AgcMode, "agcmode", false, "enable/disable rtl agc")
+	flag.BoolVar(&rcvr.flags.DirectSampling, "directsampling", false, "enable/disable direct sampling")
+	flag.BoolVar(&rcvr.flags.OffsetTuning, "offsettuning", false, "enable/disable offset tuning")
+	flag.UintVar(&rcvr.flags.RtlXtalFreq, "rtlxtalfreq", 0, "set rtl xtal frequency")
+	flag.UintVar(&rcvr.flags.TunerXtalFreq, "tunerxtalfreq", 0, "set tuner xtal frequency")
+	flag.UintVar(&rcvr.flags.GainByIndex, "gainbyindex", 0, "set gain by index")
+}
+
+// Parses flags and executes commands associated with each flag. Should only
+// be called once connected to rtl_tcp.
+func (rcvr *Receiver) HandleFlags() (err error) {
+	// Catch any errors panicked while visiting flags.
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+
+	flag.CommandLine.Visit(func(f *flag.Flag) {
+		var err error
+		switch f.Name {
+		case "centerfreq":
+			err = rcvr.SetCenterFreq(uint32(rcvr.flags.CenterFreq))
+		case "samplerate":
+			err = rcvr.SetSampleRate(uint32(rcvr.flags.SampleRate))
+		case "tunergainmode":
+			err = rcvr.SetGainMode(rcvr.flags.TunerGainMode)
+		case "tunergain":
+			err = rcvr.SetGain(uint32(rcvr.flags.TunerGain * 10.0))
+		case "freqcorrection":
+			err = rcvr.SetFreqCorrection(uint32(rcvr.flags.FreqCorrection))
+		case "testmode":
+			err = rcvr.SetTestMode(rcvr.flags.TestMode)
+		case "agcmode":
+			err = rcvr.SetAGCMode(rcvr.flags.AgcMode)
+		case "directsampling":
+			err = rcvr.SetDirectSampling(rcvr.flags.DirectSampling)
+		case "offsettuning":
+			err = rcvr.SetOffsetTuning(rcvr.flags.OffsetTuning)
+		case "rtlxtalfreq":
+			err = rcvr.SetRTLXtalFreq(uint32(rcvr.flags.RtlXtalFreq))
+		case "tunerxtalfreq":
+			err = rcvr.SetTunerXtalFreq(uint32(rcvr.flags.TunerXtalFreq))
+		case "gainbyindex":
+			err = rcvr.SetGainByIndex(uint32(rcvr.flags.GainByIndex))
+		}
+
+		// If we encounter an error, panic to catch in parent scope.
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	return
 }
 
 func (rcvr *Receiver) Close() {
@@ -374,6 +460,8 @@ func run() int {
 		return 1
 	}
 	defer rcvr.Close()
+
+	rcvr.HandleFlags()
 
 	rcvr.Run()
 
