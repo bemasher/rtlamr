@@ -110,9 +110,9 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {
 		case "centerfreq":
-			cfg.CenterFreq = uint32(rcvr.Flags.CenterFreq)
+			cfg.CenterFreq = uint32(rcvr.flags.CenterFreq)
 		case "samplerate":
-			cfg.SampleRate = int(rcvr.Flags.SampleRate)
+			cfg.SampleRate = int(rcvr.flags.SampleRate)
 		case "gainbyindex", "tunergainmode", "tunergain", "agcmode":
 			gainFlagSet = true
 		case "unique":
@@ -197,7 +197,7 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 		case "tunergain":
 			err = rcvr.SetGain(uint32(rcvr.flags.TunerGain * 10.0))
 		case "freqcorrection":
-			err = rcvr.SetFreqCorrection(uint32(rcvr.flags.FreqCorrection))
+			err = rcvr.SetFreqCorrection(int32(rcvr.flags.FreqCorrection))
 		case "testmode":
 			err = rcvr.SetTestMode(rcvr.flags.TestMode)
 		case "agcmode":

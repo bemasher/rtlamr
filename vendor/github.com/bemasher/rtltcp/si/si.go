@@ -33,34 +33,31 @@ func (si ScientificNotation) String() (s string) {
 }
 
 func (si *ScientificNotation) Set(value string) error {
-	mantissaStr := strings.Map(func(r rune) rune {
-		if unicode.IsDigit(r) || r == '.' || r == '-' {
-			return r
-		}
-		return -1
-	}, value)
+	// Trim all non-digits from the right, to remove suffix.
+	mantissaStr := strings.TrimRightFunc(value, func(r rune) bool {
+		return !unicode.IsDigit(r)
+	})
 
-	suffix := strings.Map(func(r rune) rune {
-		switch r {
-		case 'Y', 'Z', 'E', 'P', 'T', 'G', 'M', 'k', 'm', 'u', 'n', 'p', 'f', 'a', 'z', 'y':
-			return r
-		}
-		return -1
-	}, value)
+	// Recover the suffix by trimming the prefix.
+	suffix := strings.TrimPrefix(value, mantissaStr)
 
-	if len(suffix) > 1 {
-		return fmt.Errorf("suffix too long: %q", suffix)
-	}
-
+	// Parse mantissa.
 	mantissa, err := strconv.ParseFloat(mantissaStr, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("strconv.ParseFloat: %w", err)
 	}
 
+	// Set value.
 	*si = ScientificNotation(mantissa)
 
-	if len(suffix) > 0 {
-		switch suffix[0] {
+	// Apply suffix.
+	for i, s := range suffix {
+		// Ignore everything after first suffix.
+		if i > 0 {
+			return nil
+		}
+
+		switch s {
 		case 'Y':
 			*si *= Y
 		case 'Z':
@@ -93,6 +90,8 @@ func (si *ScientificNotation) Set(value string) error {
 			*si *= z
 		case 'y':
 			*si *= y
+		default:
+			return fmt.Errorf("invalid suffix: %q", suffix)
 		}
 	}
 
