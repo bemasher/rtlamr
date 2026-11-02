@@ -10,16 +10,11 @@ on:
 jobs:
   build:
     continue-on-error: true
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         go:
           [
-            "1.16",
-            "1.17",
-            "1.18",
-            "1.19",
-            "1.20",
             "1.21",
             "1.22",
             "1.23",
@@ -28,9 +23,9 @@ jobs:
           ]
     name: Go ${{ matrix.go }} sample
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
       - name: Build
