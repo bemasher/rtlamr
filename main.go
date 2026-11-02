@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -93,8 +94,15 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	// Allocate the internal buffers of the decoder.
 	rcvr.d.Allocate()
 
-	// Connect to rtl_tcp server.
-	if err := rcvr.Connect(nil); err != nil {
+	// Connect to rtl_tcp server using the address provided via the -server
+	// flag. Connect(nil) would dial the hard-coded default instead of the
+	// parsed flag value, see #355.
+	addr, err := net.ResolveTCPAddr("tcp", rcvr.flags.ServerAddr)
+	if err != nil {
+		rcvr.canc(fmt.Errorf("rcvr.Connect: net.ResolveTCPAddr: %w", err))
+		return
+	}
+	if err := rcvr.Connect(addr); err != nil {
 		rcvr.canc(fmt.Errorf("rcvr.Connect: %w", err))
 		return
 	}
