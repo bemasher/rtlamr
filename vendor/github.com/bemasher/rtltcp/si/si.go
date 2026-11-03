@@ -33,22 +33,22 @@ func (si ScientificNotation) String() (s string) {
 }
 
 func (si *ScientificNotation) Set(value string) error {
-	// Trim all non-digits from the right, to remove suffix.
-	mantissaStr := strings.TrimRightFunc(value, func(r rune) bool {
+	// Trim all non-digits from the right, to recover prefix.
+	numStr := strings.TrimRightFunc(value, func(r rune) bool {
 		return !unicode.IsDigit(r)
 	})
 
-	// Recover the suffix by trimming the prefix.
-	suffix := strings.TrimPrefix(value, mantissaStr)
+	// Recover the suffix.
+	suffix := strings.TrimPrefix(value, numStr)
 
-	// Parse mantissa.
-	mantissa, err := strconv.ParseFloat(mantissaStr, 64)
+	// Parse num.
+	num, err := strconv.ParseFloat(numStr, 64)
 	if err != nil {
 		return fmt.Errorf("strconv.ParseFloat: %w", err)
 	}
 
 	// Set value.
-	*si = ScientificNotation(mantissa)
+	*si = ScientificNotation(num)
 
 	// Apply suffix.
 	for i, s := range suffix {
