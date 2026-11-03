@@ -421,13 +421,13 @@ func init() {
 }
 
 func main() {
-	os.Exit(run())
+	os.Exit(run(context.Background()))
 }
 
 // run is main's body. Returning the exit code (rather than calling os.Exit
 // here) lets the deferred cleanup below finish first, and lets a panic crash
 // with its stack trace instead of being masked by an exit status.
-func run() int {
+func run(ctx context.Context) int {
 	rcvr.RegisterFlags()
 	RegisterFlags()
 	EnvOverride()
@@ -445,7 +445,8 @@ func run() int {
 	HandleFlags()
 
 	// Setup signal channel for interruption.
-	ctx, canc := signal.NotifyContext(context.Background(), os.Interrupt)
+	// I'm fairly confident shadowing is acceptable here.
+	ctx, canc := signal.NotifyContext(ctx, os.Interrupt)
 	defer canc()
 
 	// Make sure sampleWriter is closed.
