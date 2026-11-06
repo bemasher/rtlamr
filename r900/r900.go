@@ -146,6 +146,7 @@ func (p *Parser) filter() {
 		if [3]float32{a0, a1, a2}[argmax] > 0 {
 			p.quantized[idx] += 3
 		}
+		p.quantized[idx] = argmax
 	}
 }
 
@@ -168,6 +169,11 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 	cfg := p.cfg
 	copy(p.signal, p.signal[cfg.BlockSize:])
 	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength:])
+
+	if len(pkts) == 0 {
+		wg.Done()
+		return
+	}
 
 	p.filter()
 
