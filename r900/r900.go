@@ -19,6 +19,7 @@ package r900
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 
@@ -130,30 +131,26 @@ func (p *Parser) filter() {
 		a2 := c1 - c3 + c4 - c0      // 1001
 
 		// Quantize in the same loop
-		maxAbs := abs(a0)
+		maxAbs := math.Float32bits(a0) & 0x7fffffff
+		best := a0
 		argmax := byte(0)
-		if abs(a1) > maxAbs {
-
-			maxAbs = abs(a1)
+		a1Abs := math.Float32bits(a1) & 0x7fffffff
+		if a1Abs > maxAbs {
+			maxAbs = a1Abs
+			best = a1
 			argmax = 1
 		}
-		if abs(a2) > maxAbs {
-			maxAbs = abs(a2)
+		a2Abs := math.Float32bits(a2) & 0x7fffffff
+		if a2Abs > maxAbs {
+			best = a2
 			argmax = 2
 		}
 
-		p.quantized[idx] = argmax
-		if [3]float32{a0, a1, a2}[argmax] > 0 {
-			p.quantized[idx] += 3
+		if best > 0 {
+			argmax += 3
 		}
+		p.quantized[idx] = argmax
 	}
-}
-
-func abs[F float32 | float64](x F) F {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 // Given a list of indices the preamble exists at, decode and parse a message.
@@ -168,6 +165,11 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 	cfg := p.cfg
 	copy(p.signal, p.signal[cfg.BlockSize:])
 	copy(p.signal[cfg.PacketLength:], p.Decoder.Signal[cfg.SymbolLength:])
+
+	if len(pkts) == 0 {
+		wg.Done()
+		return
+	}
 
 	p.filter()
 

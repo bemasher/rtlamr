@@ -17,6 +17,7 @@
 package protocol
 
 import (
+	"encoding/binary"
 	"log"
 	"math"
 	"strings"
@@ -147,7 +148,7 @@ func (d *Decoder) Allocate() {
 	d.csum = make([]float32, len(d.Signal)+1)
 
 	// Calculate magnitude lookup table specified by -fastmag flag.
-	d.demod = NewMagLUT()
+	d.demod = newPairMagLUT()
 
 	// Signal up to the final stage is 1-bit per byte. Allocate a buffer to
 	// store packed version 8-bits per byte.
@@ -172,11 +173,12 @@ func (d Decoder) Decode(input []byte) chan Message {
 	d.Filter(d.Signal, d.Quantized[d.Cfg.PacketLength:])
 
 	msgCh := make(chan Message)
+	d.packQuantized()
 
 	// For each preamble.
 	for preamble, parsers := range d.preambles {
 		// Get a list of packets with valid preambles.
-		pkts := d.Slice(d.Search([]byte(preamble)))
+		pkts := d.Slice(d.searchPacked([]byte(preamble)))
 
 		// Increment the wait group for all the parsers we will run on these packets.
 		d.wg.Add(len(parsers))
@@ -224,6 +226,28 @@ func (lut MagLUT) Execute(input []byte, output []float32) {
 	}
 }
 
+type pairMagLUT []float32
+
+func newPairMagLUT() pairMagLUT {
+	base := NewMagLUT()
+	lut := make(pairMagLUT, 1<<16)
+	for first, firstMagnitude := range base {
+		offset := first << 8
+		for second, secondMagnitude := range base {
+			lut[offset+second] = firstMagnitude + secondMagnitude
+		}
+	}
+	return lut
+}
+
+func (lut pairMagLUT) Execute(input []byte, output []float32) {
+	for idx := range output {
+		inputIdx := idx << 1
+		lutIdx := int(input[inputIdx])<<8 | int(input[inputIdx+1])
+		output[idx] = lut[lutIdx]
+	}
+}
+
 // Matched filter for Manchester coded signals. Output signal's sign at each
 // sample determines the bit-value due to Manchester symbol odd symmetry.
 func (d Decoder) Filter(input []float32, output []byte) {
@@ -253,16 +277,20 @@ func (d Decoder) Filter(input []float32, output []byte) {
 //  4. Convert indices from byte-based to sample-based.
 //  5. Check each of these indices for the preamble.
 func (d *Decoder) Search(preamble []byte) []int {
-	symLenByte := d.Cfg.SymbolLength >> 3
+	d.packQuantized()
+	return d.searchPacked(preamble)
+}
 
+func (d *Decoder) packQuantized() {
 	// Pack the bit-wise quantized signal into bytes.
 	for bIdx := range d.packed {
-		var b byte
-		for _, qBit := range d.Quantized[bIdx<<3 : (bIdx+1)<<3] {
-			b = (b << 1) | qBit
-		}
-		d.packed[bIdx] = b
+		bits := binary.LittleEndian.Uint64(d.Quantized[bIdx<<3:]) & 0x0101010101010101
+		d.packed[bIdx] = byte(bits * 0x8040201008040201 >> 56)
 	}
+}
+
+func (d *Decoder) searchPacked(preamble []byte) []int {
+	symLenByte := d.Cfg.SymbolLength >> 3
 
 	// For each bit in the preamble.
 	for pIdx, pBit := range preamble {
@@ -328,13 +356,20 @@ func (d *Decoder) Search(preamble []byte) []int {
 }
 
 func searchPassByte(pBit byte, sig []byte, a, b []int) ([]int, []int) {
+	if cap(b) < len(a) {
+		b = make([]int, len(a))
+	} else {
+		b = b[:len(a)]
+	}
+	count := 0
 	for _, qIdx := range a {
 		if sig[qIdx] != pBit {
-			b = append(b, qIdx)
+			b[count] = qIdx
+			count++
 		}
 	}
 
-	return a, b
+	return a, b[:count]
 }
 
 func searchPass(pBit byte, sig []byte, a, b []int) ([]int, []int) {
