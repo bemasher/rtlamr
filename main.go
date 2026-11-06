@@ -462,6 +462,15 @@ func run(ctx context.Context) int {
 		ctx, canc = context.WithTimeout(ctx, *timeLimit)
 		defer canc()
 	}
+	if *pprofAddr != "" {
+		addr, stopPprof, err := startPprof(*pprofAddr)
+		if err != nil {
+			slog.Error("start pprof server", "error", err)
+			return 1
+		}
+		defer stopPprof()
+		slog.Info("pprof server listening", "address", addr)
+	}
 
 	rcvr.NewReceiver(ctx)
 	if rcvr.ctx.Err() != nil {

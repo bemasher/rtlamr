@@ -44,6 +44,7 @@ var symbolLength = flag.Int("symbollength", 72, "symbol length in samples (8, 32
 
 var (
 	timeLimit = flag.Duration("duration", 0, "time to run for, 0 for infinite, ex. 1h5m10s")
+	pprofAddr = flag.String("pprof", "", "enable pprof HTTP endpoints on this address (for example, 127.0.0.1:6060)")
 	meterID   MeterIDFilter
 	meterType MeterTypeFilter
 )
@@ -79,7 +80,7 @@ func RegisterFlags() {
 		"format":       true,
 		"unique":       true,
 		"single":       true,
-		"cpuprofile":   true,
+		"pprof":        true,
 		"version":      true,
 	}
 

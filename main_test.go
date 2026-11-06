@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -49,5 +50,23 @@ func TestFlagServer(t *testing.T) {
 	exit := run(ctx)
 	if exit > 0 {
 		t.Fatal("exit:", exit)
+	}
+}
+
+func TestPprofEndpoint(t *testing.T) {
+	addr, stop, err := startPprof("127.0.0.1:0")
+	if err != nil {
+		t.Fatal("startPprof:", err)
+	}
+	defer stop()
+
+	response, err := http.Get("http://" + addr.String() + "/debug/pprof/")
+	if err != nil {
+		t.Fatal("GET /debug/pprof/:", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("GET /debug/pprof/: status %d", response.StatusCode)
 	}
 }
