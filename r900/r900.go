@@ -38,10 +38,15 @@ func NewPacketConfig(chipLength int) (cfg protocol.PacketConfig) {
 	return
 }
 
+// GF of order 32, polynomial 37, generator 2.
+var field = gf.NewField(32, 37, 2)
+
+// Generator polynomial for the five roots a^29..a^33 that Syndrome checks.
+var gen = generator(29, 5)
+
 type Parser struct {
 	*protocol.Decoder
 	cfg   protocol.PacketConfig
-	field *gf.Field
 	rsBuf [31]byte
 
 	signal    []float32
@@ -63,9 +68,6 @@ func NewParser(chipLength int) protocol.Parser {
 		PacketSymbols:   116,
 		Preamble:        "00000000000000001110010101100100",
 	}
-
-	// GF of order 32, polynomial 37, generator 2.
-	p.field = gf.NewField(32, 37, 2)
 
 	return &p
 }
@@ -184,6 +186,8 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 			break
 		}
 
+		// Decoder.Filter delays the quantized signal by SymbolLength, which
+		// pkt.Idx carries, so the payload starts that much earlier here.
 		payloadIdx := pkt.Idx + preambleLength - p.cfg.SymbolLength
 		var digits string
 		for idx := 0; idx < PayloadSymbols*4*cfg.ChipLength; idx += chipLength * 4 {
@@ -214,9 +218,9 @@ func (p *Parser) Parse(pkts []protocol.Data, msgCh chan protocol.Message, wg *sy
 
 		copy(p.rsBuf[:], symbols[:16])
 		copy(p.rsBuf[26:], symbols[16:])
-		syndromes := p.field.Syndrome(p.rsBuf[:], 5, 29)
+		syndrome := field.Syndrome(p.rsBuf[:], 5, 29)
 
-		if !bytes.Equal(zeros, syndromes) {
+		if !bytes.Equal(zeros, syndrome) {
 			continue
 		}
 
@@ -273,6 +277,91 @@ func (r900 R900) MeterType() uint8 {
 
 func (r900 R900) Checksum() []byte {
 	return r900.checksum[:]
+}
+
+// Chips sent for each 6-ary symbol digit: 0011, 0101, 0110, then the base
+// patterns 1100, 1010, 1001 that filter correlates, which add 3 to the digit.
+var chips = [6]byte{0x03, 0x05, 0x06, 0x0C, 0x0A, 0x09}
+
+// SymMap maps R900 bytes to symbols, each symbol is two 6-ary digits.
+func (r900 R900) SymMap() []byte {
+	data := [2]uint64{
+		uint64(r900.ID)<<8 |
+			uint64(r900.Unkn1),
+		uint64(r900.NoUse)<<34 |
+			uint64(r900.BackFlow)<<32 |
+			uint64(r900.Consumption)<<8 |
+			uint64(r900.Unkn3)<<6 |
+			uint64(r900.Leak)<<2 |
+			uint64(r900.LeakNow),
+	}
+
+	phy := make([]byte, 21)
+	for i := 0; i < 16; i++ {
+		s := data[i>>3] >> (35 - 5*(i&7)) & 31
+		phy[i] = chips[s/6]<<4 | chips[s%6]
+	}
+	for i, s := range r900.checksum {
+		phy[16+i] = chips[s/6]<<4 | chips[s%6]
+	}
+
+	return phy
+}
+
+// digit returns the 6-ary digit whose chips are chip.
+func digit(chip byte) (byte, bool) {
+	for d, c := range chips {
+		if c == chip {
+			return byte(d), true
+		}
+	}
+	return 0, false
+}
+
+// generator returns the coefficients of the product of (x + a^i) for i in
+// [offset, offset+n), highest degree first.
+func generator(offset, n int) []byte {
+	g := []byte{1}
+	for i := 0; i < n; i++ {
+		r := field.Exp(offset + i)
+		next := make([]byte, len(g)+1)
+		for j, c := range g {
+			next[j] ^= c
+			next[j+1] ^= field.Mul(c, r)
+		}
+		g = next
+	}
+	return g
+}
+
+// GenCRC computes the Reed-Solomon parity bytes.
+func (r900 *R900) GenCRC() (crc [5]byte) {
+	sym := r900.SymMap()
+
+	if len(sym) != 21 {
+		panic("r900: SymCRC: want 21 symbols, got " + strconv.Itoa(len(sym)))
+	}
+
+	var code [31]byte // 16 data, 10 zeros, 5 parity
+	for i, b := range sym[:16] {
+		hi, okHi := digit(b >> 4)
+		lo, okLo := digit(b & 0x0F)
+		if !okHi || !okLo {
+			panic("r900: SymCRC: symbol is not two chips")
+		}
+		code[i] = hi*6 + lo
+	}
+
+	// Remainder of the data times x^5 divided by the generator is the parity.
+	for i := 0; i < 26; i++ {
+		c := code[i]
+		for j, g := range gen {
+			code[i+j] ^= field.Mul(g, c)
+		}
+	}
+
+	copy(crc[:], code[26:])
+	return crc
 }
 
 func (r900 R900) String() string {
