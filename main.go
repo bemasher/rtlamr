@@ -138,7 +138,9 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	rcvr.SetSampleRate(uint32(cfg.SampleRate))
 
 	if !gainFlagSet {
-		rcvr.SetGainMode(true)
+		// The historical default is automatic tuner gain. The current
+		// rtltcp.SetGainMode parameter instead indicates manual gain.
+		rcvr.SetGainMode(false)
 	}
 
 	rcvr.d.Cfg = cfg
@@ -193,6 +195,9 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 		}
 	}()
 
+	// flag.Visit processes flag names alphabetically. Defer numeric gain
+	// until the requested tuner gain mode has been applied.
+	tunerGainSet := false
 	flag.CommandLine.Visit(func(f *flag.Flag) {
 		var err error
 		switch f.Name {
@@ -201,9 +206,11 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 		case "samplerate":
 			err = rcvr.SetSampleRate(uint32(rcvr.flags.SampleRate))
 		case "tunergainmode":
-			err = rcvr.SetGainMode(rcvr.flags.TunerGainMode)
+			// Preserve the CLI's historical automatic-gain boolean semantics.
+			// rtltcp.SetGainMode now takes a manual-gain boolean.
+			err = rcvr.SetGainMode(!rcvr.flags.TunerGainMode)
 		case "tunergain":
-			err = rcvr.SetGain(uint32(rcvr.flags.TunerGain * 10.0))
+			tunerGainSet = true
 		case "freqcorrection":
 			err = rcvr.SetFreqCorrection(int32(rcvr.flags.FreqCorrection))
 		case "testmode":
@@ -227,6 +234,10 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 			panic(err)
 		}
 	})
+
+	if tunerGainSet {
+		return rcvr.SetGain(uint32(rcvr.flags.TunerGain * 10.0))
+	}
 
 	return
 }
