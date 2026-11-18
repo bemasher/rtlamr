@@ -138,7 +138,12 @@ func (rcvr *Receiver) NewReceiver(ctx context.Context) {
 	rcvr.SetSampleRate(uint32(cfg.SampleRate))
 
 	if !gainFlagSet {
-		rcvr.SetGainMode(true)
+		// If no gain flags provided, enable automatic tuner gain.
+		// rtltcp previously handled this differently, flipping to keep expected behavior.
+		if err := rcvr.SetGainMode(false); err != nil {
+			rcvr.canc(fmt.Errorf("rcvr.SetGainMode: %w", err))
+			return
+		}
 	}
 
 	rcvr.d.Cfg = cfg
@@ -171,7 +176,7 @@ func (rcvr *Receiver) RegisterFlags() {
 	flag.Lookup("centerfreq").DefValue = "100M"
 	flag.Var(&rcvr.flags.SampleRate, "samplerate", "sample rate")
 	flag.Lookup("samplerate").DefValue = "2.4M"
-	flag.BoolVar(&rcvr.flags.TunerGainMode, "tunergainmode", false, "enable/disable tuner gain")
+	flag.BoolVar(&rcvr.flags.TunerGainMode, "tunergainmode", false, "tuner gain, true=manual, false=automatic")
 	flag.Float64Var(&rcvr.flags.TunerGain, "tunergain", 0.0, "set tuner gain in dB")
 	flag.IntVar(&rcvr.flags.FreqCorrection, "freqcorrection", 0, "frequency correction in ppm")
 	flag.BoolVar(&rcvr.flags.TestMode, "testmode", false, "enable/disable test mode")
