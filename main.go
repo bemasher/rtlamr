@@ -198,6 +198,9 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 		}
 	}()
 
+	// Apply gain mode before gain value/index, regardless of flag name order.
+	tunerGainSet := false
+	gainIndexSet := false
 	flag.CommandLine.Visit(func(f *flag.Flag) {
 		var err error
 		switch f.Name {
@@ -208,7 +211,7 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 		case "tunergainmode":
 			err = rcvr.SetGainMode(rcvr.flags.TunerGainMode)
 		case "tunergain":
-			err = rcvr.SetGain(uint32(rcvr.flags.TunerGain * 10.0))
+			tunerGainSet = true
 		case "freqcorrection":
 			err = rcvr.SetFreqCorrection(int32(rcvr.flags.FreqCorrection))
 		case "testmode":
@@ -224,7 +227,7 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 		case "tunerxtalfreq":
 			err = rcvr.SetTunerXtalFreq(uint32(rcvr.flags.TunerXtalFreq))
 		case "gainbyindex":
-			err = rcvr.SetGainByIndex(uint32(rcvr.flags.GainByIndex))
+			gainIndexSet = true
 		}
 
 		// If we encounter an error, panic to catch in parent scope.
@@ -232,6 +235,15 @@ func (rcvr *Receiver) HandleFlags() (err error) {
 			panic(err)
 		}
 	})
+
+	if gainIndexSet {
+		if err := rcvr.SetGainByIndex(uint32(rcvr.flags.GainByIndex)); err != nil {
+			return err
+		}
+	}
+	if tunerGainSet {
+		return rcvr.SetGain(uint32(rcvr.flags.TunerGain * 10.0))
+	}
 
 	return
 }
